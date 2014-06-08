@@ -1,0 +1,61 @@
+Installation instructions for nftables
+======================================
+
+ Prerequisites
+ =============
+
+  - standard glibc headers, gcc etc.
+
+  - libmnl: git://git.netfilter.org/libmnl.git
+
+  - libnftnl: git://git.netfilter.org/libnftnl.git
+
+  - flex
+
+  - bison
+
+  - libgmp
+
+  - libreadline
+
+  - optional: docbook2x: required for building man-page
+
+  - optional: docbook-utils: required for building PDF man-page
+
+ Configuring and compiling
+ =========================
+
+ Run "sh autogen.sh" to generate the configure script, then:
+
+ sh configure [options]
+
+ --prefix=
+
+        The prefix to put all installed files under. It defaults to
+        /usr/local, so the binaries will go into /usr/local/bin, sbin,
+        manpages into /usr/local/share/man, etc.
+
+ --datarootdir=
+
+ 	The base directory for arch-independant files. Defaults to
+	$prefix/share.
+
+ --disable-debug
+
+	Disable debugging
+
+ Suggested configuration options: --prefix=/ --datarootdir=/usr/share
+
+ Run "make" to compile nftables, "make install" to install it in the
+ configured paths.
+
+ Other notes
+ ===========
+
+ The nftables kernel tree can be found at:
+
+ git://git.kernel.org/pub/scm/linux/kernel/git/pablo/nftables.git
+
+ The latest version of this code can be found at:
+
+ git://git.netfilter.org/nftables.git

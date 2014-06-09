@@ -29,6 +29,16 @@
 #define   CHAIN_TOTAL		10
 
 
+#define   RULE_ID		0
+#define   RULE_TABLE		1
+#define   RULE_CHAIN		2
+#define   RULE_SELECTOR		3
+#define   RULE_ACTION		4
+#define   RULE_DETAIL		5
+#define   RULE_DELETE		6
+#define   RULE_TOTAL		7
+
+
 
 struct new_table {
 	GtkWidget       *notebook;
@@ -84,7 +94,6 @@ void create_new_chain(GtkButton *button, gpointer  notebook);
 void begin_create_new_table(GtkButton *button, gpointer  info);
 void back_to_table_list (GtkButton *button, gpointer  notebook);
 void create_new_table(GtkButton *button, gpointer  notebook);
-void gnftables_set_rule_init(GtkButton *button, gpointer  notebook);
 void gnftables_about_init(GtkWidget *notebook);
 void gnftables_set_chain_init(gint family, gchar *table_name, GtkWidget *notebook);
 void gnftables_table_init(GtkWidget *notebook);
@@ -112,6 +121,9 @@ void basechain_selected(GtkWidget *check_button, gpointer data);
 void back_to_chain_list(GtkButton *button, gpointer  info);
 void begin_create_new_chain(GtkButton *button, gpointer  info);
 
+
+void gnftables_set_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkWidget *notebook);
+void rule_update_data(gint family, gchar *table_name, gchar *chain_name, GtkTreeStore *store);
 
 
 int gui_check_table_exist(int family, char *name);

@@ -47,6 +47,72 @@ void gui_chain_free(struct gui_chain *chain)
 	free(chain);
 }
 
+int get_rule_data(struct rule *rule, char *buffer, int len)
+{
+	int     fd[2];
+	memset(buffer, 0, sizeof(buffer));
+
+	if(pipe(fd)<0)
+		return -1;
+	if (!(stdout = fdopen(fd[1], "w"))) {
+		close(fd[0]);
+		close(fd[1]);
+		return -1;
+	}
+
+	rule_print(rule);
+
+	freopen("/dev/tty", "w", stdout);
+	close(fd[0]);
+	close(fd[1]);
+	return read(fd[0], buffer, len - 1);
+}
+
+
+
+int gui_get_rules_list(struct list_head *head, int family, char *table, char *chain)
+{
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	struct table		*tablee = NULL;
+	struct rule		*rulee;
+	int			res;
+	char		buffer[1024];
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.seqnum  = mnl_seqnum_alloc();
+	init_list_head(&ctx.list);
+
+	handle.family = family;
+	handle.table = table;
+	handle.chain = chain;
+	handle.set = NULL;
+	handle.handle = 0;
+	handle.position = 0;
+	handle.comment = NULL;
+
+	tablee = table_lookup(&handle);
+	if (tablee == NULL) {
+		tablee = table_alloc();
+		handle_merge(&tablee->handle, &handle);
+		table_add_hash(tablee);
+	}
+
+	res = netlink_list_chain(&ctx, &handle, &loc);
+	if (res < 0)
+		return -1;
+
+	list_for_each_entry(rulee, &ctx.list, list) {
+		get_rule_data(rulee, buffer, 1024);
+		printf("%s\n", buffer);
+//		rule_print(rulee);
+		printf("\n");
+	}
+
+	return 0;
+}
+
 int gui_get_chains_list(struct list_head *head, int family, char *table)
 {
 	struct netlink_ctx	ctx;
@@ -55,7 +121,7 @@ int gui_get_chains_list(struct list_head *head, int family, char *table)
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.seqnum  = mnl_seqnum_alloc();
-	init_list_head(&ctx.list);		// 这句是必须的.
+	init_list_head(&ctx.list);
 
 	struct chain *chain;
 	struct gui_chain  *gui_chain = NULL;
@@ -99,7 +165,7 @@ int gui_get_tables_list(struct list_head *head, uint32_t family)
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.seqnum  = mnl_seqnum_alloc();
-	init_list_head(&ctx.list);		// 这句是必须的.
+	init_list_head(&ctx.list);
 
 	struct table *table;
 	struct gui_table  *gui_table = NULL;
@@ -137,7 +203,7 @@ int gui_add_chain(struct gui_chain *gui_chain)
 	ctx.msgs = &msgs;
 	ctx.seqnum  = mnl_seqnum_alloc();
 	ctx.batch_supported = batch_supported;
-	init_list_head(&ctx.list);		// 这句是必须的.
+	init_list_head(&ctx.list);
 
 	handle.family = gui_chain->family;
 	handle.table = gui_chain->table;
@@ -151,8 +217,8 @@ int gui_add_chain(struct gui_chain *gui_chain)
 		chain.priority = gui_chain->priority;
 	} else
 		chain.flags = 0;
-	init_list_head(&chain.list);		// 这句是必须的.
-	init_list_head(&chain.rules);		// 这句是必须的.
+	init_list_head(&chain.list);
+	init_list_head(&chain.rules);
 
 
 	netlink_add_chain(&ctx, &handle, &loc, &chain, false);
@@ -173,7 +239,7 @@ int gui_add_table(int family, char *name)
 	ctx.msgs = &msgs;
 	ctx.seqnum  = mnl_seqnum_alloc();
 	ctx.batch_supported = batch_supported;
-	init_list_head(&ctx.list);		// 这句是必须的.
+	init_list_head(&ctx.list);
 
 
 	handle.family = family;
@@ -200,7 +266,7 @@ int gui_check_table_exist(int family, char *name)
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.msgs = &msgs;
 	ctx.seqnum  = mnl_seqnum_alloc();
-	init_list_head(&ctx.list);		// 这句是必须的.
+	init_list_head(&ctx.list);
 
 
 	handle.family = family;
@@ -239,7 +305,7 @@ int gui_delete_chain(int family, const char *table, const char *chain)
 	ctx.msgs = &msgs;
 	ctx.seqnum  = mnl_seqnum_alloc();
 	ctx.batch_supported = batch_supported;
-	init_list_head(&ctx.list);		// 这句是必须的.
+	init_list_head(&ctx.list);
 
 
 	handle.family = family;
@@ -274,7 +340,7 @@ int gui_flush_table(int family, char *name)
 	ctx.msgs = &msgs;
 	ctx.seqnum  = mnl_seqnum_alloc();
 	ctx.batch_supported = batch_supported;
-	init_list_head(&ctx.list);		// 这句是必须的.
+	init_list_head(&ctx.list);
 
 	handle.family = family;
 	handle.table = name;
@@ -306,7 +372,7 @@ int gui_delete_table(int family, char *name)
 	ctx.msgs = &msgs;
 	ctx.seqnum  = mnl_seqnum_alloc();
 	ctx.batch_supported = batch_supported;
-	init_list_head(&ctx.list);		// 这句是必须的.
+	init_list_head(&ctx.list);
 
 
 	handle.family = family;

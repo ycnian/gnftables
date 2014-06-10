@@ -32,11 +32,10 @@
 #define   RULE_ID		0
 #define   RULE_TABLE		1
 #define   RULE_CHAIN		2
-#define   RULE_SELECTOR		3
-#define   RULE_ACTION		4
-#define   RULE_DETAIL		5
-#define   RULE_DELETE		6
-#define   RULE_TOTAL		7
+#define   RULE_CONTENT		3
+#define   RULE_DETAIL		4
+#define   RULE_DELETE		5
+#define   RULE_TOTAL		6
 
 
 

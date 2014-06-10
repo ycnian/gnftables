@@ -21,6 +21,10 @@
 #include <utils.h>
 #include <netlink.h>
 #include <mnl.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <libnftnl/common.h>
 #include <libnftnl/ruleset.h>
@@ -33,6 +37,20 @@
 #include <gui_rule.h>
 #include <gui_error.h>
 
+
+
+void gui_rule_free(struct gui_rule *rule)
+{
+	if (!rule)
+		return;
+	if (rule->table)
+		free(rule->table);
+	if (rule->chain)
+		free(rule->chain);
+	if (rule->stmt)
+		free(rule->stmt);
+	free(rule);
+}
 
 void gui_chain_free(struct gui_chain *chain)
 {
@@ -47,25 +65,16 @@ void gui_chain_free(struct gui_chain *chain)
 	free(chain);
 }
 
-int get_rule_data(struct rule *rule, char *buffer, int len)
+
+
+// This is a tmp function, save rule in a tmp file.
+// We will get the data in an other way.
+int get_rule_data(struct rule *rule, char *file)
 {
-	int     fd[2];
-	memset(buffer, 0, sizeof(buffer));
-
-	if(pipe(fd)<0)
-		return -1;
-	if (!(stdout = fdopen(fd[1], "w"))) {
-		close(fd[0]);
-		close(fd[1]);
-		return -1;
-	}
-
+	freopen(file, "w", stdout);
 	rule_print(rule);
-
 	freopen("/dev/tty", "w", stdout);
-	close(fd[0]);
-	close(fd[1]);
-	return read(fd[0], buffer, len - 1);
+	return 0;
 }
 
 
@@ -78,7 +87,10 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 	struct table		*tablee = NULL;
 	struct rule		*rulee;
 	int			res;
-	char		buffer[1024];
+	struct gui_rule		*gui_rule;
+
+	char		*file = "/tmp/sjfosfaaheofsofaofa.txt";
+	int		fd;
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.seqnum  = mnl_seqnum_alloc();
@@ -104,10 +116,18 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 		return -1;
 
 	list_for_each_entry(rulee, &ctx.list, list) {
-		get_rule_data(rulee, buffer, 1024);
-		printf("%s\n", buffer);
 //		rule_print(rulee);
-		printf("\n");
+
+		gui_rule = (struct gui_rule  *)malloc(sizeof(*gui_rule));
+		gui_rule->family = rulee->handle.family;
+		gui_rule->table = strdup(rulee->handle.table);
+		gui_rule->chain = strdup(rulee->handle.chain);
+		gui_rule->stmt = (char *)malloc(1024);
+		memset(gui_rule->stmt, 0, sizeof(gui_rule->stmt));
+		get_rule_data(rulee, file);
+		fd = open(file, O_RDONLY);
+		read(fd, gui_rule->stmt, 1023);
+		list_add_tail(&gui_rule->list, head);
 	}
 
 	return 0;

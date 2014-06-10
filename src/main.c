@@ -679,7 +679,7 @@ void gnftables_set_rule_init(gint family, gchar *table_name, gchar *chain_name, 
 	chain_arg->family = family;
 	chain_arg->table = table_name;
 
-	store = gtk_tree_store_new(RULE_TOTAL, G_TYPE_INT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
+	store = gtk_tree_store_new(RULE_TOTAL, G_TYPE_INT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
 
 	label = gtk_label_new("Rules (Chain: input)");
 	gtk_widget_set_size_request(label, 200, 10);
@@ -713,11 +713,7 @@ void gnftables_set_rule_init(gint family, gchar *table_name, gchar *chain_name, 
 	gtk_tree_view_column_set_min_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
-	column = gtk_tree_view_column_new_with_attributes("Selectors", renderer, "text", RULE_SELECTOR, NULL);
-	gtk_tree_view_column_set_min_width(column, 200);
-	gtk_tree_view_column_set_alignment(column, 0.0);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
-	column = gtk_tree_view_column_new_with_attributes("Actions", renderer, "text", RULE_ACTION, NULL);
+	column = gtk_tree_view_column_new_with_attributes("Selectors", renderer, "text", RULE_CONTENT, NULL);
 	gtk_tree_view_column_set_min_width(column, 200);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
@@ -857,30 +853,22 @@ void rule_update_data(gint family, gchar *table_name, gchar *chain_name, GtkTree
 	uint32_t	index = 0;
 	GtkTreeIter	iter;
 
-	struct gui_chain   *chain;
-	LIST_HEAD(chain_list);
+	struct gui_rule   *rule;
+	LIST_HEAD(rule_list);
 
-	gui_get_rules_list(&chain_list, family, table_name, chain_name);
+	gui_get_rules_list(&rule_list, family, table_name, chain_name);
 
 	gtk_tree_store_clear (store);
 
-	gtk_tree_store_append(GTK_TREE_STORE(store), &iter, NULL);
-	gtk_tree_store_set(GTK_TREE_STORE(store), &iter, RULE_ID, 1, RULE_TABLE, "filter", RULE_CHAIN, "input", RULE_SELECTOR, "aaaaaaaaaaaaaaaa", RULE_ACTION, "bbbbbbbbbbbb", RULE_DETAIL, TRUE, RULE_DELETE, TRUE, -1);
 
 
 	// display rules in treeview
-//	list_for_each_entry(chain, &chain_list, list) {
-//		index++;
-//		chain->nrules = 10;
-//		gtk_tree_store_append(GTK_TREE_STORE(store), &iter, NULL);
-//		if (chain->basechain) {
-//			char	priority[50];
-//			sprintf(priority, "%d", chain->priority);
-//			gtk_tree_store_set(GTK_TREE_STORE(store), &iter, CHAIN_ID, index, CHAIN_NAME, chain->chain, CHAIN_TABLE, chain->table, CHAIN_RULES, chain->nrules, CHAIN_BASECHAIN, "Yes", CHAIN_TYPE, chain->type, CHAIN_HOOK, hooknum2str(family, chain->hook), CHAIN_PRIORITY, priority, CHAIN_DETAIL, TRUE, CHAIN_DELETE, TRUE, -1);
-//		} else 
-//			gtk_tree_store_set(GTK_TREE_STORE(store), &iter, CHAIN_ID, index, CHAIN_NAME, chain->chain, CHAIN_TABLE, chain->table, CHAIN_RULES, chain->nrules, CHAIN_BASECHAIN, "No", CHAIN_TYPE, "X", CHAIN_HOOK, "X", CHAIN_PRIORITY, "X", CHAIN_DETAIL, TRUE, CHAIN_DELETE, TRUE, -1);
-//		gui_chain_free(chain);	
-//	}
+	list_for_each_entry(rule, &rule_list, list) {
+		index++;
+		gtk_tree_store_append(GTK_TREE_STORE(store), &iter, NULL);
+		gtk_tree_store_set(GTK_TREE_STORE(store), &iter, RULE_ID, index, RULE_TABLE, rule->table, RULE_CHAIN, rule->chain, RULE_CONTENT, rule->stmt, RULE_DETAIL, TRUE, RULE_DELETE, TRUE, -1);
+		gui_rule_free(rule);	
+	}
 }
 
 

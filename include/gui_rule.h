@@ -3,11 +3,11 @@
 
 
 struct gui_table {
-	uint32_t        family;
-	const char      *table;
-	uint32_t        nsets;
-	uint32_t        nchains;
-	struct list_head        list;
+	int		family;
+	char		*table;
+	int		nsets;
+	int		nchains;
+	struct list_head	list;
 };
 
 
@@ -23,7 +23,13 @@ struct gui_chain {
 	struct list_head	list;
 };
 
-
+struct gui_rule {
+	int		family;
+	char		*table;
+	char		*chain;
+	char		*stmt;
+	struct list_head	list;
+};
 
 
 
@@ -38,7 +44,8 @@ int gui_delete_chain(int family, const char *table, const char *chain);
 int gui_flush_table(int family, char *name);
 
 int gui_get_rules_list(struct list_head *head, int family, char *table, char *chain);
-int get_rule_data(struct rule *rule, char *buffer, int len);
+int get_rule_data(struct rule *rule, char *file);
+void gui_rule_free(struct gui_rule *rule);
 
 
 #endif

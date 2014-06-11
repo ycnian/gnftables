@@ -83,6 +83,14 @@ struct new_chain {
 };
 
 
+struct rule_list_args {
+	GtkWidget	*notebook;
+	GtkWidget	*list_rules;
+	gint		family;
+	gchar		*table;
+	gchar		*chain;
+	gint		handle;
+};
 
 void remove_book(GtkButton *button, GtkNotebook *notebook);
 void select_page(GtkNotebook *notebook, GtkWidget *page, guint page_num, gpointer user_data);

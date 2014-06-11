@@ -175,6 +175,47 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 }
 
 
+
+int gui_delete_rule(int family, const char *table, const char *chain, int handle_no)
+{
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	int	res = TABLE_SUCCESS;
+	bool batch_supported;
+
+	LIST_HEAD(msgs);
+	LIST_HEAD(err_list);
+
+//	res = gui_check_chain_exist(family, table, chain);
+//	if (res != TABLE_SUCCESS)
+//		return res;
+
+	batch_supported = netlink_batch_supported();
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+	ctx.seqnum  = mnl_seqnum_alloc();
+	ctx.batch_supported = batch_supported;
+	init_list_head(&ctx.list);
+
+	handle.family = family;
+	handle.table = table;
+	handle.chain = chain;
+	handle.handle = handle_no;
+	handle.position = 0;
+	handle.comment = NULL;
+
+	// delete rule.
+	if (netlink_del_rule_batch(&ctx, &handle, &loc) < 0) {
+			res = TABLE_KERNEL_ERROR;
+	}
+
+	if (mnl_batch_ready())
+		netlink_batch_send(&err_list);
+	return res;
+}
+
 int gui_get_sets_number(int family, char *table)
 {
 	struct netlink_ctx	ctx;

@@ -49,6 +49,7 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 int get_rule_data(struct rule *rule, char *file);
 void gui_rule_free(struct gui_rule *rule);
 int gui_get_rules_number(int family, char *table, char *chain);
+int gui_delete_rule(int family, const char *table, const char *chain, int handle);
 
 
 int gui_get_sets_number(int family, char *table);

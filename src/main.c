@@ -678,7 +678,7 @@ void gnftables_set_rule_init(gint family, gchar *table_name, gchar *chain_name, 
 	chain_arg->family = family;
 	chain_arg->table = table_name;
 
-	store = gtk_tree_store_new(RULE_TOTAL, G_TYPE_INT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
+	store = gtk_tree_store_new(RULE_TOTAL, G_TYPE_INT, G_TYPE_INT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
 
 	label = gtk_label_new("Rules (Chain: input)");
 	gtk_widget_set_size_request(label, 200, 10);
@@ -704,6 +704,11 @@ void gnftables_set_rule_init(gint family, gchar *table_name, gchar *chain_name, 
 	gtk_tree_view_column_set_min_width(column, 50);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
+	column = gtk_tree_view_column_new_with_attributes("Handle", renderer, "text", RULE_HANDLE, NULL);
+	gtk_tree_view_column_set_visible(column, FALSE);
+	gtk_tree_view_column_set_min_width(column, 50);
+	gtk_tree_view_column_set_alignment(column, 0.0);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 	column = gtk_tree_view_column_new_with_attributes("Table", renderer, "text", RULE_TABLE, NULL);
 	gtk_tree_view_column_set_min_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
@@ -712,7 +717,7 @@ void gnftables_set_rule_init(gint family, gchar *table_name, gchar *chain_name, 
 	gtk_tree_view_column_set_min_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
-	column = gtk_tree_view_column_new_with_attributes("Selectors", renderer, "text", RULE_CONTENT, NULL);
+	column = gtk_tree_view_column_new_with_attributes("Contents", renderer, "text", RULE_CONTENT, NULL);
 	gtk_tree_view_column_set_min_width(column, 200);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
@@ -727,7 +732,7 @@ void gnftables_set_rule_init(gint family, gchar *table_name, gchar *chain_name, 
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 
 	renderer2 = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer2, "toggled", G_CALLBACK(chain_callback_delete), chain_arg) ;
+	g_signal_connect(renderer2, "toggled", G_CALLBACK(rule_callback_delete), chain_arg) ;
 	column = gtk_tree_view_column_new_with_attributes("Delete", renderer2, "active", RULE_DELETE, NULL);
 	gtk_tree_view_column_set_min_width(column, 60);
 	gtk_tree_view_column_set_max_width(column, 60);
@@ -807,6 +812,47 @@ void basechain_selected(GtkWidget *check_button, gpointer data)
 	}
 }
 
+void rule_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
+{
+/*
+	GtkTreeIter		iter;
+	int			family;
+	gchar			*table;
+	gchar			*chain;
+	GtkTreeModel		*model;
+	GtkTreeView		*treeview;
+	struct chain_list_args	*chain_args = (struct chain_list_args *)data;
+
+	gint	res;
+	GtkWidget *dialog;
+
+	dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+                                 0,
+                                 GTK_MESSAGE_WARNING,
+                                 GTK_BUTTONS_OK_CANCEL,
+                                 "The chain and all rules in the chain will be deleted. Are you sure?"
+                                 );
+
+	treeview = GTK_TREE_VIEW(chain_args->list_chains);
+	table = chain_args->table;
+	family = chain_args->family;
+
+	res = gtk_dialog_run(GTK_DIALOG(dialog));
+	if (res == GTK_RESPONSE_OK) {
+		model = gtk_tree_view_get_model(treeview);
+		gtk_tree_model_get_iter_from_string(model, &iter, path_str);
+		gtk_tree_model_get(model, &iter, CHAIN_NAME, &chain, -1);
+
+		gui_delete_chain(family, table, chain);
+		chain_update_data(family, table, GTK_TREE_STORE(model));
+	}
+
+	gtk_widget_destroy(dialog);
+*/
+	return;
+
+}
+
 
 void chain_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
 {
@@ -865,7 +911,7 @@ void rule_update_data(gint family, gchar *table_name, gchar *chain_name, GtkTree
 	list_for_each_entry(rule, &rule_list, list) {
 		index++;
 		gtk_tree_store_append(GTK_TREE_STORE(store), &iter, NULL);
-		gtk_tree_store_set(GTK_TREE_STORE(store), &iter, RULE_ID, index, RULE_TABLE, rule->table, RULE_CHAIN, rule->chain, RULE_CONTENT, rule->stmt, RULE_DETAIL, TRUE, RULE_DELETE, TRUE, -1);
+		gtk_tree_store_set(GTK_TREE_STORE(store), &iter, RULE_ID, index, RULE_HANDLE, rule->handle, RULE_TABLE, rule->table, RULE_CHAIN, rule->chain, RULE_CONTENT, rule->stmt, RULE_DETAIL, TRUE, RULE_DELETE, TRUE, -1);
 		gui_rule_free(rule);	
 	}
 }

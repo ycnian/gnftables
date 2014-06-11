@@ -279,6 +279,42 @@ int gui_get_chains_list(struct list_head *head, int family, char *table)
 }
 
 
+int gui_add_chain(struct gui_chain *gui_chain)
+{
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	struct chain		chain;
+
+	bool batch_supported = netlink_batch_supported();
+	LIST_HEAD(msgs);
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+	ctx.seqnum  = mnl_seqnum_alloc();
+	ctx.batch_supported = batch_supported;
+	init_list_head(&ctx.list);
+
+	handle.family = gui_chain->family;
+	handle.table = gui_chain->table;
+	handle.chain = gui_chain->chain;
+	handle.handle = 0;
+
+	if (gui_chain->basechain) {
+		chain.flags |= CHAIN_F_BASECHAIN;
+		chain.type = gui_chain->type;
+		chain.hooknum = gui_chain->hook;
+		chain.priority = gui_chain->priority;
+	} else
+		chain.flags = 0;
+	init_list_head(&chain.list);
+	init_list_head(&chain.rules);
+
+
+	netlink_add_chain(&ctx, &handle, &loc, &chain, false);
+
+	return 0;
+}
 
 int gui_get_tables_list(struct list_head *head, uint32_t family)
 {
@@ -320,43 +356,6 @@ int gui_get_tables_list(struct list_head *head, uint32_t family)
 
 
 
-
-int gui_add_chain(struct gui_chain *gui_chain)
-{
-	struct netlink_ctx	ctx;
-	struct handle		handle;
-	struct location		loc;
-	struct chain		chain;
-
-	bool batch_supported = netlink_batch_supported();
-	LIST_HEAD(msgs);
-
-	memset(&ctx, 0, sizeof(ctx));
-	ctx.msgs = &msgs;
-	ctx.seqnum  = mnl_seqnum_alloc();
-	ctx.batch_supported = batch_supported;
-	init_list_head(&ctx.list);
-
-	handle.family = gui_chain->family;
-	handle.table = gui_chain->table;
-	handle.chain = gui_chain->chain;
-	handle.handle = 0;
-
-	if (gui_chain->basechain) {
-		chain.flags |= CHAIN_F_BASECHAIN;
-		chain.type = gui_chain->type;
-		chain.hooknum = gui_chain->hook;
-		chain.priority = gui_chain->priority;
-	} else
-		chain.flags = 0;
-	init_list_head(&chain.list);
-	init_list_head(&chain.rules);
-
-
-	netlink_add_chain(&ctx, &handle, &loc, &chain, false);
-
-	return 0;
-}
 
 int gui_add_table(int family, char *name)
 {
@@ -439,17 +438,14 @@ int gui_delete_chain(int family, const char *table, const char *chain)
 	ctx.batch_supported = batch_supported;
 	init_list_head(&ctx.list);
 
-
 	handle.family = family;
 	handle.table = table;
 	handle.chain = chain;
-
-
-	// delete all rules in the chain.
-
+	handle.handle = 0;
 
 	// delete chain.
-	if (netlink_delete_chain(&ctx, &handle, &loc) < 0) {
+//	if (netlink_delete_chain(&ctx, &handle, &loc) < 0) {
+	if (netlink_flush_chain(&ctx, &handle, &loc) < 0) {
 			res = TABLE_KERNEL_ERROR;
 	}
 	return res;

@@ -30,12 +30,13 @@
 
 
 #define   RULE_ID		0
-#define   RULE_TABLE		1
-#define   RULE_CHAIN		2
-#define   RULE_CONTENT		3
-#define   RULE_DETAIL		4
-#define   RULE_DELETE		5
-#define   RULE_TOTAL		6
+#define   RULE_HANDLE		1
+#define   RULE_TABLE		2
+#define   RULE_CHAIN		3
+#define   RULE_CONTENT		4
+#define   RULE_DETAIL		5
+#define   RULE_DELETE		6
+#define   RULE_TOTAL		7
 
 
 
@@ -124,7 +125,7 @@ void begin_create_new_chain(GtkButton *button, gpointer  info);
 void gnftables_set_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkWidget *notebook);
 void rule_update_data(gint family, gchar *table_name, gchar *chain_name, GtkTreeStore *store);
 
-
+void rule_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data);
 int gui_check_table_exist(int family, char *name);
 
 #endif

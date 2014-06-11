@@ -226,8 +226,6 @@ int nft_run(void *scanner, struct parser_state *state, struct list_head *msgs)
 
 GtkWidget	*window;
 
-/* 从笔记本上删除一个页面 */
-// 这个函数需要保留，因为我会用到这个函数.
 void remove_book( GtkButton   *button,
                   GtkNotebook *notebook )
 {
@@ -235,11 +233,12 @@ void remove_book( GtkButton   *button,
   
     page = gtk_notebook_get_current_page (notebook);
     gtk_notebook_remove_page (notebook, page);
-  /* 需要刷新构件, 这会迫使构件重绘自身。 */
     gtk_widget_queue_draw(GTK_WIDGET(notebook));
 }
 
 
+// This function will be modified in the future.
+// Before goto the right page, data need be updated.
 void select_page(GtkNotebook *notebook, GtkWidget   *page, guint page_num, gpointer user_data)
 {
 	gint	num = gtk_notebook_get_n_pages(notebook);
@@ -887,7 +886,6 @@ void chain_update_data(gint family, gchar *table_name, GtkTreeStore *store)
 	// display chains in treeview
 	list_for_each_entry(chain, &chain_list, list) {
 		index++;
-		chain->nrules = 10;
 		gtk_tree_store_append(GTK_TREE_STORE(store), &iter, NULL);
 		if (chain->basechain) {
 			char	priority[50];
@@ -1061,7 +1059,6 @@ void table_update_data(gint family, GtkTreeStore *store)
 	list_for_each_entry(table, &table_list, list) {
 		index++;
 		table->nsets = 2;
-		table->nchains = 10;
 		gtk_tree_store_append(GTK_TREE_STORE(store), &iter, NULL);
 		if (table->family == NFPROTO_IPV4)
 			gtk_tree_store_set(GTK_TREE_STORE(store), &iter, TABLE_ID, index, TABLE_NAME, table->table, TABLE_FAMILY, "ipv4", TABLE_SETS, table->nsets, TABLE_CHAINS, table->nchains, TABLE_DETAIL, TRUE, TABLE_DELETE, TRUE, -1);

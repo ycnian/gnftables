@@ -66,6 +66,46 @@ void gui_chain_free(struct gui_chain *chain)
 }
 
 
+int gui_get_rules_number(int family, char *table, char *chain)
+{
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	struct table		*tablee = NULL;
+	struct rule		*rulee;
+	int			res;
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.seqnum  = mnl_seqnum_alloc();
+	init_list_head(&ctx.list);
+
+	handle.family = family;
+	handle.table = table;
+	handle.chain = chain;
+	handle.set = NULL;
+	handle.handle = 0;
+	handle.position = 0;
+	handle.comment = NULL;
+
+	tablee = table_lookup(&handle);
+	if (tablee == NULL) {
+		tablee = table_alloc();
+		handle_merge(&tablee->handle, &handle);
+		table_add_hash(tablee);
+	}
+
+	res = netlink_list_chain(&ctx, &handle, &loc);
+	if (res < 0)
+		return -1;
+
+	res = 0;
+	list_for_each_entry(rulee, &ctx.list, list) {
+		res++;
+	}
+
+	return res;
+}
+
 
 // This is a tmp function, save rule in a tmp file.
 // We will get the data in an other way.
@@ -119,6 +159,7 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 //		rule_print(rulee);
 
 		gui_rule = (struct gui_rule  *)malloc(sizeof(*gui_rule));
+		gui_rule->handle = rulee->handle.handle;
 		gui_rule->family = rulee->handle.family;
 		gui_rule->table = strdup(rulee->handle.table);
 		gui_rule->chain = strdup(rulee->handle.chain);
@@ -133,11 +174,41 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 	return 0;
 }
 
+
+int gui_get_chains_number(int family, char *table)
+{
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	int	res = 0;
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.seqnum  = mnl_seqnum_alloc();
+	init_list_head(&ctx.list);
+
+	struct chain *chain;
+
+	handle.family = family;
+	handle.table = table;
+	handle.chain = NULL;
+
+	if (netlink_list_chains(&ctx, &handle, &loc) < 0)
+		return -1;
+
+	list_for_each_entry(chain, &ctx.list, list) {
+		res++;
+	}
+
+	return res;
+}
+
+
 int gui_get_chains_list(struct list_head *head, int family, char *table)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
 	struct location		loc;
+	int			nrules;
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.seqnum  = mnl_seqnum_alloc();
@@ -168,6 +239,10 @@ int gui_get_chains_list(struct list_head *head, int family, char *table)
 			gui_chain->basechain = 0;
 			gui_chain->type = NULL;
 		}
+		nrules = gui_get_rules_number(gui_chain->family, gui_chain->table, gui_chain->chain);
+		// if (nrules < 0)
+		// 	error;
+		gui_chain->nrules = nrules;
 
 		list_add_tail(&gui_chain->list, head);
 	}
@@ -182,6 +257,7 @@ int gui_get_tables_list(struct list_head *head, uint32_t family)
 	struct netlink_ctx	ctx;
 	struct handle		handle;
 	struct location		loc;
+	int	nchains;
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.seqnum  = mnl_seqnum_alloc();
@@ -200,6 +276,11 @@ int gui_get_tables_list(struct list_head *head, uint32_t family)
 		gui_table = (struct gui_table  *)malloc(sizeof(*gui_table));
 		gui_table->family = table->handle.family;
 		gui_table->table = strdup(table->handle.table);
+		nchains = gui_get_chains_number(family, gui_table->table);
+		// if (nchains < 0)
+		// 	error;
+		gui_table->nchains = nchains;
+
 		list_add_tail(&gui_table->list, head);
 	}
 

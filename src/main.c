@@ -1058,7 +1058,6 @@ void table_update_data(gint family, GtkTreeStore *store)
 	// display tables in treeview
 	list_for_each_entry(table, &table_list, list) {
 		index++;
-		table->nsets = 2;
 		gtk_tree_store_append(GTK_TREE_STORE(store), &iter, NULL);
 		if (table->family == NFPROTO_IPV4)
 			gtk_tree_store_set(GTK_TREE_STORE(store), &iter, TABLE_ID, index, TABLE_NAME, table->table, TABLE_FAMILY, "ipv4", TABLE_SETS, table->nsets, TABLE_CHAINS, table->nchains, TABLE_DETAIL, TRUE, TABLE_DELETE, TRUE, -1);

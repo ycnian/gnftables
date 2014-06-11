@@ -175,6 +175,34 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 }
 
 
+int gui_get_sets_number(int family, char *table)
+{
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	int	res = 0;
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.seqnum  = mnl_seqnum_alloc();
+	init_list_head(&ctx.list);
+
+	struct set *set;
+
+	handle.family = family;
+	handle.table = table;
+	handle.set = NULL;
+
+	if (netlink_list_sets(&ctx, &handle, &loc) < 0)
+		return -1;
+
+	list_for_each_entry(set, &ctx.list, list) {
+		res++;
+	}
+
+	return res;
+}
+
+
 int gui_get_chains_number(int family, char *table)
 {
 	struct netlink_ctx	ctx;
@@ -258,6 +286,7 @@ int gui_get_tables_list(struct list_head *head, uint32_t family)
 	struct handle		handle;
 	struct location		loc;
 	int	nchains;
+	int	nsets;
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.seqnum  = mnl_seqnum_alloc();
@@ -277,9 +306,11 @@ int gui_get_tables_list(struct list_head *head, uint32_t family)
 		gui_table->family = table->handle.family;
 		gui_table->table = strdup(table->handle.table);
 		nchains = gui_get_chains_number(family, gui_table->table);
+		nsets = gui_get_sets_number(family, gui_table->table);
 		// if (nchains < 0)
 		// 	error;
 		gui_table->nchains = nchains;
+		gui_table->nsets = nsets;
 
 		list_add_tail(&gui_table->list, head);
 	}

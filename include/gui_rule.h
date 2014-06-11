@@ -51,4 +51,6 @@ void gui_rule_free(struct gui_rule *rule);
 int gui_get_rules_number(int family, char *table, char *chain);
 
 
+int gui_get_sets_number(int family, char *table);
+
 #endif

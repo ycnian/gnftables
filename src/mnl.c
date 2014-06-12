@@ -89,6 +89,7 @@ static struct mnl_nlmsg_batch *mnl_batch_alloc(void)
 
 	/* libmnl needs higher buffer to handle batch overflows */
 	buf = xmalloc(BATCH_PAGE_SIZE + getpagesize());
+	memset(buf, 0, BATCH_PAGE_SIZE + getpagesize());
 	return mnl_nlmsg_batch_start(buf, BATCH_PAGE_SIZE);
 }
 

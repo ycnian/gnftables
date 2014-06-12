@@ -206,10 +206,12 @@ int gui_delete_rule(int family, const char *table, const char *chain, int handle
 	handle.position = 0;
 	handle.comment = NULL;
 
+	 mnl_batch_begin();
 	// delete rule.
 	if (netlink_del_rule_batch(&ctx, &handle, &loc) < 0) {
 			res = TABLE_KERNEL_ERROR;
 	}
+	mnl_batch_end();
 
 	if (mnl_batch_ready())
 		netlink_batch_send(&err_list);

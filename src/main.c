@@ -908,7 +908,7 @@ void rule_update_data(gint family, gchar *table_name, gchar *chain_name, GtkTree
 
 
 
-	// display rules in treeview
+	// display rules in treeview 
 	list_for_each_entry(rule, &rule_list, list) {
 		index++;
 		gtk_tree_store_append(GTK_TREE_STORE(store), &iter, NULL);

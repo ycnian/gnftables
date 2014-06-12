@@ -36,6 +36,7 @@ void *xmalloc(size_t size)
 	ptr = malloc(size);
 	if (ptr == NULL)
 		memory_allocation_error();
+	memset(ptr, 0, size);
 	return ptr;
 }
 

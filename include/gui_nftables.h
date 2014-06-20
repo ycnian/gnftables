@@ -92,6 +92,15 @@ struct rule_list_args {
 	gint		handle;
 };
 
+
+struct new_rule {
+	GtkWidget       *notebook;
+	gint		family;
+	gchar		*table;
+	gchar		*chain;
+	struct list_head        stmt;
+};
+
 void remove_book(GtkButton *button, GtkNotebook *notebook);
 void select_page(GtkNotebook *notebook, GtkWidget *page, guint page_num, gpointer user_data);
 gint load_rules(GtkWidget *widget, GtkWidget *event, gpointer data);
@@ -136,4 +145,6 @@ void rule_update_data(gint family, gchar *table_name, gchar *chain_name, GtkTree
 void rule_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data);
 int gui_check_table_exist(int family, char *name);
 
+
+void create_new_rule(GtkButton *button, gpointer  data);
 #endif

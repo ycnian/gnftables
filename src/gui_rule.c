@@ -111,7 +111,7 @@ int gui_get_rules_number(int family, char *table, char *chain)
 // We will get the data in an other way.
 int get_rule_data(struct rule *rule, char *file)
 {
-	freopen(file, "w", stdout);
+	freopen(file, "w+", stdout);
 	rule_print(rule);
 	freopen("/dev/tty", "w", stdout);
 	return 0;
@@ -156,8 +156,6 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 		return -1;
 
 	list_for_each_entry(rulee, &ctx.list, list) {
-//		rule_print(rulee);
-
 		gui_rule = (struct gui_rule  *)malloc(sizeof(*gui_rule));
 		gui_rule->handle = rulee->handle.handle;
 		gui_rule->family = rulee->handle.family;
@@ -217,6 +215,77 @@ int gui_delete_rule(int family, const char *table, const char *chain, int handle
 		netlink_batch_send(&err_list);
 	return res;
 }
+
+
+int gui_add_rule(struct gui_rule *gui_rule)
+{
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	int	res = TABLE_SUCCESS;
+	bool batch_supported;
+	struct  rule	rule;
+	struct  stmt	*stmt;
+	struct expr 	*expr;
+
+	LIST_HEAD(msgs);
+	LIST_HEAD(err_list);
+
+//	res = gui_check_chain_exist(family, table, chain);
+//	if (res != TABLE_SUCCESS)
+//		return res;
+
+	batch_supported = netlink_batch_supported();
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+	ctx.seqnum  = mnl_seqnum_alloc();
+	ctx.batch_supported = batch_supported;
+	init_list_head(&ctx.list);
+	init_list_head(&rule.stmts);
+
+	handle.family = gui_rule->family;
+	handle.table = gui_rule->table;
+	handle.chain = gui_rule->chain;
+	handle.handle = 0;
+	handle.position = 0;
+	handle.comment = NULL;
+
+/*
+struct rule {
+        struct list_head        list;
+        struct handle           handle;
+        struct location         location;
+        struct list_head        stmts;
+        unsigned int            num_stmts;
+};
+*/
+	// add statements.
+	init_list_head(&ctx.list);
+
+	expr = payload_expr_alloc(&loc, &proto_ip, IPHDR_SADDR);
+	stmt = expr_stmt_alloc(&loc, expr);
+	list_add_tail(&stmt->list, &rule.stmts);
+
+
+	expr = payload_expr_alloc(&loc, &proto_ip, IPHDR_SADDR);
+	stmt = expr_stmt_alloc(&loc, expr);
+
+
+
+	 mnl_batch_begin();
+	// delete rule.
+	if (netlink_add_rule_batch(&ctx, &handle, &rule, NLM_F_APPEND) < 0) {
+			res = TABLE_KERNEL_ERROR;
+	}
+	mnl_batch_end();
+
+	if (mnl_batch_ready())
+		netlink_batch_send(&err_list);
+	return res;
+
+}
+
 
 int gui_get_sets_number(int family, char *table)
 {
@@ -561,6 +630,8 @@ int gui_delete_table(int family, char *name)
 	}
 	return TABLE_SUCCESS;
 }
+
+
 
 
 int str2family(const char *family)

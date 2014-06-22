@@ -320,6 +320,26 @@ GdkPixbuf  *create_pixbuf(const gchar *filename)
 }
 
 
+//  nft add rule ip filter input ip saddr 192.168.1.101 ip daddr 192.168.1.102  counter accept
+void begin_create_new_rule(GtkButton *button, gpointer  info)
+{
+	struct new_rule  *gui_rule = (struct new_rule *)info;
+	GtkWidget	*notebook = gui_rule->notebook;
+	struct gui_rule	*rule = malloc(sizeof(struct gui_rule));
+	rule->family = gui_rule->family;
+	rule->table = gui_rule->table;
+	rule->chain = gui_rule->chain;
+
+	gui_add_rule(rule);
+
+	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 2);
+	gnftables_set_rule_init(rule->family, rule->table, rule->chain, notebook);
+	gtk_widget_show_all(GTK_WIDGET(notebook));
+	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
+	gtk_widget_queue_draw(GTK_WIDGET(notebook));
+
+}
+
 void begin_create_new_chain(GtkButton *button, gpointer  info)
 {
 	
@@ -364,7 +384,6 @@ void begin_create_new_chain(GtkButton *button, gpointer  info)
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 1);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
-
 }
 
 
@@ -405,6 +424,18 @@ void begin_create_new_table(GtkButton *button, gpointer  info)
 }
 
 
+void back_to_rule_list(GtkButton *button, gpointer  info)
+{
+	struct new_rule  *rule = (struct new_rule *)info;
+	GtkWidget	*notebook = rule->notebook;
+	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 2);
+
+	gnftables_set_rule_init(rule->family, rule->table, rule->chain, notebook);
+	gtk_widget_show_all(GTK_WIDGET(notebook));
+	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
+	gtk_widget_queue_draw(GTK_WIDGET(notebook));
+}
+
 void back_to_chain_list(GtkButton *button, gpointer  info)
 {
 	struct new_chain  *chain = (struct new_chain *)info;
@@ -429,88 +460,120 @@ void back_to_table_list (GtkButton *button, gpointer  info)
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
 }
 
+struct hhh {
+	GtkWidget	*fixed;
+	GtkWidget	*expander;
+};
+
+
+static void expander_callback (GObject    *object,
+                   GParamSpec *param_spec,
+                   gpointer    user_data)
+{
+	GtkExpander *expander;
+	struct hhh  *hh;
+
+	expander = GTK_EXPANDER (object);
+	hh = (struct hhh  *)user_data;
+
+	if (gtk_expander_get_expanded (expander)) {
+		gtk_fixed_move(GTK_FIXED(hh->fixed), hh->expander, 0, 250);
+	} else {
+		gtk_fixed_move(GTK_FIXED(hh->fixed), hh->expander, 0, 40);
+	}
+}
 
 
 void create_new_rule(GtkButton *button, gpointer  data)
 {
-	GtkWidget	*layout;
 	GtkWidget	*label;
+	GtkWidget	*fixed;
+	GtkWidget	*fixed2;
+	GtkWidget	*fixed3;
+	GtkWidget	*fixed4;
 	GtkWidget	*ok;
 	GtkWidget	*cancel;
-	GtkWidget	*frame;
-	GtkWidget	*layout_info;
-	GtkWidget	*name;
-	GtkWidget	*name_value;
-	GtkWidget	*name_desc;
+	GtkWidget	*create_rule;
+	GtkWidget	*list_rules;
 	GtkWidget	*notebook;
+	GtkWidget	*scrolledwindow;
+	GtkListStore	*store;
+	GtkCellRenderer	*renderer;
+	GtkCellRenderer	*renderer1;
+	GtkCellRenderer	*renderer2;
+	GtkTreeViewColumn	*column;
 
-	GtkWidget	*match;
-	GtkWidget	*action;
+	GtkWidget	*packet_header;
 	GtkWidget	*saddr;
 	GtkWidget	*saddr_value;
 	GtkWidget	*daddr;
 	GtkWidget	*daddr_value;
 	GtkWidget	*transport;
 	GtkWidget	*transport_value;
-	GtkWidget	*protocol;
-	GtkWidget	*protocol_value;
-	GtkWidget	*user;
-	GtkWidget	*user_value;
+	GtkTreeIter	iter;
+	GtkWidget	*sport;
+	GtkWidget	*sport_value;
+	GtkWidget	*dport;
+	GtkWidget	*dport_value;
+
+	GtkWidget	*packet_meta;
 	GtkWidget	*iifname;
 	GtkWidget	*iifname_value;
 	GtkWidget	*oifname;
 	GtkWidget	*oifname_value;
+	GtkWidget	*iiftype;
+	GtkWidget	*iiftype_value;
+	GtkWidget	*oiftype;
+	GtkWidget	*oiftype_value;
+	GtkWidget	*skuid;
+	GtkWidget	*skuid_value;
+	GtkWidget	*skgid;
+	GtkWidget	*skgid_value;
 
+	GtkWidget	*expander;
+	GtkWidget	*expander2;
 
-	GtkListStore	*store;
-	GtkCellRenderer	*renderer;
-	GtkTreeIter	iter;
+	struct hhh	*hh = malloc(sizeof(struct hhh));
+	struct new_rule	*new_rule = malloc(sizeof(struct new_rule));
 
 	struct rule_list_args	*rule_arg = (struct rule_list_args *)data;
-	struct new_rule   *info = malloc(sizeof(info));
 
 	notebook = rule_arg->notebook;
-	info->notebook = rule_arg->notebook;
-
-	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 2);
-
-
-
+	new_rule->notebook = notebook;
+	new_rule->family = rule_arg->family;
+	new_rule->table = rule_arg->table;
+	new_rule->chain = rule_arg->chain;
 
 
-	layout = gtk_layout_new(NULL, NULL);
-	label = gtk_label_new("Tables (all)");
+	label = gtk_label_new("Rules (Chain: input)");
 	gtk_widget_set_size_request(label, 200, 10);
-
-	frame = gtk_frame_new ("Create a new rule");
-	gtk_container_set_border_width (GTK_CONTAINER (frame), 0);
-	gtk_widget_set_size_request(frame, 840, 431);
-	gtk_layout_put(GTK_LAYOUT(layout), frame, 20, 20);
-
-
-	layout_info = gtk_layout_new(NULL, NULL);
-	gtk_container_add(GTK_CONTAINER(frame), layout_info);
+	fixed = gtk_fixed_new();
+	fixed2 = gtk_fixed_new();
+	fixed3 = gtk_fixed_new();
+	fixed4 = gtk_fixed_new();
+	
 
 
-	match = gtk_frame_new ("packet matching");
-	gtk_container_set_border_width (GTK_CONTAINER (match), 0);
-	gtk_widget_set_size_request(match, 500, 340);
-	gtk_layout_put(GTK_LAYOUT(layout_info), match, 20, 10);
+	expander = gtk_expander_new("Matching packet header fields");
+	gtk_fixed_put(GTK_FIXED(fixed4), expander, 0, 0);
+	gtk_container_add(GTK_CONTAINER(expander), fixed2);
+	g_signal_connect (expander, "notify::expanded", G_CALLBACK (expander_callback), hh);
+	hh->fixed = fixed4;
 
-	saddr = gtk_label_new("source address:");
-	gtk_layout_put(GTK_LAYOUT(layout_info), saddr, 30, 40);
+	saddr = gtk_label_new("source addres:");
+	gtk_fixed_put(GTK_FIXED(fixed2), saddr, 40, 20);
 	saddr_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(saddr_value), 35);
-	gtk_layout_put(GTK_LAYOUT(layout_info), saddr_value, 150, 40);
-
-	daddr = gtk_label_new("dest address:");
-	gtk_layout_put(GTK_LAYOUT(layout_info), daddr, 30, 80);
+	gtk_fixed_put(GTK_FIXED(fixed2), saddr_value, 150, 20);
+	daddr = gtk_label_new("dest addres:");
+	gtk_fixed_put(GTK_FIXED(fixed2), daddr, 40, 60);
 	daddr_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(daddr_value), 35);
-	gtk_layout_put(GTK_LAYOUT(layout_info), daddr_value, 150, 80);
+	gtk_fixed_put(GTK_FIXED(fixed2), daddr_value, 150, 60);
+
 
 	transport = gtk_label_new("transport:");
-	gtk_layout_put(GTK_LAYOUT(layout_info), transport, 30, 120);
+	gtk_fixed_put(GTK_FIXED(fixed2), transport, 40, 100);
 	store = gtk_list_store_new(1, G_TYPE_STRING);
 	gtk_list_store_append(store, &iter);
 	gtk_list_store_set(store, &iter, 0, "all", -1);
@@ -518,104 +581,82 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	gtk_list_store_set(store, &iter, 0, "tcp", -1);
 	gtk_list_store_append(store, &iter);
 	gtk_list_store_set(store, &iter, 0, "udp", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "icmp", -1);
 	transport_value = gtk_combo_box_new_with_model(GTK_TREE_MODEL(store));
 	renderer = gtk_cell_renderer_text_new();
 	gtk_combo_box_set_active(GTK_COMBO_BOX(transport_value), 0);
 	gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(transport_value), renderer, TRUE);
 	gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(transport_value), renderer, "text", 0, NULL);
-	gtk_layout_put(GTK_LAYOUT(layout_info), transport_value, 150, 120);
+	gtk_fixed_put(GTK_FIXED(fixed2), transport_value, 150, 100);
 
-	protocol = gtk_label_new("protocol:");
-	gtk_layout_put(GTK_LAYOUT(layout_info), protocol, 30, 160);
-	store = gtk_list_store_new(1, G_TYPE_STRING);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "all", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "ftp", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "http", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "telnet", -1);
-	protocol_value = gtk_combo_box_new_with_model(GTK_TREE_MODEL(store));
-	renderer = gtk_cell_renderer_text_new();
-	gtk_combo_box_set_active(GTK_COMBO_BOX(protocol_value), 0);
-	gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(protocol_value), renderer, TRUE);
-	gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(protocol_value), renderer, "text", 0, NULL);
-	gtk_layout_put(GTK_LAYOUT(layout_info), protocol_value, 150, 160);
+	sport = gtk_label_new("source port:");
+	gtk_fixed_put(GTK_FIXED(fixed2), sport, 40, 140);
+	sport_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(sport_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed2), sport_value, 150, 140);
 
-	user = gtk_label_new("user:");
-	gtk_layout_put(GTK_LAYOUT(layout_info), user, 30, 200);
-	user_value = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(user_value), 35);
-	gtk_layout_put(GTK_LAYOUT(layout_info), user_value, 150, 200);
+	dport = gtk_label_new("source port:");
+	gtk_fixed_put(GTK_FIXED(fixed2), dport, 40, 180);
+	dport_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(dport_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed2), dport_value, 150, 180);
 
+
+	expander2 = gtk_expander_new("Matching packet metainformation");
+	gtk_fixed_put(GTK_FIXED(fixed4), expander2, 0, 40);
+	gtk_container_add(GTK_CONTAINER(expander2), fixed3);
+	hh->expander = expander2;
 
 	iifname = gtk_label_new("input interface:");
-	gtk_layout_put(GTK_LAYOUT(layout_info), iifname, 30, 240);
-	store = gtk_list_store_new(1, G_TYPE_STRING);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "all", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "ftp", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "http", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "telnet", -1);
-	iifname_value = gtk_combo_box_new_with_model(GTK_TREE_MODEL(store));
-	renderer = gtk_cell_renderer_text_new();
-	gtk_combo_box_set_active(GTK_COMBO_BOX(iifname_value), 0);
-	gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(iifname_value), renderer, TRUE);
-	gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(iifname_value), renderer, "text", 0, NULL);
-	gtk_layout_put(GTK_LAYOUT(layout_info), iifname_value, 150, 240);
+	gtk_fixed_put(GTK_FIXED(fixed3), iifname, 40, 20);
+	iifname_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(iifname_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed3), iifname_value, 150, 20);
 
 	oifname = gtk_label_new("output interface:");
-	gtk_layout_put(GTK_LAYOUT(layout_info), oifname, 30, 280);
-	store = gtk_list_store_new(1, G_TYPE_STRING);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "all", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "ftp", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "http", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "telnet", -1);
-	oifname_value = gtk_combo_box_new_with_model(GTK_TREE_MODEL(store));
-	renderer = gtk_cell_renderer_text_new();
-	gtk_combo_box_set_active(GTK_COMBO_BOX(oifname_value), 0);
-	gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(oifname_value), renderer, TRUE);
-	gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(oifname_value), renderer, "text", 0, NULL);
-	gtk_layout_put(GTK_LAYOUT(layout_info), oifname_value, 150, 280);
+	gtk_fixed_put(GTK_FIXED(fixed3), oifname, 40, 60);
+	oifname_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(oifname_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed3), oifname_value, 150, 60);
 
-//	transport_layer = gtk_frame_new ("network layer header");
-//	gtk_container_set_border_width (GTK_CONTAINER (transport_layer), 0);
-//	gtk_widget_set_size_request(transport_layer, 500, 200);
-//	gtk_layout_put(GTK_LAYOUT(layout_info), transport_layer, 20, 190);
+	iiftype = gtk_label_new("input type:");
+	gtk_fixed_put(GTK_FIXED(fixed3), iiftype, 40, 100);
+	iiftype_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(iiftype_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed3), iiftype_value, 150, 100);
 
-	action = gtk_frame_new("actions");
-	gtk_container_set_border_width (GTK_CONTAINER (action), 0);
-	gtk_widget_set_size_request(action, 250, 340);
-	gtk_layout_put(GTK_LAYOUT(layout_info), action, 550, 10);
-
+	oiftype = gtk_label_new("output type:");
+	gtk_fixed_put(GTK_FIXED(fixed3), oiftype, 40, 140);
+	oiftype_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(oiftype_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed3), oiftype_value, 150, 140);
 
 
     	cancel = gtk_button_new_with_label("Cancel");
 	gtk_widget_set_size_request(cancel, 100, 10);
-	g_signal_connect(G_OBJECT(cancel), "clicked", G_CALLBACK(back_to_table_list), info);
-	gtk_layout_put(GTK_LAYOUT(layout_info), cancel, 560, 360);
+	g_signal_connect(G_OBJECT(cancel), "clicked", G_CALLBACK(back_to_rule_list), new_rule);
+	gtk_fixed_put(GTK_FIXED(fixed4), cancel, 540, 330);
 
     	ok = gtk_button_new_with_label("OK");
 	gtk_widget_set_size_request(ok, 100, 10);
-	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_table), info);
-	gtk_layout_put(GTK_LAYOUT(layout_info), ok, 680, 360);
+	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_rule), new_rule);
+	gtk_fixed_put(GTK_FIXED(fixed4), ok, 660, 330);
 
 
-	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, label, 2);
+
+        scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
+	gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(scrolledwindow), 856);
+	gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(scrolledwindow), 400);
+	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolledwindow), GTK_SHADOW_ETCHED_IN);
+        gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledwindow),
+                                GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+	gtk_container_add(GTK_CONTAINER(scrolledwindow), fixed4);
+
+	gtk_fixed_put(GTK_FIXED(fixed), scrolledwindow, 10, 40);
+//	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 2);
+	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), fixed, label, 2);
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
-
 
 
 

@@ -324,7 +324,7 @@ GdkPixbuf  *create_pixbuf(const gchar *filename)
 //  nft add rule ip filter input ip saddr 192.168.1.101 ip daddr 192.168.1.102  counter accept
 void begin_create_new_rule(GtkButton *button, gpointer  info)
 {
-	struct new_rule  *gui_rule = (struct new_rule *)info;
+	struct rule_create_widget  *gui_rule = (struct rule_create_widget *)info;
 	GtkWidget	*notebook = gui_rule->notebook;
 	struct gui_rule	*rule = malloc(sizeof(struct gui_rule));
 	rule->family = gui_rule->family;
@@ -432,7 +432,7 @@ void begin_create_new_table(GtkButton *button, gpointer  info)
 
 void back_to_rule_list(GtkButton *button, gpointer  info)
 {
-	struct new_rule  *rule = (struct new_rule *)info;
+	struct rule_create_widget  *rule = (struct rule_create_widget *)info;
 	GtkWidget	*notebook = rule->notebook;
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 2);
 
@@ -628,7 +628,7 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	GtkWidget	*expander2;
 
 	struct hhh	*hh = malloc(sizeof(struct hhh));
-	struct new_rule	*new_rule = malloc(sizeof(struct new_rule));
+	struct rule_create_widget	*new_rule = malloc(sizeof(struct rule_create_widget));
 	struct packet_header  *header = malloc(sizeof(struct packet_header));
 	struct packet_meta    *meta = malloc(sizeof(struct packet_meta));
 

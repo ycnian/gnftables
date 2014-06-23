@@ -138,7 +138,7 @@ struct packet_meta {
 	GtkWidget	*skgid;
 };
 
-struct new_rule {
+struct rule_create_widget {
 	GtkWidget       *notebook;
 	gint		family;
 	gchar		*table;
@@ -146,6 +146,7 @@ struct new_rule {
 	struct packet_header	*header;
 	struct packet_meta	*meta;
 };
+
 
 void remove_book(GtkButton *button, GtkNotebook *notebook);
 void select_page(GtkNotebook *notebook, GtkWidget *page, guint page_num, gpointer user_data);

@@ -5,7 +5,7 @@ gnftables is a gui tool aimed to simplify the configuration of nftables from com
 
 Copyright (c) 2014  Yanchuan Nian <ycnian@gmail.com>
 
-This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the licence, or (at your option) any later version.
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License version 2 as published by the Free Software Foundation. Note that *only* version 2 of the GPL applies, not "any later version".
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 

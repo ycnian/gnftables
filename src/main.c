@@ -1038,7 +1038,7 @@ void gnftables_set_rule_init(gint family, gchar *table_name, gchar *chain_name, 
 
 	// treeview style
 	list_rules = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
-	g_signal_connect(list_rules, "button-press-event", G_CALLBACK(show_treeview_menu), NULL); 
+//	g_signal_connect(list_rules, "button-press-event", G_CALLBACK(show_treeview_menu), NULL); 
 	renderer = gtk_cell_renderer_text_new();
 	rule_arg->list_rules = list_rules;
 
@@ -1360,7 +1360,7 @@ void gnftables_set_chain_init(gint family, gchar *table_name, GtkWidget *noteboo
 
 	// treeview style
 	list_chains = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
-	g_signal_connect(list_chains, "button-press-event", G_CALLBACK(show_treeview_menu), NULL); 
+//	g_signal_connect(list_chains, "button-press-event", G_CALLBACK(show_treeview_menu), NULL); 
 	renderer = gtk_cell_renderer_text_new();
 	chain_arg->list_chains = list_chains;
 
@@ -1430,17 +1430,21 @@ void gnftables_set_chain_init(gint family, gchar *table_name, GtkWidget *noteboo
 }
 
 
+/*
+ * Get basic information of tables from kernel and display in treeview.
+ * @family: nftable family
+ * @store:  container used to store data from kernel
+ */
 void table_update_data(gint family, GtkTreeStore *store)
 {
-	uint32_t	index = 0;
+	gint		index = 0;
 	GtkTreeIter	iter;
 
 	struct gui_table   *table;
 	LIST_HEAD(table_list);
 
-	// only ipve is supported now.
+	// only ipv4 is supported now.
 	gui_get_tables_list(&table_list, NFPROTO_IPV4);
-
 	gtk_tree_store_clear (store);
 
 	// display tables in treeview
@@ -1448,10 +1452,18 @@ void table_update_data(gint family, GtkTreeStore *store)
 		index++;
 		gtk_tree_store_append(GTK_TREE_STORE(store), &iter, NULL);
 		if (table->family == NFPROTO_IPV4)
-			gtk_tree_store_set(GTK_TREE_STORE(store), &iter, TABLE_ID, index, TABLE_NAME, table->table, TABLE_FAMILY, "ipv4", TABLE_SETS, table->nsets, TABLE_CHAINS, table->nchains, TABLE_DETAIL, TRUE, TABLE_DELETE, TRUE, -1);
+			gtk_tree_store_set(GTK_TREE_STORE(store), &iter,
+				TABLE_ID, index, TABLE_NAME, table->table,
+				TABLE_FAMILY, "ipv4", TABLE_SETS, table->nsets,
+				TABLE_CHAINS, table->nchains, TABLE_DETAIL,
+				TRUE, TABLE_DELETE, TRUE, -1);
 		else
-			gtk_tree_store_set(GTK_TREE_STORE(store), &iter, TABLE_ID, index, TABLE_NAME, table->table, TABLE_FAMILY, family2str(table->family), TABLE_SETS, table->nsets, TABLE_CHAINS, table->nchains, TABLE_DETAIL, TRUE, TABLE_DELETE, TRUE, -1);
-		
+			gtk_tree_store_set(GTK_TREE_STORE(store), &iter,
+				TABLE_ID, index, TABLE_NAME, table->table,
+				TABLE_FAMILY, family2str(table->family),
+				TABLE_SETS, table->nsets, TABLE_CHAINS,
+				table->nchains, TABLE_DETAIL, TRUE,
+				TABLE_DELETE, TRUE, -1);
 	}
 }
 
@@ -1562,6 +1574,7 @@ void table_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 }
 
 
+/*
 gboolean show_treeview_menu(GtkWidget *widget, GdkEvent  *event, gpointer   user_data)
 {
 	if (event->type == GDK_BUTTON_PRESS && event->button.button == 3)  { 
@@ -1570,86 +1583,100 @@ gboolean show_treeview_menu(GtkWidget *widget, GdkEvent  *event, gpointer   user
 
 	return FALSE;
 }
+*/
 
 
-
+// table list page
 void gnftables_table_init(GtkWidget *notebook)
 {
-	GtkWidget	*label;
+	GtkWidget	*title;
 	GtkWidget	*layout;
-	GtkWidget	*proto;
+	GtkWidget	*family;
 	GtkWidget	*combo;
 	GtkWidget	*create_table;
 	GtkWidget	*list_tables;
 	GtkWidget	*scrolledwindow;
 	GtkTreeStore	*store;
 	GtkCellRenderer	*renderer;
-	GtkCellRenderer	*renderer1;
-	GtkCellRenderer	*renderer2;
+	GtkCellRenderer	*renderer_details;
+	GtkCellRenderer	*renderer_delete;
 	GtkTreeViewColumn *column;
 
-	struct list_sets_and_chains  *data = malloc(sizeof(*data));
+	struct list_sets_and_chains  *data;
+	data = xmalloc(sizeof(struct list_sets_and_chains));
 
-	store = gtk_tree_store_new(TABLE_TOTAL, G_TYPE_INT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INT, G_TYPE_INT, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
+	store = gtk_tree_store_new(TABLE_TOTAL, G_TYPE_INT, G_TYPE_STRING, 
+			G_TYPE_STRING, G_TYPE_INT, G_TYPE_INT,G_TYPE_BOOLEAN,
+			G_TYPE_BOOLEAN);
 
-	label = gtk_label_new("Table (all)");
-	gtk_widget_set_size_request(label, 200, 10);
+	// set title in table list page.
+	title = gtk_label_new("Tables");
+	gtk_widget_set_size_request(title, 200, 10);
 	layout = gtk_layout_new(NULL, NULL);
 
-
-	proto = gtk_label_new("Protocol ");
-	gtk_layout_put(GTK_LAYOUT(layout), proto, 10, 10);
-
+	// only show talbes in selected family.
+	family = gtk_label_new("Family");
+	gtk_layout_put(GTK_LAYOUT(layout), family, 30, 10);
 	combo = create_family_list(1, select_family, store);
 	gtk_layout_put(GTK_LAYOUT(layout), combo, 90, 10);
 
-
+	// create a new table.
     	create_table = gtk_button_new_with_label("Create Table");
 	gtk_widget_set_size_request(create_table, 150, 10);
-	g_signal_connect(G_OBJECT(create_table), "clicked", G_CALLBACK(create_new_table), notebook);
+	g_signal_connect(G_OBJECT(create_table), "clicked",
+			G_CALLBACK(create_new_table), notebook);
 	gtk_layout_put(GTK_LAYOUT(layout), create_table, 700, 10);
 
-
+	// get information of all tables from kernel.
 	table_update_data(NFPROTO_UNSPEC, store);
-
 
 	// treeview style
 	list_tables = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
-	g_signal_connect(list_tables, "button-press-event", G_CALLBACK(show_treeview_menu), NULL); 
+//	g_signal_connect(list_tables, "button-press-event",
+//			G_CALLBACK(show_treeview_menu), NULL); 
 	renderer = gtk_cell_renderer_text_new();
-//	g_object_set(G_OBJECT(renderer), "foreground", "red", NULL);
-	column = gtk_tree_view_column_new_with_attributes("Id", renderer, "text", TABLE_ID, NULL);
+	column = gtk_tree_view_column_new_with_attributes("Id", renderer, 
+			"text", TABLE_ID, NULL);
 	gtk_tree_view_column_set_clickable(column, TRUE);
 	gtk_tree_view_column_set_min_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
-	column = gtk_tree_view_column_new_with_attributes("Name", renderer, "text", TABLE_NAME, NULL);
+	column = gtk_tree_view_column_new_with_attributes("Name", renderer,
+			"text", TABLE_NAME, NULL);
 	gtk_tree_view_column_set_min_width(column, 200);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
-	column = gtk_tree_view_column_new_with_attributes("Family", renderer, "text", TABLE_FAMILY, NULL);
+	column = gtk_tree_view_column_new_with_attributes("Family", renderer,
+			"text", TABLE_FAMILY, NULL);
 	gtk_tree_view_column_set_min_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
-	column = gtk_tree_view_column_new_with_attributes("Sets", renderer, "text", TABLE_SETS, NULL);
+	column = gtk_tree_view_column_new_with_attributes("Sets", renderer,
+			"text", TABLE_SETS, NULL);
 	gtk_tree_view_column_set_min_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
-	column = gtk_tree_view_column_new_with_attributes("Chains", renderer, "text", TABLE_CHAINS, NULL);
+	column = gtk_tree_view_column_new_with_attributes("Chains", renderer,
+			"text", TABLE_CHAINS, NULL);
 	gtk_tree_view_column_set_min_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
 
-	renderer1 = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer1, "toggled", G_CALLBACK(table_callback_detail), data) ;
-	column = gtk_tree_view_column_new_with_attributes("Detail", renderer1, "active", TABLE_DETAIL, NULL);
+	// use toggle temporarily，it will be changed when gnftables release.
+	renderer_details = gtk_cell_renderer_toggle_new();
+	g_signal_connect(renderer_details, "toggled",
+			G_CALLBACK(table_callback_detail), data) ;
+	column = gtk_tree_view_column_new_with_attributes("Details",
+			renderer_details, "active", TABLE_DETAIL, NULL);
 	gtk_tree_view_column_set_min_width(column, 140);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
 
-	renderer2 = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer2, "toggled", G_CALLBACK(table_callback_delete), list_tables) ;
-	column = gtk_tree_view_column_new_with_attributes("Delete", renderer2, "active", TABLE_DELETE, NULL);
+	renderer_delete = gtk_cell_renderer_toggle_new();
+	g_signal_connect(renderer_delete, "toggled",
+			G_CALLBACK(table_callback_delete), list_tables) ;
+	column = gtk_tree_view_column_new_with_attributes("Delete",
+			renderer_delete, "active", TABLE_DELETE, NULL);
 	gtk_tree_view_column_set_min_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
@@ -1657,16 +1684,20 @@ void gnftables_table_init(GtkWidget *notebook)
 	data->treeview = list_tables;
 	data->notebook = notebook;
 
+	// all information listed in a scrolled window.
         scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
-	gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(scrolledwindow), 876);
-	gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(scrolledwindow), 410);
-	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolledwindow), GTK_SHADOW_ETCHED_IN);
+	gtk_scrolled_window_set_min_content_width(
+			GTK_SCROLLED_WINDOW(scrolledwindow), 876);
+	gtk_scrolled_window_set_min_content_height(
+			GTK_SCROLLED_WINDOW(scrolledwindow), 410);
+	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolledwindow),
+			GTK_SHADOW_ETCHED_IN);
         gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledwindow),
                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_container_add(GTK_CONTAINER(scrolledwindow), list_tables);
 
 	gtk_layout_put(GTK_LAYOUT(layout), scrolledwindow, 0, 50);
-	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, label, 0);
+	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, title, 0);
 }
 
 
@@ -1694,14 +1725,9 @@ void gnftables_about_init(GtkWidget *notebook)
 
 int main(int argc, char *argv[])
 {
-//	GtkWidget	*window;
 	GtkWidget	*layout;
 	GtkWidget	*button;
 	GtkWidget	*notebook;
-
-	
-
-
 
 	gtk_init(&argc, &argv);
 
@@ -1716,7 +1742,7 @@ int main(int argc, char *argv[])
 	gtk_container_set_border_width(GTK_CONTAINER (window), 10);
 
 	layout = gtk_layout_new(NULL, NULL);
-	gtk_container_add(GTK_CONTAINER (window), layout);
+	gtk_container_add(GTK_CONTAINER(window), layout);
 
 	notebook = gtk_notebook_new();
 	gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook), GTK_POS_TOP);
@@ -1726,25 +1752,21 @@ int main(int argc, char *argv[])
 	gtk_widget_show(notebook);
 	gtk_layout_put(GTK_LAYOUT(layout), notebook, 0, 0);
 
-
 	gnftables_table_init(notebook);
 	gnftables_about_init(notebook);
-
 
 	gtk_notebook_set_current_page (GTK_NOTEBOOK (notebook), 0);
 	g_signal_connect(G_OBJECT(notebook), "switch-page", G_CALLBACK(select_page), notebook);
 
-
 	button = gtk_button_new_with_label("Load rules from file");
 	g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(load_rules), NULL);
-	gtk_widget_set_size_request(button, 445, 10);
+	gtk_widget_set_size_request(button, 435, 10);
 	gtk_layout_put(GTK_LAYOUT(layout), button, 0, 500);
 
 	button = gtk_button_new_with_label("Save rules to file");
 	g_signal_connect(G_OBJECT (button), "clicked", G_CALLBACK(save_rules), notebook);
-	gtk_widget_set_size_request(button, 445, 10);
-	gtk_layout_put(GTK_LAYOUT(layout), button, 455, 500);
-    
+	gtk_widget_set_size_request(button, 435, 10);
+	gtk_layout_put(GTK_LAYOUT(layout), button, 445, 500);
 
 	gtk_widget_show_all(window);
 	gtk_main ();

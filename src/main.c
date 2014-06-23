@@ -330,6 +330,10 @@ void begin_create_new_rule(GtkButton *button, gpointer  info)
 	rule->table = gui_rule->table;
 	rule->chain = gui_rule->chain;
 
+	// data check
+	//
+	// gen expression
+
 	gui_add_rule(rule);
 
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 2);
@@ -477,12 +481,111 @@ static void expander_callback (GObject    *object,
 	hh = (struct hhh  *)user_data;
 
 	if (gtk_expander_get_expanded (expander)) {
-		gtk_fixed_move(GTK_FIXED(hh->fixed), hh->expander, 0, 250);
+		gtk_fixed_move(GTK_FIXED(hh->fixed), hh->expander, 0, 170);
 	} else {
 		gtk_fixed_move(GTK_FIXED(hh->fixed), hh->expander, 0, 40);
 	}
 }
 
+
+struct transport_callback_args *transport_args;
+
+void transport_all()
+{
+	GtkWidget	*fixed_back;
+
+	fixed_back = transport_args->header;
+	gtk_widget_destroy(transport_args->fixed);
+	transport_args->fixed = gtk_fixed_new();
+	gtk_fixed_put(GTK_FIXED(fixed_back), transport_args->fixed, 0, 140);
+	gtk_widget_show_all(transport_args->fixed);
+	gtk_fixed_move(GTK_FIXED(transport_args->background), transport_args->meta, 0, 170);
+
+}
+
+
+void transport_tcp()
+{
+	GtkWidget	*fixed_back;
+	GtkWidget	*sport;
+	GtkWidget	*dport;
+
+	fixed_back = transport_args->header;
+	gtk_widget_destroy(transport_args->fixed);
+
+	transport_args->fixed = gtk_fixed_new();
+	gtk_fixed_put(GTK_FIXED(fixed_back), transport_args->fixed, 0, 140);
+
+	sport = gtk_label_new("source port:");
+	gtk_fixed_put(GTK_FIXED(transport_args->fixed), sport, 40, 0);
+	transport_args->tcp.sport = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(transport_args->tcp.sport), 35);
+	gtk_fixed_put(GTK_FIXED(transport_args->fixed), transport_args->tcp.sport, 150, 0);
+
+	dport = gtk_label_new("dest port:");
+	gtk_fixed_put(GTK_FIXED(transport_args->fixed), dport, 40, 40);
+	transport_args->tcp.dport = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(transport_args->tcp.dport), 35);
+	gtk_fixed_put(GTK_FIXED(transport_args->fixed), transport_args->tcp.dport, 150, 40);
+
+	gtk_fixed_move(GTK_FIXED(transport_args->background), transport_args->meta, 0, 250);
+	gtk_widget_show_all(transport_args->fixed);
+
+}
+
+
+void transport_udp()
+{
+	GtkWidget	*fixed_back;
+	GtkWidget	*sport;
+	GtkWidget	*dport;
+
+	fixed_back = transport_args->header;
+	gtk_widget_destroy(transport_args->fixed);
+
+	transport_args->fixed = gtk_fixed_new();
+	gtk_fixed_put(GTK_FIXED(fixed_back), transport_args->fixed, 0, 140);
+
+	sport = gtk_label_new("source port:");
+	gtk_fixed_put(GTK_FIXED(transport_args->fixed), sport, 40, 0);
+	transport_args->udp.sport = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(transport_args->udp.sport), 35);
+	gtk_fixed_put(GTK_FIXED(transport_args->fixed), transport_args->udp.sport, 150, 0);
+
+	dport = gtk_label_new("dest port:");
+	gtk_fixed_put(GTK_FIXED(transport_args->fixed), dport, 40, 40);
+	transport_args->udp.dport = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(transport_args->udp.dport), 35);
+	gtk_fixed_put(GTK_FIXED(transport_args->fixed), transport_args->udp.dport, 150, 40);
+
+	gtk_fixed_move(GTK_FIXED(transport_args->background), transport_args->meta, 0, 250);
+	gtk_widget_show_all(transport_args->fixed);
+
+}
+
+
+void transport_callback(GtkComboBox *widget, gpointer data)
+{
+	GtkTreeModel	*model;
+	GtkTreeIter	iter;
+	gchar		*transport;
+
+	model = gtk_combo_box_get_model(GTK_COMBO_BOX(widget));
+	gtk_combo_box_get_active_iter(GTK_COMBO_BOX(widget), &iter);
+	gtk_tree_model_get(model, &iter, 0, &transport, -1);
+	if (!(strcmp(transport, "all")))
+		transport_all();
+	else if (!(strcmp(transport, "tcp")))
+		transport_tcp();
+	else if (!(strcmp(transport, "udp")))
+		transport_udp();
+	// else
+	// 	bug();
+	free(transport);
+
+
+
+}
 
 void create_new_rule(GtkButton *button, gpointer  data)
 {
@@ -493,17 +596,11 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	GtkWidget	*fixed4;
 	GtkWidget	*ok;
 	GtkWidget	*cancel;
-	GtkWidget	*create_rule;
-	GtkWidget	*list_rules;
 	GtkWidget	*notebook;
 	GtkWidget	*scrolledwindow;
 	GtkListStore	*store;
 	GtkCellRenderer	*renderer;
-	GtkCellRenderer	*renderer1;
-	GtkCellRenderer	*renderer2;
-	GtkTreeViewColumn	*column;
 
-	GtkWidget	*packet_header;
 	GtkWidget	*saddr;
 	GtkWidget	*saddr_value;
 	GtkWidget	*daddr;
@@ -511,12 +608,7 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	GtkWidget	*transport;
 	GtkWidget	*transport_value;
 	GtkTreeIter	iter;
-	GtkWidget	*sport;
-	GtkWidget	*sport_value;
-	GtkWidget	*dport;
-	GtkWidget	*dport_value;
 
-	GtkWidget	*packet_meta;
 	GtkWidget	*iifname;
 	GtkWidget	*iifname_value;
 	GtkWidget	*oifname;
@@ -535,6 +627,8 @@ void create_new_rule(GtkButton *button, gpointer  data)
 
 	struct hhh	*hh = malloc(sizeof(struct hhh));
 	struct new_rule	*new_rule = malloc(sizeof(struct new_rule));
+	struct packet_header  *header = malloc(sizeof(struct packet_header));
+	struct packet_meta    *meta = malloc(sizeof(struct packet_meta));
 
 	struct rule_list_args	*rule_arg = (struct rule_list_args *)data;
 
@@ -543,14 +637,20 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	new_rule->family = rule_arg->family;
 	new_rule->table = rule_arg->table;
 	new_rule->chain = rule_arg->chain;
+	new_rule->header = header;
+	new_rule->meta = meta;
+
+	header->args = transport_args;
 
 
-	label = gtk_label_new("Rules (Chain: input)");
+	label = gtk_label_new("Create rule (Chain: input)");
 	gtk_widget_set_size_request(label, 200, 10);
 	fixed = gtk_fixed_new();
 	fixed2 = gtk_fixed_new();
 	fixed3 = gtk_fixed_new();
 	fixed4 = gtk_fixed_new();
+	transport_args = malloc(sizeof(struct transport_callback_args));
+	transport_args->fixed = gtk_fixed_new();
 	
 
 
@@ -565,12 +665,13 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	saddr_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(saddr_value), 35);
 	gtk_fixed_put(GTK_FIXED(fixed2), saddr_value, 150, 20);
+	header->saddr = saddr_value;
 	daddr = gtk_label_new("dest addres:");
 	gtk_fixed_put(GTK_FIXED(fixed2), daddr, 40, 60);
 	daddr_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(daddr_value), 35);
 	gtk_fixed_put(GTK_FIXED(fixed2), daddr_value, 150, 60);
-
+	header->daddr = daddr_value;
 
 	transport = gtk_label_new("transport:");
 	gtk_fixed_put(GTK_FIXED(fixed2), transport, 40, 100);
@@ -586,19 +687,13 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	gtk_combo_box_set_active(GTK_COMBO_BOX(transport_value), 0);
 	gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(transport_value), renderer, TRUE);
 	gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(transport_value), renderer, "text", 0, NULL);
+	g_signal_connect(transport_value, "changed", G_CALLBACK(transport_callback), NULL);
 	gtk_fixed_put(GTK_FIXED(fixed2), transport_value, 150, 100);
+	header->protocol = transport_value;
 
-	sport = gtk_label_new("source port:");
-	gtk_fixed_put(GTK_FIXED(fixed2), sport, 40, 140);
-	sport_value = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(sport_value), 35);
-	gtk_fixed_put(GTK_FIXED(fixed2), sport_value, 150, 140);
-
-	dport = gtk_label_new("source port:");
-	gtk_fixed_put(GTK_FIXED(fixed2), dport, 40, 180);
-	dport_value = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(dport_value), 35);
-	gtk_fixed_put(GTK_FIXED(fixed2), dport_value, 150, 180);
+	gtk_fixed_put(GTK_FIXED(fixed2), transport_args->fixed, 0, 140);
+	transport_args->header = fixed2;
+	transport_args->background = fixed4;
 
 
 	expander2 = gtk_expander_new("Matching packet metainformation");
@@ -611,25 +706,44 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	iifname_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(iifname_value), 35);
 	gtk_fixed_put(GTK_FIXED(fixed3), iifname_value, 150, 20);
+	meta->iifname = iifname_value;
 
 	oifname = gtk_label_new("output interface:");
 	gtk_fixed_put(GTK_FIXED(fixed3), oifname, 40, 60);
 	oifname_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(oifname_value), 35);
 	gtk_fixed_put(GTK_FIXED(fixed3), oifname_value, 150, 60);
+	meta->oifname = oifname_value;
 
 	iiftype = gtk_label_new("input type:");
 	gtk_fixed_put(GTK_FIXED(fixed3), iiftype, 40, 100);
 	iiftype_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(iiftype_value), 35);
 	gtk_fixed_put(GTK_FIXED(fixed3), iiftype_value, 150, 100);
+	meta->iiftype = iiftype_value;
 
 	oiftype = gtk_label_new("output type:");
 	gtk_fixed_put(GTK_FIXED(fixed3), oiftype, 40, 140);
 	oiftype_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(oiftype_value), 35);
 	gtk_fixed_put(GTK_FIXED(fixed3), oiftype_value, 150, 140);
+	meta->oiftype = oiftype_value;
 
+	skuid = gtk_label_new("user:");
+	gtk_fixed_put(GTK_FIXED(fixed3), skuid, 40, 180);
+	skuid_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(skuid_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed3), skuid_value, 150, 180);
+	meta->skuid = skuid_value;
+
+	skgid = gtk_label_new("group:");
+	gtk_fixed_put(GTK_FIXED(fixed3), skgid, 40, 220);
+	skgid_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(skgid_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed3), skgid_value, 150, 220);
+	meta->skgid = skgid_value;
+
+	transport_args->meta = expander2;
 
     	cancel = gtk_button_new_with_label("Cancel");
 	gtk_widget_set_size_request(cancel, 100, 10);
@@ -1560,7 +1674,7 @@ void gnftables_about_init(GtkWidget *notebook)
 	GtkWidget	*content;
 	GtkWidget	*label;
 
-	const gchar *text = "gnftables 0.1.0\n\ngnftables is a gui tool aimed to simplify the configuration of nftables from command line. It's in heavy develpment now. If you need more help, please visit the project's home site (http://ycnian.org/projects/gnftables.php).\n\nCopyright (c) 2014  Yanchuan Nian <ycnian@gmail.com>\n\nThis program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the licence, or (at your option) any later version.\n\nThis program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License along with this program. You may also obtain a copy of the GNU General Public License from the Free Software Foundation by visiting their web site (http://www.fsf.org/) or by writing to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA";
+	const gchar *text = "gnftables 0.1.0\n\ngnftables is a gui tool aimed to simplify the configuration of nftables from command line. It's in heavy develpment now. If you need more help, please visit the project's home site (http://ycnian.org/projects/gnftables.php).\n\nCopyright (c) 2014  Yanchuan Nian <ycnian@gmail.com>\n\nThis program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License version 2 as published by the Free Software Foundation. Note that *only* version 2 of the GPL applies, not any later version.\n\nThis program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License along with this program. You may also obtain a copy of the GNU General Public License from the Free Software Foundation by visiting their web site (http://www.fsf.org/) or by writing to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA";
 	content = gtk_label_new(NULL);
 	gtk_label_set_width_chars(GTK_LABEL(content), 100);
 	gtk_label_set_justify(GTK_LABEL(content), GTK_JUSTIFY_LEFT);

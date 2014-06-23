@@ -93,11 +93,58 @@ struct rule_list_args {
 };
 
 
+
+struct packet_tcp {
+	GtkWidget	*sport;
+	GtkWidget	*dport;
+};
+
+struct packet_udp {
+	GtkWidget	*sport;
+	GtkWidget	*dport;
+};
+
+
+struct transport_callback_args {
+	GtkWidget	*background;
+	GtkWidget	*header;
+	GtkWidget	*meta;
+	GtkWidget	*fixed;
+	struct {
+		struct {
+			GtkWidget	*sport;
+			GtkWidget	*dport;
+		}tcp;
+		struct {
+			GtkWidget	*sport;
+			GtkWidget	*dport;
+		}udp;
+	};
+};
+
+struct  packet_header {
+	GtkWidget	*saddr;
+	GtkWidget	*daddr;
+	GtkWidget	*protocol;
+	struct transport_callback_args  *args;
+};
+
+struct packet_meta {
+	GtkWidget	*iifname;
+	GtkWidget	*oifname;
+	GtkWidget	*iiftype;
+	GtkWidget	*oiftype;
+	GtkWidget	*skuid;
+	GtkWidget	*skgid;
+};
+
 struct new_rule {
 	GtkWidget       *notebook;
 	gint		family;
 	gchar		*table;
 	gchar		*chain;
+	struct packet_header	*header;
+	struct packet_meta	*meta;
 	struct list_head        stmt;
 };
 
@@ -147,4 +194,12 @@ int gui_check_table_exist(int family, char *name);
 
 
 void create_new_rule(GtkButton *button, gpointer  data);
+
+void transport_all(void);
+void transport_tcp(void);
+void transport_udp(void);
+void transport_callback(GtkComboBox *widget, gpointer data);
+void back_to_rule_list(GtkButton *button, gpointer  info);
+void begin_create_new_rule(GtkButton *button, gpointer  info);
+
 #endif

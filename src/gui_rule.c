@@ -227,13 +227,12 @@ int gui_add_rule(struct gui_rule *gui_rule)
 	struct  rule	rule;
 	struct  stmt	*stmt;
 	struct expr 	*expr;
+	struct expr 	*left;
+	struct expr 	*right;
 
 	LIST_HEAD(msgs);
 	LIST_HEAD(err_list);
 
-//	res = gui_check_chain_exist(family, table, chain);
-//	if (res != TABLE_SUCCESS)
-//		return res;
 
 	batch_supported = netlink_batch_supported();
 
@@ -250,38 +249,39 @@ int gui_add_rule(struct gui_rule *gui_rule)
 	handle.handle = 0;
 	handle.position = 0;
 	handle.comment = NULL;
+	rule.handle = handle;
 
-/*
-struct rule {
-        struct list_head        list;
-        struct handle           handle;
-        struct location         location;
-        struct list_head        stmts;
-        unsigned int            num_stmts;
-};
-*/
 	// add statements.
+	char   ip[4];
+	ip[0] = 0xc0;
+	ip[1] = 0xa8;
+	ip[2] = 0x07;
+	ip[3] = 0x77;
 	init_list_head(&ctx.list);
-
-	expr = payload_expr_alloc(&loc, &proto_ip, IPHDR_SADDR);
+	left = payload_expr_alloc(&loc, &proto_ip, IPHDR_SADDR);
+	right = constant_expr_alloc(&loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN, 32, ip);
+	expr = relational_expr_alloc(&loc, OP_EQ, left, right);
 	stmt = expr_stmt_alloc(&loc, expr);
 	list_add_tail(&stmt->list, &rule.stmts);
 
-
-	expr = payload_expr_alloc(&loc, &proto_ip, IPHDR_SADDR);
-	stmt = expr_stmt_alloc(&loc, expr);
-
-
-
-	 mnl_batch_begin();
+	stmt = counter_stmt_alloc(&loc);
+	stmt->counter.packets = 0;
+	stmt->counter.bytes = 0;
+	list_add_tail(&stmt->list, &rule.stmts);
+	mnl_batch_begin();
 	// delete rule.
 	if (netlink_add_rule_batch(&ctx, &handle, &rule, NLM_F_APPEND) < 0) {
 			res = TABLE_KERNEL_ERROR;
 	}
 	mnl_batch_end();
 
-	if (mnl_batch_ready())
+//	list_for_each_entry(stmt, &rule.stmts, list) {
+//		stmt_free(stmt);
+//	}
+
+	if (mnl_batch_ready()) {
 		netlink_batch_send(&err_list);
+	}
 	return res;
 
 }

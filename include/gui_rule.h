@@ -1,6 +1,8 @@
 #ifndef  GUI_RULE_H
 #define  GUI_RULE_H
 
+#include <list.h>
+
 
 struct gui_table {
 	int		family;
@@ -25,16 +27,17 @@ struct gui_chain {
 
 struct gui_rule {
 	int		handle;		// NOTE: handle in struct handle is 8 bytes.
+	int		position;
 	int		family;
 	char		*table;
 	char		*chain;
-	char		*stmt;
+	char		*stmt;		// rule content
 	struct list_head	list;
 };
 
 
 
-int gui_get_tables_list(struct list_head *head, uint32_t family);
+int gui_get_tables_list(struct list_head *head, int family);
 
 
 void gui_chain_free(struct gui_chain *chain);

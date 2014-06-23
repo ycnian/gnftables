@@ -145,7 +145,6 @@ struct new_rule {
 	gchar		*chain;
 	struct packet_header	*header;
 	struct packet_meta	*meta;
-	struct list_head        stmt;
 };
 
 void remove_book(GtkButton *button, GtkNotebook *notebook);

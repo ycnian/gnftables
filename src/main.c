@@ -38,6 +38,7 @@
 #include <linux/netfilter.h>
 #include <gui_error.h>
 #include <gui_rule.h>
+#include <gui_expression.h>
 ///////////////////////////   end added for gnftables   /////////////////////////////////////
 
 
@@ -329,10 +330,11 @@ void begin_create_new_rule(GtkButton *button, gpointer  info)
 	rule->family = gui_rule->family;
 	rule->table = gui_rule->table;
 	rule->chain = gui_rule->chain;
+	init_list_head(&rule->list);
 
 	// data check
 	//
-	// gen expression
+	rule_gen_expressions(gui_rule, rule);
 
 	gui_add_rule(rule);
 

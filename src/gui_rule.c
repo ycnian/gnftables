@@ -428,7 +428,7 @@ int gui_add_chain(struct gui_chain *gui_chain)
 	return 0;
 }
 
-int gui_get_tables_list(struct list_head *head, uint32_t family)
+int gui_get_tables_list(struct list_head *head, int family)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;

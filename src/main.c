@@ -39,6 +39,7 @@
 #include <gui_error.h>
 #include <gui_rule.h>
 #include <gui_expression.h>
+#include <gui_datacheck.h>
 ///////////////////////////   end added for gnftables   /////////////////////////////////////
 
 
@@ -393,40 +394,41 @@ void begin_create_new_chain(GtkButton *button, gpointer  info)
 }
 
 
-
+/*
+ * Get data from table creating page, and send netlink message to kernel.
+ * @button:  OK button in table creating page
+ * @info:    instance of struct table_create_widget
+ */
 void begin_create_new_table(GtkButton *button, gpointer  info)
 {
-	const gchar	*name;
-	GtkTreeModel	*model;
-	GtkTreeIter	iter;
-	uint32_t	family;
-	struct  new_table  *data;
-	int  ret;
+	struct  table_create_widget	*widget;
+	struct	table_create_data	*data = NULL;
+	int  res;
 
-	data = (struct  new_table  *)info;
+	widget = (struct table_create_widget  *)info;
 
 	// get data
-	name = gtk_entry_get_text(GTK_ENTRY(data->name));
-	model = gtk_combo_box_get_model(GTK_COMBO_BOX(data->family));
-	gtk_combo_box_get_active_iter(GTK_COMBO_BOX(data->family), &iter);
-	gtk_tree_model_get(model, &iter, 0, &family, -1);
-
-	// check data
+	res = table_create_getdata(widget, &data);
+	if (res != TABLE_SUCCESS) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), table_error[res]);
+		return;
+	}
 
 	// if all data is valid, submit to kernel.
-	ret = gui_add_table(family, (char *)name);
-	if (ret != TABLE_SUCCESS) {
-//		gtk_label_set_text(GTK_LABEL(data->aaa), table_error[ret]);
+	res = gui_add_table(data);
+	xfree(data->table);
+	xfree(data);
+	if (res != TABLE_SUCCESS) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), table_error[res]);
 		return;
 	}
 
 	// back to table list
-	gtk_notebook_remove_page(GTK_NOTEBOOK(data->notebook), 0);
-	gnftables_table_init(GTK_WIDGET(data->notebook));
-	gtk_widget_show_all(GTK_WIDGET(data->notebook));
-	gtk_notebook_set_current_page(GTK_NOTEBOOK(data->notebook), 0);
-	gtk_widget_queue_draw(GTK_WIDGET(data->notebook));
-
+	gtk_notebook_remove_page(GTK_NOTEBOOK(widget->notebook), 0);
+	gnftables_table_init(GTK_WIDGET(widget->notebook));
+	gtk_widget_show_all(GTK_WIDGET(widget->notebook));
+	gtk_notebook_set_current_page(GTK_NOTEBOOK(widget->notebook), 0);
+	gtk_widget_queue_draw(GTK_WIDGET(widget->notebook));
 }
 
 
@@ -449,21 +451,18 @@ void back_to_chain_list(GtkButton *button, gpointer  info)
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
 
 	gnftables_set_chain_init(chain->family, chain->table, notebook);
-	gtk_widget_show_all(GTK_WIDGET(notebook));
-	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 1);
-	gtk_widget_queue_draw(GTK_WIDGET(notebook));
 }
 
-
-void back_to_table_list (GtkButton *button, gpointer  info)
+/*
+ * Back to table list page
+ */
+void back_to_table_list(GtkButton *button, gpointer args)
 {
-	GtkWidget	*notebook = ((struct new_table *)info)->notebook;
+	GtkWidget	*notebook;
+	notebook = ((struct table_create_widget *)args)->notebook;
+	xfree(args);
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 0);
-//	free(info);
 	gnftables_table_init(GTK_WIDGET(notebook));
-	gtk_widget_show_all(GTK_WIDGET(notebook));
-	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 0);
-	gtk_widget_queue_draw(GTK_WIDGET(notebook));
 }
 
 struct hhh {
@@ -922,11 +921,15 @@ void create_new_chain(GtkButton *button, gpointer  data)
 
 
 
-
+/*
+ * Page in which you can create a new table.
+ * button: "Create Table" button in table list page
+ * notebook: GtkNotebook
+ */
 void create_new_table(GtkButton *button, gpointer  notebook)
 {
 	GtkWidget	*layout;
-	GtkWidget	*label;
+	GtkWidget	*title;
 	GtkWidget	*ok;
 	GtkWidget	*cancel;
 	GtkWidget	*frame;
@@ -938,23 +941,20 @@ void create_new_table(GtkButton *button, gpointer  notebook)
 	GtkWidget	*family_value;
 	GtkWidget	*msg;
 
-	struct	new_table  *info = malloc(sizeof(info));
-	if (!info)
-		// error
-		return;
-	info->notebook = GTK_WIDGET(notebook);
+	struct	table_create_widget  *args;
+	args = xmalloc(sizeof(struct table_create_widget));
+	args->notebook = GTK_WIDGET(notebook);
 
 	gtk_notebook_remove_page(notebook, 0);
 
 	layout = gtk_layout_new(NULL, NULL);
-	label = gtk_label_new("Tables (all)");
-	gtk_widget_set_size_request(label, 200, 10);
+	title = gtk_label_new("Tables");
+	gtk_widget_set_size_request(title, 200, 10);
 
 	frame = gtk_frame_new ("Create a new table");
 	gtk_container_set_border_width (GTK_CONTAINER (frame), 0);
 	gtk_widget_set_size_request(frame, 600, 371);
 	gtk_layout_put(GTK_LAYOUT(layout), frame, 150, 40);
-
 
 	layout_info = gtk_layout_new(NULL, NULL);
 	gtk_container_add(GTK_CONTAINER(frame), layout_info);
@@ -963,37 +963,37 @@ void create_new_table(GtkButton *button, gpointer  notebook)
 	gtk_layout_put(GTK_LAYOUT(layout_info), name, 30, 60);
 	name_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(name_value), 30);
+	gtk_entry_set_max_length(GTK_ENTRY(name_value), 32);
 	gtk_layout_put(GTK_LAYOUT(layout_info), name_value, 100, 60);
-	name_desc = gtk_label_new("(no more than 100 characters)");
+	name_desc = gtk_label_new("(no more than 32 characters)");
 	gtk_layout_put(GTK_LAYOUT(layout_info), name_desc, 360, 60);
-	info->name = name_value;
+	args->name = name_value;
 
 	family = gtk_label_new("Family:");
 	gtk_layout_put(GTK_LAYOUT(layout_info), family, 30, 110);
-
-
 	family_value = create_family_list(0, NULL, NULL);
 	gtk_widget_set_size_request(family_value, 30, 10);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(family_value), 0);
 	gtk_layout_put(GTK_LAYOUT(layout_info), family_value, 100, 110);
-	info->family = family_value;
+	args->family = family_value;
 
-	msg = gtk_label_new("hello world");
+	msg = gtk_label_new("");
 	gtk_layout_put(GTK_LAYOUT(layout_info), msg, 30, 250);
-//	info->aaa = name_value;
+	args->msg = msg;
 
     	cancel = gtk_button_new_with_label("Cancel");
 	gtk_widget_set_size_request(cancel, 100, 10);
-	g_signal_connect(G_OBJECT(cancel), "clicked", G_CALLBACK(back_to_table_list), info);
+	g_signal_connect(G_OBJECT(cancel), "clicked",
+			G_CALLBACK(back_to_table_list), args);
 	gtk_layout_put(GTK_LAYOUT(layout_info), cancel, 360, 310);
 
     	ok = gtk_button_new_with_label("OK");
 	gtk_widget_set_size_request(ok, 100, 10);
-	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_table), info);
+	g_signal_connect(G_OBJECT(ok), "clicked",
+			G_CALLBACK(begin_create_new_table), args);
 	gtk_layout_put(GTK_LAYOUT(layout_info), ok, 480, 310);
 
-
-	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, label, 0);
+	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, title, 0);
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 0);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
@@ -1439,16 +1439,31 @@ void table_update_data(gint family, GtkTreeStore *store)
 {
 	gint		index = 0;
 	GtkTreeIter	iter;
+	gint		res;
 
-	struct gui_table   *table;
+	struct table_list_data   *table, *tmp;
 	LIST_HEAD(table_list);
 
 	// only ipv4 is supported now.
-	gui_get_tables_list(&table_list, NFPROTO_IPV4);
-	gtk_tree_store_clear (store);
+	res = gui_get_tables_list(&table_list, NFPROTO_IPV4);
+	if (res != TABLE_SUCCESS) {
+		GtkWidget *dialog;
+		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+                                 0,
+                                 GTK_MESSAGE_ERROR,
+                                 GTK_BUTTONS_OK,
+                                 table_error[res]
+                                 );
+
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		return;
+	}
+	gtk_tree_store_clear(store);
 
 	// display tables in treeview
-	list_for_each_entry(table, &table_list, list) {
+	list_for_each_entry_safe(table, tmp, &table_list, list) {
+		list_del(&table->list);
 		index++;
 		gtk_tree_store_append(GTK_TREE_STORE(store), &iter, NULL);
 		if (table->family == NFPROTO_IPV4)
@@ -1464,6 +1479,8 @@ void table_update_data(gint family, GtkTreeStore *store)
 				TABLE_SETS, table->nsets, TABLE_CHAINS,
 				table->nchains, TABLE_DETAIL, TRUE,
 				TABLE_DELETE, TRUE, -1);
+		xfree(table->table);
+		xfree(table);
 	}
 }
 
@@ -1533,10 +1550,14 @@ void table_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 		gnftables_set_chain_init(family, name, notebook);
 //	else
 //		table_update_data(NFPROTO_UNSPEC, GTK_TREE_STORE(model));
-//	g_free(name);		// 这些不能随便删，那么会不会造成内存泄漏呢???
+//	g_free(name);
 //	g_free(family_str);
 }
 
+
+/*
+ * Delete a table,
+ */
 void table_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
 {
 	GtkTreeIter		iter;
@@ -1549,24 +1570,19 @@ void table_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 	GtkWidget *dialog;
 
 	dialog = gtk_message_dialog_new (GTK_WINDOW(window),
-                                 0,
-                                 GTK_MESSAGE_WARNING,
-                                 GTK_BUTTONS_OK_CANCEL,
-                                 "The table and all rules in the table will be deleted. Are you sure?"
-                                 );
+		0, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK_CANCEL,
+		"The table and all rules in the table will be deleted. Are you sure?"
+		);
 
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 	if (res == GTK_RESPONSE_OK) {
 		model = gtk_tree_view_get_model(GTK_TREE_VIEW(data));
 		gtk_tree_model_get_iter_from_string(model, &iter, path_str);
-		gtk_tree_model_get(model, &iter, TABLE_NAME, &name, TABLE_FAMILY, &family_str, -1);
-
+		gtk_tree_model_get(model, &iter, TABLE_NAME, &name,
+				TABLE_FAMILY, &family_str, -1);
 		family = str2family(family_str);
 		gui_delete_table(family, name);
 		table_update_data(NFPROTO_UNSPEC, GTK_TREE_STORE(model));
-
-		g_free(name);
-		g_free(family_str);
 	}
 
 	gtk_widget_destroy(dialog);
@@ -1627,8 +1643,6 @@ void gnftables_table_init(GtkWidget *notebook)
 			G_CALLBACK(create_new_table), notebook);
 	gtk_layout_put(GTK_LAYOUT(layout), create_table, 700, 10);
 
-	// get information of all tables from kernel.
-	table_update_data(NFPROTO_UNSPEC, store);
 
 	// treeview style
 	list_tables = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
@@ -1698,6 +1712,13 @@ void gnftables_table_init(GtkWidget *notebook)
 
 	gtk_layout_put(GTK_LAYOUT(layout), scrolledwindow, 0, 50);
 	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, title, 0);
+
+	gtk_widget_show_all(window);
+	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 0);
+	gtk_widget_queue_draw(GTK_WIDGET(notebook));
+
+	// get information of all tables from kernel.
+	table_update_data(NFPROTO_UNSPEC, store);
 }
 
 

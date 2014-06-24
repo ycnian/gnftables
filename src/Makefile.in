@@ -26,6 +26,7 @@ nft-obj			+= erec.o
 nft-obj			+= mnl.o
 nft-obj			+= gui_error.o
 nft-obj			+= gui_expression.o
+nft-obj			+= gui_datacheck.o
 
 nft-obj			+= parser.o
 nft-extra-clean-files	+= parser.c parser.h

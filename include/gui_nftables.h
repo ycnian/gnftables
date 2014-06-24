@@ -40,10 +40,11 @@
 
 
 
-struct new_table {
+struct table_create_widget {
 	GtkWidget       *notebook;
 	GtkWidget       *name;
 	GtkWidget       *family;
+	GtkWidget	*msg;
 };
 
 struct list_sets_and_chains {
@@ -167,7 +168,6 @@ void table_update_data(gint family, GtkTreeStore *store);
 
 
 int  get_table_list(struct list_head *table_list, uint32_t family);
-int gui_add_table(int family, char *name);
 int gui_delete_table(int family, char *name);
 
 int str2family(const char *family);

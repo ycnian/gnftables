@@ -79,6 +79,7 @@ struct table {
 	struct scope		scope;
 	struct list_head	chains;
 	struct list_head	sets;
+	uint32_t		nchains;
 };
 
 extern struct table *table_alloc(void);

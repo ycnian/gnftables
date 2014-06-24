@@ -1,6 +1,12 @@
 #ifndef NFTABLES_GUI_DATACHECK_H
 #define NFTABLES_GUI_DATACHECK_H
 
+#include <gui_nftables.h>
+
+struct table_create_data {
+	int 	family;
+	char	*table;
+};
 
 
 
@@ -39,5 +45,10 @@ struct rule_create_data {
 	struct meta	*meta;
 };
 
+
+int name_check(char *name);
+int table_name_check(char *name);
+int table_create_getdata(struct table_create_widget  *widget,
+                struct table_create_data **data);
 
 #endif

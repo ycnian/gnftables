@@ -886,6 +886,8 @@ static struct table *netlink_delinearize_table(struct netlink_ctx *ctx,
 		nft_table_attr_get_u32(nlt, NFT_TABLE_ATTR_FAMILY);
 	table->handle.table  =
 		xstrdup(nft_table_attr_get_str(nlt, NFT_TABLE_ATTR_NAME));
+	table->nchains  =
+		nft_table_attr_get_u32(nlt, NFT_TABLE_ATTR_USE);
 
 	return table;
 }

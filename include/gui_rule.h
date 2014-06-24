@@ -1,10 +1,11 @@
 #ifndef  GUI_RULE_H
 #define  GUI_RULE_H
 
+#include <rule.h>
 #include <list.h>
+#include <gui_datacheck.h>
 
-
-struct gui_table {
+struct table_list_data {
 	int		family;
 	char		*table;
 	int		nsets;
@@ -56,6 +57,9 @@ int gui_delete_rule(int family, const char *table, const char *chain, int handle
 int gui_add_rule(struct gui_rule *gui_rule);
 
 
-int gui_get_sets_number(int family, char *table);
+int gui_get_sets_number(int family, char *table, int *nsets);
+
+
+int gui_add_table(struct table_create_data *data);
 
 #endif

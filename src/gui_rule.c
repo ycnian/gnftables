@@ -36,7 +36,7 @@
 #include <gui_nftables.h>
 #include <gui_rule.h>
 #include <gui_error.h>
-
+#include <gui_datacheck.h>
 
 
 void gui_rule_free(struct gui_rule *rule)
@@ -287,61 +287,38 @@ int gui_add_rule(struct gui_rule *gui_rule)
 }
 
 
-int gui_get_sets_number(int family, char *table)
+/*
+ * Get number of sets in a table.
+ * We have to design this function since the number cannot be got through
+ * NFT_MSG_GETTABLE directly.
+ * @family:  nftable family
+ * @table:   table name
+ * @nsets:   used to store the result
+ */
+int gui_get_sets_number(int family, char *table, int *nsets)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
 	struct location		loc;
-	int	res = 0;
+	struct set		*set, *tmp;
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.seqnum  = mnl_seqnum_alloc();
 	init_list_head(&ctx.list);
-
-	struct set *set;
 
 	handle.family = family;
 	handle.table = table;
 	handle.set = NULL;
 
 	if (netlink_list_sets(&ctx, &handle, &loc) < 0)
-		return -1;
+		return SET_KERNEL_ERROR;
 
-	list_for_each_entry(set, &ctx.list, list) {
-		res++;
+	list_for_each_entry_safe(set, tmp, &ctx.list, list) {
+		(*nsets)++;
+		set_free(set);
 	}
-
-	return res;
+	return SET_SUCCESS;
 }
-
-
-int gui_get_chains_number(int family, char *table)
-{
-	struct netlink_ctx	ctx;
-	struct handle		handle;
-	struct location		loc;
-	int	res = 0;
-
-	memset(&ctx, 0, sizeof(ctx));
-	ctx.seqnum  = mnl_seqnum_alloc();
-	init_list_head(&ctx.list);
-
-	struct chain *chain;
-
-	handle.family = family;
-	handle.table = table;
-	handle.chain = NULL;
-
-	if (netlink_list_chains(&ctx, &handle, &loc) < 0)
-		return -1;
-
-	list_for_each_entry(chain, &ctx.list, list) {
-		res++;
-	}
-
-	return res;
-}
-
 
 int gui_get_chains_list(struct list_head *head, int family, char *table)
 {
@@ -428,52 +405,73 @@ int gui_add_chain(struct gui_chain *gui_chain)
 	return 0;
 }
 
+
+/*
+ * Get basic information of tables from kernel, 
+ * including: family, table name, number of chains, number of sets.
+ * @head: list used to store data
+ * @family: nftable family
+ */
 int gui_get_tables_list(struct list_head *head, int family)
 {
+	int		nsets = 0;
 	struct netlink_ctx	ctx;
 	struct handle		handle;
 	struct location		loc;
-	int	nchains;
-	int	nsets;
+	struct table		*table, *t;
+	struct table_list_data	*gui_table, *gt;
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.seqnum  = mnl_seqnum_alloc();
 	init_list_head(&ctx.list);
 
-	struct table *table;
-	struct gui_table  *gui_table = NULL;
-
 	handle.family = family;
-
 	if (netlink_list_tables(&ctx, &handle, &loc) < 0)
-		return -1;
+		return TABLE_KERNEL_ERROR;
 
-
-	list_for_each_entry(table, &ctx.list, list) {
-		gui_table = (struct gui_table  *)malloc(sizeof(*gui_table));
+	list_for_each_entry_safe(table, t, &ctx.list, list) {
+		gui_table = (struct table_list_data  *)xmalloc(sizeof(struct table_list_data));
 		gui_table->family = table->handle.family;
-		gui_table->table = strdup(table->handle.table);
-		nchains = gui_get_chains_number(family, gui_table->table);
-		nsets = gui_get_sets_number(family, gui_table->table);
-		// if (nchains < 0)
-		// 	error;
-		gui_table->nchains = nchains;
+		gui_table->table = xstrdup(table->handle.table);
+		gui_table->nchains = table->nchains;
+		if (gui_get_sets_number(family, gui_table->table, &nsets) != SET_SUCCESS) {
+			xfree(gui_table->table);
+			xfree(gui_table);
+			goto error;
+		}
 		gui_table->nsets = nsets;
-
 		list_add_tail(&gui_table->list, head);
+		list_del(&table->list);
+		table_free(table);
 	}
+	return TABLE_SUCCESS;
 
-	return 0;
+error:
+	list_for_each_entry_safe(table, t, &ctx.list, list) {
+		list_del(&table->list);
+		table_free(table);
+	}
+	list_for_each_entry_safe(gui_table, gt, head, list) {
+		list_del(&gui_table->list);
+		xfree(gui_table->table);
+		xfree(gui_table);
+	}
+	return TABLE_KERNEL_ERROR;
 }
 
 
 
-
-int gui_add_table(int family, char *name)
+/*
+ * Create a new table by sending NFT_MSG_NEWTABLE netlink message.
+ * @data: data set into netlink message
+ */
+int gui_add_table(struct table_create_data *data)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
 	struct location		loc;
+	int	family = data->family;
+	char	*name = data->table;
 
 	bool batch_supported = netlink_batch_supported();
 	LIST_HEAD(msgs);
@@ -484,9 +482,8 @@ int gui_add_table(int family, char *name)
 	ctx.batch_supported = batch_supported;
 	init_list_head(&ctx.list);
 
-
 	handle.family = family;
-	handle.table = strdup(name);
+	handle.table = name;
 
 	if (netlink_add_table(&ctx, &handle, &loc, NULL, true) < 0) {
 		if (errno == EEXIST)

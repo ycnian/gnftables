@@ -18,15 +18,14 @@
 
 #define   CHAIN_ID		0
 #define   CHAIN_NAME		1
-#define   CHAIN_TABLE		2
-#define   CHAIN_RULES		3
-#define   CHAIN_BASECHAIN	4
-#define   CHAIN_TYPE		5
-#define   CHAIN_HOOK		6
-#define   CHAIN_PRIORITY	7
-#define   CHAIN_DETAIL		8
-#define   CHAIN_DELETE		9
-#define   CHAIN_TOTAL		10
+#define   CHAIN_RULES		2
+#define   CHAIN_BASECHAIN	3
+#define   CHAIN_TYPE		4
+#define   CHAIN_HOOK		5
+#define   CHAIN_PRIORITY	6
+#define   CHAIN_DETAIL		7
+#define   CHAIN_DELETE		8
+#define   CHAIN_TOTAL		9
 
 
 #define   RULE_ID		0
@@ -65,9 +64,12 @@ struct basechain_info {
 
 struct chain_list_args {
 	GtkWidget	*notebook;
-	GtkWidget	*list_chains;
+	GtkWidget	*model;
+	GtkWidget	*store;
 	gint		family;
 	gchar		*table;
+	gchar		*chain;
+	gchar		*type;
 };
 
 
@@ -180,7 +182,7 @@ gboolean show_treeview_menu(GtkWidget *widget, GdkEvent  *event, gpointer   user
 
 void chain_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data);
 void chain_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer data);
-void chain_update_data(gint family, gchar *table_name, GtkTreeStore *store);
+void chain_update_data(struct chain_list_args *args);
 void basechain_selected(GtkWidget *check_button, gpointer data);
 void back_to_chain_list(GtkButton *button, gpointer  info);
 void begin_create_new_chain(GtkButton *button, gpointer  info);
@@ -201,5 +203,6 @@ void transport_udp(void);
 void transport_callback(GtkComboBox *widget, gpointer data);
 void back_to_rule_list(GtkButton *button, gpointer  info);
 void begin_create_new_rule(GtkButton *button, gpointer  info);
+void nftables_type_changed(GtkComboBoxText *widget, gpointer data);
 
 #endif

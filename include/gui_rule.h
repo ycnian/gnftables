@@ -14,7 +14,7 @@ struct table_list_data {
 };
 
 
-struct gui_chain {
+struct chain_list_data {
 	int		family;
 	char		*table;
 	char		*chain;
@@ -41,9 +41,9 @@ struct gui_rule {
 int gui_get_tables_list(struct list_head *head, int family);
 
 
-void gui_chain_free(struct gui_chain *chain);
-int gui_get_chains_list(struct list_head *head, int family, char *table);
-int gui_add_chain(struct gui_chain *gui_chain);
+void gui_chain_free(struct chain_list_data *chain);
+int gui_get_chains_list(struct list_head *head, int family, char *table, char *type);
+int gui_add_chain(struct chain_list_data *gui_chain);
 int gui_delete_chain(int family, const char *table, const char *chain);
 int gui_get_chains_number(int family, char *table);
 

@@ -52,7 +52,7 @@ void gui_rule_free(struct gui_rule *rule)
 	free(rule);
 }
 
-void gui_chain_free(struct gui_chain *chain)
+void gui_chain_free(struct chain_list_data *chain)
 {
 	if (!chain)
 		return;
@@ -320,7 +320,7 @@ int gui_get_sets_number(int family, char *table, int *nsets)
 	return SET_SUCCESS;
 }
 
-int gui_get_chains_list(struct list_head *head, int family, char *table)
+int gui_get_chains_list(struct list_head *head, int family, char *table, char *type)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
@@ -332,7 +332,7 @@ int gui_get_chains_list(struct list_head *head, int family, char *table)
 	init_list_head(&ctx.list);
 
 	struct chain *chain;
-	struct gui_chain  *gui_chain = NULL;
+	struct chain_list_data  *gui_chain = NULL;
 
 	handle.family = family;
 	handle.table = table;
@@ -342,33 +342,37 @@ int gui_get_chains_list(struct list_head *head, int family, char *table)
 		return -1;
 
 	list_for_each_entry(chain, &ctx.list, list) {
-		gui_chain = (struct gui_chain  *)malloc(sizeof(*gui_chain));
-		gui_chain->family = chain->handle.family;
-		gui_chain->table = strdup(chain->handle.table);
-		gui_chain->chain = strdup(chain->handle.chain);
-		if (chain->flags & CHAIN_F_BASECHAIN) {
-			gui_chain->basechain = 1;
-			gui_chain->hook = chain->hooknum;
-			gui_chain->priority = chain->priority;
-			gui_chain->type = strdup(chain->type);
-		}
-		else {
-			gui_chain->basechain = 0;
-			gui_chain->type = NULL;
-		}
-		nrules = gui_get_rules_number(gui_chain->family, gui_chain->table, gui_chain->chain);
-		// if (nrules < 0)
-		// 	error;
-		gui_chain->nrules = nrules;
+		if (!strcmp(type, "all") ||
+			(!(chain->flags & CHAIN_F_BASECHAIN) && !strcmp(type, "user")) ||
+			((chain->flags & CHAIN_F_BASECHAIN) && !strcmp(chain->type, type))) {
+			gui_chain = (struct chain_list_data *)malloc(sizeof(struct chain_list_data));
+			gui_chain->family = chain->handle.family;
+			gui_chain->table = strdup(chain->handle.table);
+			gui_chain->chain = strdup(chain->handle.chain);
+			if (chain->flags & CHAIN_F_BASECHAIN) {
+				gui_chain->basechain = 1;
+				gui_chain->hook = chain->hooknum;
+				gui_chain->priority = chain->priority;
+				gui_chain->type = strdup(chain->type);
+			}
+			else {
+				gui_chain->basechain = 0;
+				gui_chain->type = NULL;
+			}
+			nrules = gui_get_rules_number(gui_chain->family, gui_chain->table, gui_chain->chain);
+			// if (nrules < 0)
+			// 	error;
+			gui_chain->nrules = nrules;
 
-		list_add_tail(&gui_chain->list, head);
+			list_add_tail(&gui_chain->list, head);
+		}
 	}
 
 	return 0;
 }
 
 
-int gui_add_chain(struct gui_chain *gui_chain)
+int gui_add_chain(struct chain_list_data *gui_chain)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;

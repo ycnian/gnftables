@@ -361,7 +361,7 @@ void begin_create_new_chain(GtkButton *button, gpointer  info)
 	GtkWidget	*hook = args->hook;
 	GtkWidget	*priority = args->priority;
 
-	struct gui_chain	*chain = (struct gui_chain *)malloc(sizeof(*chain));
+	struct chain_list_data	*chain = (struct chain_list_data *)malloc(sizeof(*chain));
 
 //	if (!chain)
 //		error;
@@ -1108,16 +1108,14 @@ void chain_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 	gchar			*table;
 	gchar			*chain;
 	GtkTreeModel		*model;
-	GtkTreeView		*treeview;
 	GtkWidget		*notebook;
 	struct chain_list_args	*chain_args = (struct chain_list_args *)data;
 
-	treeview = GTK_TREE_VIEW(chain_args->list_chains);
 	table = chain_args->table;
 	family = chain_args->family;
 	notebook = chain_args->notebook;
 
-	model = gtk_tree_view_get_model(treeview);
+	model = GTK_TREE_MODEL(chain_args->model);
 	gtk_tree_model_get_iter_from_string(model, &iter, path_str);
 	gtk_tree_model_get(model, &iter, CHAIN_NAME, &chain, -1);
 
@@ -1204,7 +1202,6 @@ void chain_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 	gchar			*table;
 	gchar			*chain;
 	GtkTreeModel		*model;
-	GtkTreeView		*treeview;
 	struct chain_list_args	*chain_args = (struct chain_list_args *)data;
 
 	gint	res;
@@ -1217,18 +1214,17 @@ void chain_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointe
                                  "The chain and all rules in the chain will be deleted. Are you sure?"
                                  );
 
-	treeview = GTK_TREE_VIEW(chain_args->list_chains);
 	table = chain_args->table;
 	family = chain_args->family;
 
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 	if (res == GTK_RESPONSE_OK) {
-		model = gtk_tree_view_get_model(treeview);
+		model = GTK_TREE_MODEL(chain_args->model);
 		gtk_tree_model_get_iter_from_string(model, &iter, path_str);
 		gtk_tree_model_get(model, &iter, CHAIN_NAME, &chain, -1);
 
 		gui_delete_chain(family, table, chain);
-		chain_update_data(family, table, GTK_TREE_STORE(model));
+		chain_update_data(chain_args);
 	}
 
 	gtk_widget_destroy(dialog);
@@ -1260,15 +1256,19 @@ void rule_update_data(gint family, gchar *table_name, gchar *chain_name, GtkTree
 }
 
 
-void chain_update_data(gint family, gchar *table_name, GtkTreeStore *store)
+void chain_update_data(struct chain_list_args *args)
 {
 	uint32_t	index = 0;
 	GtkTreeIter	iter;
+	struct chain_list_data   *chain;
+	gint		family = args->family;
+	gchar		*table_name = args->table;
+	gchar		*type = args->type;
+	GtkTreeStore	*store = GTK_TREE_STORE(args->store);
 
-	struct gui_chain   *chain;
 	LIST_HEAD(chain_list);
 
-	gui_get_chains_list(&chain_list, family, table_name);
+	gui_get_chains_list(&chain_list, family, table_name, type);
 
 	gtk_tree_store_clear (store);
 
@@ -1279,152 +1279,180 @@ void chain_update_data(gint family, gchar *table_name, GtkTreeStore *store)
 		if (chain->basechain) {
 			char	priority[50];
 			sprintf(priority, "%d", chain->priority);
-			gtk_tree_store_set(GTK_TREE_STORE(store), &iter, CHAIN_ID, index, CHAIN_NAME, chain->chain, CHAIN_TABLE, chain->table, CHAIN_RULES, chain->nrules, CHAIN_BASECHAIN, "Yes", CHAIN_TYPE, chain->type, CHAIN_HOOK, hooknum2str(family, chain->hook), CHAIN_PRIORITY, priority, CHAIN_DETAIL, TRUE, CHAIN_DELETE, TRUE, -1);
+			gtk_tree_store_set(GTK_TREE_STORE(store), &iter,
+				CHAIN_ID, index,
+				CHAIN_NAME, chain->chain,
+				CHAIN_RULES, chain->nrules,
+				CHAIN_BASECHAIN, "Yes",
+				CHAIN_TYPE, chain->type,
+				CHAIN_HOOK, hooknum2str(family, chain->hook),
+				CHAIN_PRIORITY, priority,
+				CHAIN_DETAIL, TRUE,
+				CHAIN_DELETE, TRUE, -1);
 		} else 
-			gtk_tree_store_set(GTK_TREE_STORE(store), &iter, CHAIN_ID, index, CHAIN_NAME, chain->chain, CHAIN_TABLE, chain->table, CHAIN_RULES, chain->nrules, CHAIN_BASECHAIN, "No", CHAIN_TYPE, "X", CHAIN_HOOK, "X", CHAIN_PRIORITY, "X", CHAIN_DETAIL, TRUE, CHAIN_DELETE, TRUE, -1);
+			gtk_tree_store_set(GTK_TREE_STORE(store), &iter,
+				CHAIN_ID, index,
+				CHAIN_NAME, chain->chain, 
+				CHAIN_RULES, chain->nrules, 
+				CHAIN_BASECHAIN, "No",
+				CHAIN_TYPE, "x",
+				CHAIN_HOOK, "x",
+				CHAIN_PRIORITY, "x",
+				CHAIN_DETAIL, TRUE,
+				CHAIN_DELETE, TRUE, -1);
 		gui_chain_free(chain);	
 	}
 }
 
 
+void nftables_type_changed(GtkComboBoxText *widget, gpointer data)
+{
+	struct chain_list_args  *args;
+	args = (struct chain_list_args *)data;
+	args->type = gtk_combo_box_text_get_active_text(widget);
+	chain_update_data(args);
+}
 
-
-// zzzz
+/*
+ * Add chains list page in notebook
+ */
 void gnftables_set_chain_init(gint family, gchar *table_name, GtkWidget *notebook)
 {
-
-	GtkWidget	*label;
+	GtkWidget	*title;
 	GtkWidget	*layout;
 	GtkWidget	*type;
 	GtkWidget	*combo_type;
-	GtkWidget	*hook;
-	GtkWidget	*combo_hook;
-	GtkWidget	*create_table;
+	GtkWidget	*create_chain;
 	GtkWidget	*list_chains;
 	GtkWidget	*scrolledwindow;
 	GtkListStore	*store;
 	GtkCellRenderer	*renderer;
-	GtkCellRenderer	*renderer1;
-	GtkCellRenderer	*renderer2;
+	GtkCellRenderer	*renderer_details;
+	GtkCellRenderer	*renderer_delete;
 	GtkTreeViewColumn	*column;
 
-	struct chain_list_args  *chain_arg = g_malloc(sizeof(*chain_arg));
+	struct chain_list_args  *chain_arg;
+	chain_arg = g_malloc(sizeof(struct chain_list_args));
 	chain_arg->notebook = notebook;
 	chain_arg->family = family;
 	chain_arg->table = table_name;
 
-	store = gtk_tree_store_new(CHAIN_TOTAL, G_TYPE_INT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
+	store = gtk_tree_store_new(CHAIN_TOTAL, G_TYPE_INT, G_TYPE_STRING,
+			G_TYPE_INT, G_TYPE_STRING, G_TYPE_STRING,
+			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN,
+			G_TYPE_BOOLEAN);
 
-	label = gtk_label_new("Sets & Chains (Table: filter)");
-	gtk_widget_set_size_request(label, 200, 10);
+	title = gtk_label_new("Chains");
+	gtk_widget_set_size_request(title, 200, 10);
 	layout = gtk_layout_new(NULL, NULL);
 
 
 	type = gtk_label_new("Type");
-	gtk_layout_put(GTK_LAYOUT(layout), type, 10, 10);
+	gtk_layout_put(GTK_LAYOUT(layout), type, 30, 10);
 
 	combo_type = gtk_combo_box_text_new();
 	gtk_widget_set_size_request(combo_type, 100, 10);
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type), "all", "all");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type), "user", "user");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type), "filter", "filter");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type), "nat", "nat");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type), "route", "route");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
+			"all", "all");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
+			"user", "user");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
+			"filter", "filter");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
+			"nat", "nat");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
+			"route", "route");
+//	g_signal_connect(combo_type, "changed",
+//			G_CALLBACK(nftables_type_changed), chain_arg);
 	gtk_combo_box_set_active(GTK_COMBO_BOX(combo_type), 0);
+	chain_arg->type = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combo_type));
 	gtk_layout_put(GTK_LAYOUT(layout), combo_type, 90, 10);
 
+    	create_chain = gtk_button_new_with_label("Create Chain");
+	gtk_widget_set_size_request(create_chain, 150, 10);
+	g_signal_connect(G_OBJECT(create_chain), "clicked",
+			G_CALLBACK(create_new_chain), chain_arg);
+	gtk_layout_put(GTK_LAYOUT(layout), create_chain, 700, 10);
+	chain_arg->store = GTK_TREE_STORE(store);
 
-	hook = gtk_label_new("Hook");
-	gtk_layout_put(GTK_LAYOUT(layout), hook, 200, 10);
-
-	combo_hook = gtk_combo_box_text_new();
-	gtk_widget_set_size_request(combo_hook, 100, 10);
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_hook), "all", "all");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_hook), "input", "input");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_hook), "output", "output");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_hook), "forward", "forward");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_hook), "prerouting", "prerouting");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_hook), "postrouting", "postrouting");
-	gtk_combo_box_set_active(GTK_COMBO_BOX(combo_hook), 0);
-	gtk_layout_put(GTK_LAYOUT(layout), combo_hook, 290, 10);
-
-
-
-    	create_table = gtk_button_new_with_label("Create Chain");
-	gtk_widget_set_size_request(create_table, 150, 10);
-	g_signal_connect(G_OBJECT(create_table), "clicked", G_CALLBACK(create_new_chain), chain_arg);
-	gtk_layout_put(GTK_LAYOUT(layout), create_table, 700, 10);
-
-
-	chain_update_data(family, table_name, GTK_TREE_STORE(store));
+	chain_update_data(chain_arg);
 
 	// treeview style
 	list_chains = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
-//	g_signal_connect(list_chains, "button-press-event", G_CALLBACK(show_treeview_menu), NULL); 
 	renderer = gtk_cell_renderer_text_new();
-	chain_arg->list_chains = list_chains;
+	chain_arg->model = gtk_tree_view_get_model(GTK_TREE_VIEW(list_chains));
+	g_signal_connect(combo_type, "changed",
+			G_CALLBACK(nftables_type_changed), chain_arg);
 
-	column = gtk_tree_view_column_new_with_attributes("Id", renderer, "text", CHAIN_ID, NULL);
+	column = gtk_tree_view_column_new_with_attributes("Id", renderer,
+			"text", CHAIN_ID, NULL);
 	gtk_tree_view_column_set_clickable(column, TRUE);
 	gtk_tree_view_column_set_min_width(column, 50);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
-	column = gtk_tree_view_column_new_with_attributes("Name", renderer, "text", CHAIN_NAME, NULL);
-	gtk_tree_view_column_set_min_width(column, 150);
+	column = gtk_tree_view_column_new_with_attributes("Name", renderer,
+			"text", CHAIN_NAME, NULL);
+	gtk_tree_view_column_set_min_width(column, 200);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
-	column = gtk_tree_view_column_new_with_attributes("Table", renderer, "text", CHAIN_TABLE, NULL);
-	gtk_tree_view_column_set_min_width(column, 150);
+	column = gtk_tree_view_column_new_with_attributes("Rules", renderer,
+			"text", CHAIN_RULES, NULL);
+	gtk_tree_view_column_set_min_width(column, 90);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
-	column = gtk_tree_view_column_new_with_attributes("Rules", renderer, "text", CHAIN_RULES, NULL);
-	gtk_tree_view_column_set_min_width(column, 70);
+	column = gtk_tree_view_column_new_with_attributes("Base Chain",
+			renderer, "text", CHAIN_BASECHAIN, NULL);
+	gtk_tree_view_column_set_min_width(column, 90);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
-	column = gtk_tree_view_column_new_with_attributes("Base Chain", renderer, "text", CHAIN_BASECHAIN, NULL);
-	gtk_tree_view_column_set_min_width(column, 70);
+	column = gtk_tree_view_column_new_with_attributes("Type", renderer,
+			"text", CHAIN_TYPE, NULL);
+	gtk_tree_view_column_set_min_width(column, 90);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
-	column = gtk_tree_view_column_new_with_attributes("Type", renderer, "text", CHAIN_TYPE, NULL);
-	gtk_tree_view_column_set_min_width(column, 70);
+	column = gtk_tree_view_column_new_with_attributes("Hook", renderer,
+			"text", CHAIN_HOOK, NULL);
+	gtk_tree_view_column_set_min_width(column, 90);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
-	column = gtk_tree_view_column_new_with_attributes("Hook", renderer, "text", CHAIN_HOOK, NULL);
-	gtk_tree_view_column_set_min_width(column, 70);
-	gtk_tree_view_column_set_alignment(column, 0.0);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
-	column = gtk_tree_view_column_new_with_attributes("Priority", renderer, "text", CHAIN_PRIORITY, NULL);
-	gtk_tree_view_column_set_min_width(column, 70);
-	gtk_tree_view_column_set_alignment(column, 0.0);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
-
-
-	renderer1 = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer1, "toggled", G_CALLBACK(chain_callback_detail), chain_arg) ;
-	column = gtk_tree_view_column_new_with_attributes("Detail", renderer1, "active", CHAIN_DETAIL, NULL);
-	gtk_tree_view_column_set_min_width(column, 60);
+	column = gtk_tree_view_column_new_with_attributes("Priority", renderer,
+			"text", CHAIN_PRIORITY, NULL);
+	gtk_tree_view_column_set_min_width(column, 80);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 
-	renderer2 = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer2, "toggled", G_CALLBACK(chain_callback_delete), chain_arg) ;
-	column = gtk_tree_view_column_new_with_attributes("Delete", renderer2, "active", CHAIN_DELETE, NULL);
-	gtk_tree_view_column_set_min_width(column, 60);
+	renderer_details = gtk_cell_renderer_toggle_new();
+	g_signal_connect(renderer_details, "toggled",
+			G_CALLBACK(chain_callback_detail), chain_arg) ;
+	column = gtk_tree_view_column_new_with_attributes("Details",
+			renderer_details, "active", CHAIN_DETAIL, NULL);
+	gtk_tree_view_column_set_min_width(column, 80);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 
-
+	renderer_delete = gtk_cell_renderer_toggle_new();
+	g_signal_connect(renderer_delete, "toggled",
+			G_CALLBACK(chain_callback_delete), chain_arg) ;
+	column = gtk_tree_view_column_new_with_attributes("Delete",
+			renderer_details, "active", CHAIN_DELETE, NULL);
+	gtk_tree_view_column_set_min_width(column, 80);
+	gtk_tree_view_column_set_alignment(column, 0.0);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 
         scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
-	gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(scrolledwindow), 876);
-	gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(scrolledwindow), 410);
-	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolledwindow), GTK_SHADOW_ETCHED_IN);
-        gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledwindow),
-                                GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+	gtk_scrolled_window_set_min_content_width(
+			GTK_SCROLLED_WINDOW(scrolledwindow), 876);
+	gtk_scrolled_window_set_min_content_height(
+			GTK_SCROLLED_WINDOW(scrolledwindow), 410);
+	gtk_scrolled_window_set_shadow_type(
+			GTK_SCROLLED_WINDOW(scrolledwindow),
+			GTK_SHADOW_ETCHED_IN);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledwindow),
+			GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_container_add(GTK_CONTAINER(scrolledwindow), list_chains);
 
 	gtk_layout_put(GTK_LAYOUT(layout), scrolledwindow, 0, 50);
-	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, label, 1);
+	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, title, 1);
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 1);
 }

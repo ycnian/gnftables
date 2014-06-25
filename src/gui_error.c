@@ -9,3 +9,9 @@ const char *table_error[TABLE_ERROR_NUM] = {
 	[TABLE_NAME_EMPTY]	= "Table name cannot be empty.",
 };
 
+
+const char *chain_error[CHAIN_ERROR_NUM] = {
+	[CHAIN_SUCCESS]		= "OK",
+	[CHAIN_KERNEL_ERROR]	= "Could not receive chains from kernel.",
+};
+

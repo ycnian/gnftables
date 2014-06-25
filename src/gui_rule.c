@@ -495,11 +495,17 @@ int gui_add_table(struct table_create_data *data)
 }
 
 
+/*
+ * Check whether a table exists.
+ * @family:  nftables family
+ * @name:    table name
+ */
 int gui_check_table_exist(int family, char *name)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
 	struct location		loc;
+	int			res;
 
 	LIST_HEAD(msgs);
 
@@ -508,16 +514,15 @@ int gui_check_table_exist(int family, char *name)
 	ctx.seqnum  = mnl_seqnum_alloc();
 	init_list_head(&ctx.list);
 
-
 	handle.family = family;
-	handle.table = strdup(name);
+	handle.table = name;
 
-	if (netlink_get_table(&ctx, &handle, &loc) < 0) {
+	res = netlink_get_table(&ctx, &handle, &loc);
+	if (res < 0) {
 		if (errno == ENOENT)
 			return TABLE_NOT_EXIST;
-		else {
+		else
 			return TABLE_KERNEL_ERROR;
-		}
 	}
 	return TABLE_SUCCESS;
 }

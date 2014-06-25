@@ -1528,6 +1528,10 @@ GtkWidget *create_family_list(gint list, void (*callback)(GtkComboBox *widget, g
 }
 
 
+/*
+ * Goto chains list page
+ *
+ */
 void table_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
 {
 	GtkTreeIter		iter;
@@ -1535,6 +1539,7 @@ void table_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 	gchar			*family_str;
 	int			family;
 	GtkTreeModel		*model;
+	int			res;
 
 	struct list_sets_and_chains  *info = (struct list_sets_and_chains *)data;
 	GtkWidget	*treeview = info->treeview;
@@ -1545,13 +1550,24 @@ void table_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 	gtk_tree_model_get(model, &iter, TABLE_NAME, &name, TABLE_FAMILY, &family_str, -1);
 	family = str2family(family_str);
 
-//	res = gui_check_table_exist(family, name);
-//	if (res == TABLE_SUCCESS)
+	// Check whether the table exists first. If it still exists,
+	// goto chains list page. If not, leave in table list page.
+	res = gui_check_table_exist(family, name);
+	if (res == TABLE_SUCCESS)
 		gnftables_set_chain_init(family, name, notebook);
-//	else
-//		table_update_data(NFPROTO_UNSPEC, GTK_TREE_STORE(model));
-//	g_free(name);
-//	g_free(family_str);
+	else {
+		GtkWidget *dialog;
+		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+                                 0,
+                                 GTK_MESSAGE_ERROR,
+                                 GTK_BUTTONS_OK,
+                                 table_error[res]
+                                 );
+
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		table_update_data(NFPROTO_UNSPEC, GTK_TREE_STORE(model));
+	}
 }
 
 

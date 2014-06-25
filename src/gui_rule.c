@@ -377,9 +377,9 @@ int gui_get_chains_list(struct list_head *head, int family, char *table, char *t
 				goto error;
 			}
 			gui_chain->nrules = nrules;
-			list_del(&chain->list);
 			list_add_tail(&gui_chain->list, head);
 		}
+		list_del(&chain->list);
 		chain_free(chain);
 	}
 

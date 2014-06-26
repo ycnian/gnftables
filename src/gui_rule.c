@@ -434,10 +434,15 @@ int gui_add_chain(struct chain_create_data *gui_chain)
 	init_list_head(&chain.list);
 	init_list_head(&chain.rules);
 
-
 	netlink_add_chain(&ctx, &handle, &loc, &chain, false);
+	if (netlink_add_chain(&ctx, &handle, &loc, &chain, false) < 0) {
+		if (errno == EEXIST)
+			return CHAIN_EXIST;
+		else
+			return CHAIN_KERNEL_ERROR;
+	}
 
-	return 0;
+	return CHAIN_SUCCESS;
 }
 
 

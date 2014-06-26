@@ -15,7 +15,8 @@ const char *chain_error[CHAIN_ERROR_NUM] = {
 	[CHAIN_KERNEL_ERROR]	= "Could not receive chains from kernel.",
 	[CHAIN_NAME_EMPTY]	= "Chain name cannot be empty.",
 	[CHAIN_NAME_INVALID]	= "Invalid chain name, only letter, number, underscore allowed.",
+	[CHAIN_PRIORITY_INVALID]= "Invalid priority, only +, -, 0-9 allowed",
 	[CHAIN_TABLE_NOT_EXIST] = "Table doesn't exist.",
 	[CHAIN_TABLE_KERNEL_ERROR] = "Could not receive tables from kernel.",
-	[CHAIN_PRIORITY_INVALID]= "Invalid priority, only +, -, 0-9 allowed",
+        [CHAIN_EXIST]           = "Chain with the same name exists.",
 };

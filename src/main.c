@@ -352,25 +352,13 @@ void begin_create_new_rule(GtkButton *button, gpointer  info)
  */
 void begin_create_new_chain(GtkButton *button, gpointer  info)
 {
-	GtkTreeModel	*model;
-	GtkTreeIter	iter;
 	GtkWidget	*notebook;
-	GtkWidget	*name;
-	GtkWidget	*base;
-	GtkWidget	*type;
-	GtkWidget	*hook;
-	GtkWidget	*priority;
 	int		res;
 	struct chain_create_widget	*widget;
 	struct chain_create_data	*data = NULL;
 
 	widget = (struct chain_create_widget *)info;
 	notebook = widget->notebook;
-	name = widget->name;
-	base = widget->basechain;
-	type = widget->type;
-	hook = widget->hook;
-	priority = widget->priority;
 
 	// check table exists
 
@@ -806,9 +794,6 @@ void create_new_chain(GtkButton *button, gpointer  data)
 	GtkWidget	*notebook;
 	GtkWidget	*msg;
 
-	GtkListStore	*store;
-	GtkCellRenderer	*renderer;
-	GtkTreeIter	iter;
 	struct  basechain_info  *basechain = g_malloc(sizeof(*basechain));
 	struct chain_create_widget *widgets = g_malloc(sizeof(struct chain_create_widget));
 	struct chain_list_args	*chain_arg = (struct chain_list_args *)data;
@@ -1397,7 +1382,7 @@ void gnftables_set_chain_init(gint family, gchar *table_name, GtkWidget *noteboo
 	GtkWidget	*create_chain;
 	GtkWidget	*list_chains;
 	GtkWidget	*scrolledwindow;
-	GtkListStore	*store;
+	GtkTreeStore	*store;
 	GtkCellRenderer	*renderer;
 	GtkCellRenderer	*renderer_details;
 	GtkCellRenderer	*renderer_delete;
@@ -1445,14 +1430,14 @@ void gnftables_set_chain_init(gint family, gchar *table_name, GtkWidget *noteboo
 	g_signal_connect(G_OBJECT(create_chain), "clicked",
 			G_CALLBACK(create_new_chain), chain_arg);
 	gtk_layout_put(GTK_LAYOUT(layout), create_chain, 700, 10);
-	chain_arg->store = GTK_TREE_STORE(store);
+	chain_arg->store = GTK_WIDGET(store);
 
 	chain_update_data(chain_arg);
 
 	// treeview style
 	list_chains = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
 	renderer = gtk_cell_renderer_text_new();
-	chain_arg->model = gtk_tree_view_get_model(GTK_TREE_VIEW(list_chains));
+	chain_arg->model = GTK_WIDGET(gtk_tree_view_get_model(GTK_TREE_VIEW(list_chains)));
 	g_signal_connect(combo_type, "changed",
 			G_CALLBACK(chain_list_type_changed), chain_arg);
 

@@ -10,6 +10,9 @@
 #include <assert.h>
 #include <list.h>
 #include <gmp.h>
+#include <arpa/inet.h>
+#include <linux/netfilter.h>
+#include <linux/netfilter_arp.h>
 
 #define BITS_PER_BYTE	8
 
@@ -83,5 +86,6 @@ extern void *xmalloc(size_t size);
 extern void *xrealloc(void *ptr, size_t size);
 extern void *xzalloc(size_t size);
 extern char *xstrdup(const char *s);
+extern uint32_t str2hooknum(uint32_t family, const char *hook);
 
 #endif /* NFTABLES_UTILS_H */

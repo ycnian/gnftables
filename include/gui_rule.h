@@ -43,7 +43,7 @@ int gui_get_tables_list(struct list_head *head, int family);
 
 void gui_chain_free(struct chain_list_data *chain);
 int gui_get_chains_list(struct list_head *head, int family, char *table, char *type);
-int gui_add_chain(struct chain_list_data *gui_chain);
+int gui_add_chain(struct chain_create_data *gui_chain);
 int gui_delete_chain(int family, const char *table, const char *chain);
 
 int gui_flush_table(int family, char *name);

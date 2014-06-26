@@ -399,7 +399,11 @@ error:
 }
 
 
-int gui_add_chain(struct chain_list_data *gui_chain)
+/*
+ * Create a new chain.
+ *
+ */
+int gui_add_chain(struct chain_create_data *gui_chain)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;

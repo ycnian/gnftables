@@ -61,6 +61,17 @@ struct basechain_info {
 	GtkWidget	*priority_value;
 };
 
+struct chain_create_widget {
+	GtkWidget	*notebook;
+	GtkWidget	*name;
+	GtkWidget	*basechain;
+	GtkWidget	*type;
+	GtkWidget	*hook;
+	GtkWidget	*priority;
+	GtkWidget	*msg;
+	gint		family;
+	gchar		*table;
+};
 
 struct chain_list_args {
 	GtkWidget	*notebook;
@@ -70,19 +81,6 @@ struct chain_list_args {
 	gchar		*table;
 	gchar		*chain;
 	gchar		*type;
-};
-
-
-
-struct new_chain {
-	GtkWidget       *notebook;
-	GtkWidget       *chain;
-	GtkWidget       *basechain;
-	GtkWidget       *type;
-	GtkWidget       *hook;
-	GtkWidget       *priority;
-	gint		family;
-	gchar		*table;
 };
 
 
@@ -203,6 +201,7 @@ void transport_udp(void);
 void transport_callback(GtkComboBox *widget, gpointer data);
 void back_to_rule_list(GtkButton *button, gpointer  info);
 void begin_create_new_rule(GtkButton *button, gpointer  info);
-void nftables_type_changed(GtkComboBoxText *widget, gpointer data);
+void chain_list_type_changed(GtkComboBoxText *widget, gpointer data);
+void chain_create_type_changed(GtkComboBoxText *widget, gpointer data);
 
 #endif

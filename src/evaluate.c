@@ -1295,38 +1295,6 @@ static int rule_evaluate(struct eval_ctx *ctx, struct rule *rule)
 	return 0;
 }
 
-static uint32_t str2hooknum(uint32_t family, const char *hook)
-{
-	switch (family) {
-	case NFPROTO_IPV4:
-	case NFPROTO_BRIDGE:
-	case NFPROTO_IPV6:
-	case NFPROTO_INET:
-		/* These families have overlapping values for each hook */
-		if (!strcmp(hook, "prerouting"))
-			return NF_INET_PRE_ROUTING;
-		else if (!strcmp(hook, "input"))
-			return NF_INET_LOCAL_IN;
-		else if (!strcmp(hook, "forward"))
-			return NF_INET_FORWARD;
-		else if (!strcmp(hook, "postrouting"))
-			return NF_INET_POST_ROUTING;
-		else if (!strcmp(hook, "output"))
-			return NF_INET_LOCAL_OUT;
-	case NFPROTO_ARP:
-		if (!strcmp(hook, "input"))
-			return NF_ARP_IN;
-		else if (!strcmp(hook, "forward"))
-			return NF_ARP_FORWARD;
-		else if (!strcmp(hook, "output"))
-			return NF_ARP_OUT;
-	default:
-		break;
-	}
-
-	return NF_INET_NUMHOOKS;
-}
-
 static int chain_evaluate(struct eval_ctx *ctx, struct chain *chain)
 {
 	struct rule *rule;

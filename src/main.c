@@ -347,47 +347,49 @@ void begin_create_new_rule(GtkButton *button, gpointer  info)
 
 }
 
+/*
+ * Get data from chain creating page and send NFT_MSG_NEWCHAIN message to kernel.
+ */
 void begin_create_new_chain(GtkButton *button, gpointer  info)
 {
-	
-
 	GtkTreeModel	*model;
 	GtkTreeIter	iter;
-	struct new_chain	*args = (struct new_chain *)info;
-	GtkWidget	*notebook = args->notebook;
-	GtkWidget	*name = args->chain;
-	GtkWidget	*base = args->basechain;
-	GtkWidget	*type = args->type;
-	GtkWidget	*hook = args->hook;
-	GtkWidget	*priority = args->priority;
+	GtkWidget	*notebook;
+	GtkWidget	*name;
+	GtkWidget	*base;
+	GtkWidget	*type;
+	GtkWidget	*hook;
+	GtkWidget	*priority;
+	int		res;
+	struct chain_create_widget	*widget;
+	struct chain_create_data	*data = NULL;
 
-	struct chain_list_data	*chain = (struct chain_list_data *)malloc(sizeof(*chain));
+	widget = (struct chain_create_widget *)info;
+	notebook = widget->notebook;
+	name = widget->name;
+	base = widget->basechain;
+	type = widget->type;
+	hook = widget->hook;
+	priority = widget->priority;
 
-//	if (!chain)
-//		error;
+	// check table exists
 
-	chain->family = args->family;
-	chain->table = strdup(args->table);
-	chain->chain = (char *)gtk_entry_get_text(GTK_ENTRY(name));
-	if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(base)))
-		chain->basechain = 0;
-	else {
-		chain->basechain = 1;
-		model = gtk_combo_box_get_model(GTK_COMBO_BOX(type));
-		gtk_combo_box_get_active_iter(GTK_COMBO_BOX(type), &iter);
-		gtk_tree_model_get(model, &iter, 0, &chain->type, -1);
-		model = gtk_combo_box_get_model(GTK_COMBO_BOX(hook));
-		gtk_combo_box_get_active_iter(GTK_COMBO_BOX(hook), &iter);
-		gtk_tree_model_get(model, &iter, 0, &chain->hook, -1);
-		chain->priority = atoi(gtk_entry_get_text(GTK_ENTRY(priority)));
+	// get data
+	res = chain_create_getdata(widget, &data);
+	if (res != CHAIN_SUCCESS) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[res]);
+		return;
 	}
 
-
-	gui_add_chain(chain);
+	res = gui_add_chain(data);
+	if (res != CHAIN_SUCCESS) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[res]);
+		return;
+	}
 
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
 
-	gnftables_set_chain_init(args->family, args->table, notebook);
+	gnftables_set_chain_init(widget->family, widget->table, notebook);
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 1);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
@@ -446,11 +448,11 @@ void back_to_rule_list(GtkButton *button, gpointer  info)
 
 void back_to_chain_list(GtkButton *button, gpointer  info)
 {
-	struct new_chain  *chain = (struct new_chain *)info;
-	GtkWidget	*notebook = chain->notebook;
+	struct chain_create_widget  *args = (struct chain_create_widget *)info;
+	GtkWidget	*notebook = args->notebook;
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
 
-	gnftables_set_chain_init(chain->family, chain->table, notebook);
+	gnftables_set_chain_init(args->family, args->table, notebook);
 }
 
 /*
@@ -778,10 +780,14 @@ void create_new_rule(GtkButton *button, gpointer  data)
 }
 
 
+/*
+ * Goto chain creating page
+ *
+ */
 void create_new_chain(GtkButton *button, gpointer  data)
 {
 	GtkWidget	*layout;
-	GtkWidget	*label;
+	GtkWidget	*title;
 	GtkWidget	*ok;
 	GtkWidget	*cancel;
 	GtkWidget	*frame;
@@ -798,25 +804,26 @@ void create_new_chain(GtkButton *button, gpointer  data)
 	GtkWidget	*priority;
 	GtkWidget	*priority_value;
 	GtkWidget	*notebook;
+	GtkWidget	*msg;
 
 	GtkListStore	*store;
 	GtkCellRenderer	*renderer;
 	GtkTreeIter	iter;
 	struct  basechain_info  *basechain = g_malloc(sizeof(*basechain));
-	struct new_chain	*new_chain = g_malloc(sizeof(*new_chain));
+	struct chain_create_widget *widgets = g_malloc(sizeof(struct chain_create_widget));
 	struct chain_list_args	*chain_arg = (struct chain_list_args *)data;
 	notebook = chain_arg->notebook;
-	new_chain->notebook = notebook;
-	new_chain->family = chain_arg->family;
-	new_chain->table = chain_arg->table;
+	widgets->notebook = notebook;
+	widgets->family = chain_arg->family;
+	widgets->table = chain_arg->table;
 
 
 
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
 
 	layout = gtk_layout_new(NULL, NULL);
-	label = gtk_label_new("Sets & Chains");
-	gtk_widget_set_size_request(label, 200, 10);
+	title = gtk_label_new("Chains");
+	gtk_widget_set_size_request(title, 200, 10);
 
 	frame = gtk_frame_new ("Create a new chain");
 	gtk_container_set_border_width (GTK_CONTAINER(frame), 0);
@@ -831,10 +838,11 @@ void create_new_chain(GtkButton *button, gpointer  data)
 	gtk_layout_put(GTK_LAYOUT(layout_chain), name, 30, 30);
 	name_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(name_value), 30);
+	gtk_entry_set_max_length(GTK_ENTRY(name_value), 32);
 	gtk_layout_put(GTK_LAYOUT(layout_chain), name_value, 100, 30);
-	name_desc = gtk_label_new("(no more than 100 characters)");
+	name_desc = gtk_label_new("(no more than 32 characters)");
 	gtk_layout_put(GTK_LAYOUT(layout_chain), name_desc, 360, 30);
-	new_chain->chain = name_value;
+	widgets->name = name_value;
 
 	family = gtk_label_new("basechain:");
 	gtk_layout_put(GTK_LAYOUT(layout_chain), family, 30, 80);
@@ -843,77 +851,88 @@ void create_new_chain(GtkButton *button, gpointer  data)
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(family_valuee), TRUE);
 	gtk_layout_put(GTK_LAYOUT(layout_chain), family_valuee, 100, 80);
 	g_signal_connect(family_valuee, "toggled", G_CALLBACK(basechain_selected), basechain);
-	new_chain->basechain = family_valuee;
+	widgets->basechain = family_valuee;
 
 
 	type = gtk_label_new("Type:");
 	gtk_layout_put(GTK_LAYOUT(layout_chain), type, 30, 130);
-	store = gtk_list_store_new(1, G_TYPE_STRING);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "filter", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "nat", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "route", -1);
-	type_value = gtk_combo_box_new_with_model(GTK_TREE_MODEL(store));
-	renderer = gtk_cell_renderer_text_new();
+
+	type_value = gtk_combo_box_text_new();
+	gtk_widget_set_size_request(type_value, 150, 10);
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(type_value),
+			"filter", "filter");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(type_value),
+			"nat", "nat");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(type_value),
+			"route", "route");
 	gtk_combo_box_set_active(GTK_COMBO_BOX(type_value), 0);
-	gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(type_value), renderer, TRUE);
-	gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(type_value), renderer, "text", 0, NULL);
-//	g_signal_connect(type_value, "changed", G_CALLBACK(callback), data);
 	gtk_layout_put(GTK_LAYOUT(layout_chain), type_value, 100, 130);
 	basechain->type = type;
 	basechain->type_value = type_value;
-	new_chain->type = type_value;
-
+	widgets->type = type_value;
 
 	hook = gtk_label_new("Hook:");
 	gtk_layout_put(GTK_LAYOUT(layout_chain), hook, 30, 180);
-	store = gtk_list_store_new(2, G_TYPE_INT, G_TYPE_STRING);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, NF_INET_PRE_ROUTING, 1, "prerouting", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, NF_INET_LOCAL_IN, 1, "input", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, NF_INET_FORWARD, 1, "forward", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, NF_INET_POST_ROUTING, 1, "postrouting", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, NF_INET_LOCAL_OUT, 1, "output", -1);
-	hook_value = gtk_combo_box_new_with_model(GTK_TREE_MODEL(store));
-	renderer = gtk_cell_renderer_text_new();
+
+	hook_value = gtk_combo_box_text_new();
+	gtk_widget_set_size_request(hook_value, 150, 10);
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook_value),
+			"prerouting", "prerouting");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook_value),
+			"input", "input");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook_value),
+			"forward", "forward");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook_value),
+			"postrouting", "postrouting");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook_value),
+			"output", "output");
 	gtk_combo_box_set_active(GTK_COMBO_BOX(hook_value), 0);
-	gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(hook_value), renderer, TRUE);
-	gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(hook_value), renderer, "text", 1, NULL);
-//	g_signal_connect(hook_value, "changed", G_CALLBACK(callback), data);
 	gtk_layout_put(GTK_LAYOUT(layout_chain), hook_value, 100, 180);
 	basechain->hook = hook;
 	basechain->hook_value = hook_value;
-	new_chain->hook = hook_value;
+	widgets->hook = hook_value;
 
+	g_signal_connect(type_value, "changed",
+			G_CALLBACK(chain_create_type_changed), hook_value);
 
 	priority = gtk_label_new("Priority:");
 	gtk_layout_put(GTK_LAYOUT(layout_chain), priority, 30, 230);
 	priority_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(priority_value), 30);
+	gtk_widget_set_tooltip_text(priority_value, "The priority can be used to order the chains or to put them before or after some Netfilter internal operations.\n\
+For reference, here's the list of different priority used in iptables:\n\
+-400: priority of defragmentation\n\
+-300: traditional priority of the raw table placed before connection tracking operation\n\
+-225: SELinux operations\n\
+-200: Connection tracking operations\n\
+-150: mangle operation\n\
+-100: destination NAT\n\
+   0: filtering operation, the filter table\n\
+  50: Place of security table where secmark can be set for example\n\
+ 100: source NAT\n\
+ 225: SELInux at packet exit\n\
+ 300: connection tracking at exit");
 	gtk_layout_put(GTK_LAYOUT(layout_chain), priority_value, 100, 230);
 	basechain->priority = priority;
 	basechain->priority_value = priority_value;
-	new_chain->priority = priority_value;
+	widgets->priority = priority_value;
 
+	msg = gtk_label_new("");
+	gtk_layout_put(GTK_LAYOUT(layout_chain), msg, 30, 280);
+	widgets->msg = msg;
 
     	cancel = gtk_button_new_with_label("Cancel");
 	gtk_widget_set_size_request(cancel, 100, 10);
-	g_signal_connect(G_OBJECT(cancel), "clicked", G_CALLBACK(back_to_chain_list), new_chain);
+	g_signal_connect(G_OBJECT(cancel), "clicked", G_CALLBACK(back_to_chain_list), widgets);
 	gtk_layout_put(GTK_LAYOUT(layout_chain), cancel, 360, 310);
 
     	ok = gtk_button_new_with_label("OK");
 	gtk_widget_set_size_request(ok, 100, 10);
-	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_chain), new_chain);
+	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_chain), widgets);
 	gtk_layout_put(GTK_LAYOUT(layout_chain), ok, 480, 310);
 
 
-	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, label, 1);
+	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, title, 1);
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 1);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
@@ -1256,6 +1275,9 @@ void rule_update_data(gint family, gchar *table_name, gchar *chain_name, GtkTree
 }
 
 
+/*
+ * Get chains from kernel and display in chain list page
+ */
 void chain_update_data(struct chain_list_args *args)
 {
 	uint32_t	index = 0;
@@ -1295,10 +1317,10 @@ void chain_update_data(struct chain_list_args *args)
 			sprintf(priority, "%d", chain->priority);
 			gtk_tree_store_set(GTK_TREE_STORE(store), &iter,
 				CHAIN_ID, index,
-				CHAIN_NAME, chain->chain,
+				CHAIN_NAME, xstrdup(chain->chain),
 				CHAIN_RULES, chain->nrules,
 				CHAIN_BASECHAIN, "Yes",
-				CHAIN_TYPE, chain->type,
+				CHAIN_TYPE, xstrdup(chain->type),
 				CHAIN_HOOK, hooknum2str(family, chain->hook),
 				CHAIN_PRIORITY, priority,
 				CHAIN_DETAIL, TRUE,
@@ -1306,7 +1328,7 @@ void chain_update_data(struct chain_list_args *args)
 		} else 
 			gtk_tree_store_set(GTK_TREE_STORE(store), &iter,
 				CHAIN_ID, index,
-				CHAIN_NAME, chain->chain, 
+				CHAIN_NAME, xstrdup(chain->chain), 
 				CHAIN_RULES, chain->nrules, 
 				CHAIN_BASECHAIN, "No",
 				CHAIN_TYPE, "x",
@@ -1319,12 +1341,48 @@ void chain_update_data(struct chain_list_args *args)
 }
 
 
-void nftables_type_changed(GtkComboBoxText *widget, gpointer data)
+void chain_list_type_changed(GtkComboBoxText *widget, gpointer data)
 {
 	struct chain_list_args  *args;
 	args = (struct chain_list_args *)data;
 	args->type = gtk_combo_box_text_get_active_text(widget);
 	chain_update_data(args);
+}
+
+void chain_create_type_changed(GtkComboBoxText *widget, gpointer data)
+{
+	char	*type = gtk_combo_box_text_get_active_text(widget);
+	GtkComboBoxText	*hook = GTK_COMBO_BOX_TEXT(data);
+	gtk_combo_box_text_remove_all(hook);
+
+	if (!(strcmp(type, "filter"))) {
+		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook),
+				"prerouting", "prerouting");
+		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook),
+				"input", "input");
+		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook),
+				"forward", "forward");
+		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook),
+				"postrouting", "postrouting");
+		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook),
+				"output", "output");
+		gtk_combo_box_set_active(GTK_COMBO_BOX(hook), 0);
+	} else if (!(strcmp(type, "nat"))) {
+		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook),
+				"prerouting", "prerouting");
+		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook),
+				"input", "input");
+		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook),
+				"postrouting", "postrouting");
+		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook),
+				"output", "output");
+		gtk_combo_box_set_active(GTK_COMBO_BOX(hook), 0);
+
+	} else if (!(strcmp(type, "route"))) {
+		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook),
+				"output", "output");
+		gtk_combo_box_set_active(GTK_COMBO_BOX(hook), 0);
+	}
 }
 
 /*
@@ -1396,7 +1454,7 @@ void gnftables_set_chain_init(gint family, gchar *table_name, GtkWidget *noteboo
 	renderer = gtk_cell_renderer_text_new();
 	chain_arg->model = gtk_tree_view_get_model(GTK_TREE_VIEW(list_chains));
 	g_signal_connect(combo_type, "changed",
-			G_CALLBACK(nftables_type_changed), chain_arg);
+			G_CALLBACK(chain_list_type_changed), chain_arg);
 
 	column = gtk_tree_view_column_new_with_attributes("Id", renderer,
 			"text", CHAIN_ID, NULL);
@@ -1510,13 +1568,13 @@ void table_update_data(gint family, GtkTreeStore *store)
 		gtk_tree_store_append(GTK_TREE_STORE(store), &iter, NULL);
 		if (table->family == NFPROTO_IPV4)
 			gtk_tree_store_set(GTK_TREE_STORE(store), &iter,
-				TABLE_ID, index, TABLE_NAME, table->table,
+				TABLE_ID, index, TABLE_NAME, xstrdup(table->table),
 				TABLE_FAMILY, "ipv4", TABLE_SETS, table->nsets,
 				TABLE_CHAINS, table->nchains, TABLE_DETAIL,
 				TRUE, TABLE_DELETE, TRUE, -1);
 		else
 			gtk_tree_store_set(GTK_TREE_STORE(store), &iter,
-				TABLE_ID, index, TABLE_NAME, table->table,
+				TABLE_ID, index, TABLE_NAME, xstrdup(table->table),
 				TABLE_FAMILY, family2str(table->family),
 				TABLE_SETS, table->nsets, TABLE_CHAINS,
 				table->nchains, TABLE_DETAIL, TRUE,

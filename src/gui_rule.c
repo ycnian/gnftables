@@ -564,13 +564,18 @@ int gui_check_table_exist(int family, char *name)
 
 
 
-
+/*
+ * Delete a chain and all rules in the chain
+ * @family: nftables family
+ * @table:  table name
+ * @chain:  chain name
+ */
 int gui_delete_chain(int family, const char *table, const char *chain)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
 	struct location		loc;
-	int	res = TABLE_SUCCESS;
+	int	res = CHAIN_SUCCESS;
 	bool batch_supported;
 
 	LIST_HEAD(msgs);
@@ -592,19 +597,21 @@ int gui_delete_chain(int family, const char *table, const char *chain)
 	mnl_batch_begin();
 	// delete all rules in the chain.
 	if (netlink_del_rule_batch(&ctx, &handle, &loc) < 0) {
-			res = CHAIN_KERNEL_ERROR;
+		return CHAIN_KERNEL_ERROR;
 	}
 	mnl_batch_end();
 
-	if (mnl_batch_ready())
-		netlink_batch_send(&err_list);
-
-	if (netlink_delete_chain(&ctx, &handle, &loc) < 0) {
-			res = CHAIN_KERNEL_ERROR;
+	if (mnl_batch_ready()) {
+		res = netlink_batch_send(&err_list);
+		if (res < 0)
+			return CHAIN_KERNEL_ERROR;
 	}
 
-	return res;
+	if (netlink_delete_chain(&ctx, &handle, &loc) < 0) {
+		res = CHAIN_KERNEL_ERROR;
+	}
 
+	return CHAIN_SUCCESS;
 }
 
 
@@ -636,6 +643,10 @@ int gui_flush_table(int family, char *name)
 		return TABLE_SUCCESS;
 }
 
+/*
+ * Delete a table and all rules in it.
+ *
+ */
 int gui_delete_table(int family, char *name)
 {
 	struct netlink_ctx	ctx;
@@ -643,12 +654,10 @@ int gui_delete_table(int family, char *name)
 	struct location		loc;
 	int	res;
 	bool batch_supported;
+	struct chain_list_data  *gui_chain, *gc;
 
 	LIST_HEAD(msgs);
-
-//	res = gui_check_table_exist(family, name);
-//	if (res != TABLE_SUCCESS)
-//		return res;
+	LIST_HEAD(chains_list);
 
 	batch_supported = netlink_batch_supported();
 
@@ -658,19 +667,29 @@ int gui_delete_table(int family, char *name)
 	ctx.batch_supported = batch_supported;
 	init_list_head(&ctx.list);
 
-
 	handle.family = family;
-	handle.table = strdup(name);
+	handle.table = name;
 
+	res = gui_get_chains_list(&chains_list, family, name, "all");
+	if (res != CHAIN_SUCCESS)
+		return TABLE_KERNEL_ERROR;
+	list_for_each_entry_safe(gui_chain, gc, &chains_list, list) {
+		list_del(&gui_chain->list);
+		gui_delete_chain(gui_chain->family, gui_chain->table, gui_chain->chain);
+		gui_chain_free(gui_chain);
+	}
 
-	// delete all rules and chains in the table,
-	res = gui_flush_table(family, name);
-	if (res != TABLE_SUCCESS)
-		return res;
+	// delete all sets in the table
+	//gui_get_sets_list(&sets_list, family, name, "all");
+	//list_for_each_entry_safe(gui_set, gs, &sets_list, list) {
+	//	list_del(&gui_set->list);
+	//	gui_delete_set(gui_set->family, gui_set->table, gui_set->set);
+	//	gui_set_free(gui_set);
+	//}
 
 	// delete table.
 	if (netlink_delete_table(&ctx, &handle, &loc) < 0) {
-			return TABLE_KERNEL_ERROR;
+		return TABLE_KERNEL_ERROR;
 	}
 	return TABLE_SUCCESS;
 }

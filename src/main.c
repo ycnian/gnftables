@@ -1503,7 +1503,7 @@ void gnftables_set_chain_init(gint family, gchar *table_name, GtkWidget *noteboo
 	g_signal_connect(renderer_delete, "toggled",
 			G_CALLBACK(chain_callback_delete), chain_arg) ;
 	column = gtk_tree_view_column_new_with_attributes("Delete",
-			renderer_details, "active", CHAIN_DELETE, NULL);
+			renderer_delete, "active", CHAIN_DELETE, NULL);
 	gtk_tree_view_column_set_min_width(column, 80);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);

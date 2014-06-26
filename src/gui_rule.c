@@ -574,10 +574,7 @@ int gui_delete_chain(int family, const char *table, const char *chain)
 	bool batch_supported;
 
 	LIST_HEAD(msgs);
-
-//	res = gui_check_chain_exist(family, table, chain);
-//	if (res != TABLE_SUCCESS)
-//		return res;
+	LIST_HEAD(err_list);
 
 	batch_supported = netlink_batch_supported();
 
@@ -592,12 +589,22 @@ int gui_delete_chain(int family, const char *table, const char *chain)
 	handle.chain = chain;
 	handle.handle = 0;
 
-	// delete chain.
-//	if (netlink_delete_chain(&ctx, &handle, &loc) < 0) {
-	if (netlink_flush_chain(&ctx, &handle, &loc) < 0) {
-			res = TABLE_KERNEL_ERROR;
+	mnl_batch_begin();
+	// delete all rules in the chain.
+	if (netlink_del_rule_batch(&ctx, &handle, &loc) < 0) {
+			res = CHAIN_KERNEL_ERROR;
 	}
+	mnl_batch_end();
+
+	if (mnl_batch_ready())
+		netlink_batch_send(&err_list);
+
+	if (netlink_delete_chain(&ctx, &handle, &loc) < 0) {
+			res = CHAIN_KERNEL_ERROR;
+	}
+
 	return res;
+
 }
 
 

@@ -361,6 +361,14 @@ void begin_create_new_chain(GtkButton *button, gpointer  info)
 	notebook = widget->notebook;
 
 	// check table exists
+	res = gui_check_table_exist(widget->family, widget->table);
+	if (res == TABLE_NOT_EXIST) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[CHAIN_TABLE_NOT_EXIST]);
+		return;
+	} else if (res == TABLE_KERNEL_ERROR) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[CHAIN_TABLE_KERNEL_ERROR]);
+		return;
+	}
 
 	// get data
 	res = chain_create_getdata(widget, &data);
@@ -370,6 +378,10 @@ void begin_create_new_chain(GtkButton *button, gpointer  info)
 	}
 
 	res = gui_add_chain(data);
+	xfree(data->table);
+	xfree(data->chain);
+	xfree(data->type);
+	xfree(data);
 	if (res != CHAIN_SUCCESS) {
 		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[res]);
 		return;
@@ -1430,14 +1442,14 @@ void gnftables_set_chain_init(gint family, gchar *table_name, GtkWidget *noteboo
 	g_signal_connect(G_OBJECT(create_chain), "clicked",
 			G_CALLBACK(create_new_chain), chain_arg);
 	gtk_layout_put(GTK_LAYOUT(layout), create_chain, 700, 10);
-	chain_arg->store = GTK_WIDGET(store);
+	chain_arg->store = store;
 
 	chain_update_data(chain_arg);
 
 	// treeview style
 	list_chains = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
 	renderer = gtk_cell_renderer_text_new();
-	chain_arg->model = GTK_WIDGET(gtk_tree_view_get_model(GTK_TREE_VIEW(list_chains)));
+	chain_arg->model = gtk_tree_view_get_model(GTK_TREE_VIEW(list_chains));
 	g_signal_connect(combo_type, "changed",
 			G_CALLBACK(chain_list_type_changed), chain_arg);
 

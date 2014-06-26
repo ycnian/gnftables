@@ -44,12 +44,12 @@ void gui_rule_free(struct gui_rule *rule)
 	if (!rule)
 		return;
 	if (rule->table)
-		free(rule->table);
+		xfree(rule->table);
 	if (rule->chain)
-		free(rule->chain);
+		xfree(rule->chain);
 	if (rule->stmt)
-		free(rule->stmt);
-	free(rule);
+		xfree(rule->stmt);
+	xfree(rule);
 }
 
 void gui_chain_free(struct chain_list_data *chain)
@@ -57,14 +57,21 @@ void gui_chain_free(struct chain_list_data *chain)
 	if (!chain)
 		return;
 	if (chain->table)
-		free(chain->table);
+		xfree(chain->table);
 	if (chain->chain)
-		free(chain->chain);
+		xfree(chain->chain);
 	if (chain->type)
-		free(chain->type);
-	free(chain);
+		xfree(chain->type);
+	xfree(chain);
 }
 
+/*
+ * Get number of rules in a chain.
+ * @family:  nftables family
+ * @table:   which table this chain belongs to
+ * @chain:   chain name
+ * @nrules:  parameter used to store the result
+ */
 int gui_get_rules_number(int family, char *table, char *chain, int *nrules)
 {
 	struct netlink_ctx	ctx;
@@ -325,7 +332,7 @@ int gui_get_sets_number(int family, char *table, int *nsets)
  * @head: chains listed here
  * @family: nftables family
  * @table:  table name
- * @type:   chain type, only show chains in this type in page.
+ * @type:   chain type, only show chains in this type
  */
 int gui_get_chains_list(struct list_head *head, int family, char *table, char *type)
 {
@@ -341,7 +348,6 @@ int gui_get_chains_list(struct list_head *head, int family, char *table, char *t
 	ctx.seqnum  = mnl_seqnum_alloc();
 	init_list_head(&ctx.list);
 
-
 	handle.family = family;
 	handle.table = table;
 	handle.chain = NULL;
@@ -352,8 +358,8 @@ int gui_get_chains_list(struct list_head *head, int family, char *table, char *t
 	list_for_each_entry_safe(chain, c, &ctx.list, list) {
 		if (!strcmp(type, "all") ||
 			(!(chain->flags & CHAIN_F_BASECHAIN) && !strcmp(type, "user")) ||
-			((chain->flags & CHAIN_F_BASECHAIN) && !strcmp(chain->type, type))) {
-			gui_chain = (struct chain_list_data *)malloc(sizeof(struct chain_list_data));
+			((chain->flags & CHAIN_F_BASECHAIN) && !strcmp(type, chain->type))) {
+			gui_chain = (struct chain_list_data *)xmalloc(sizeof(struct chain_list_data));
 			gui_chain->family = chain->handle.family;
 			gui_chain->table = xstrdup(chain->handle.table);
 			gui_chain->chain = xstrdup(chain->handle.chain);
@@ -369,11 +375,7 @@ int gui_get_chains_list(struct list_head *head, int family, char *table, char *t
 			}
 			res = gui_get_rules_number(gui_chain->family, gui_chain->table, gui_chain->chain, &nrules);
 			if (res != RULE_SUCCESS) {
-				xfree(gui_chain->table);
-				xfree(gui_chain->chain);
-				if (gui_chain->basechain == 1)
-					xfree(gui_chain->type);
-				xfree(gui_chain);
+				gui_chain_free(gui_chain);
 				goto error;
 			}
 			gui_chain->nrules = nrules;
@@ -391,11 +393,7 @@ error:
 	}
 	list_for_each_entry_safe(gui_chain, gc, head, list) {
 		list_del(&gui_chain->list);
-		xfree(gui_chain->table);
-		xfree(gui_chain->chain);
-		if (gui_chain->basechain == 1)
-			xfree(gui_chain->type);
-		xfree(gui_chain);
+		gui_chain_free(gui_chain);
 	}
 	return CHAIN_KERNEL_ERROR;
 }

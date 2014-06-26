@@ -1260,20 +1260,34 @@ void chain_update_data(struct chain_list_args *args)
 {
 	uint32_t	index = 0;
 	GtkTreeIter	iter;
-	struct chain_list_data   *chain;
+	struct chain_list_data   *chain, *c;
 	gint		family = args->family;
 	gchar		*table_name = args->table;
 	gchar		*type = args->type;
 	GtkTreeStore	*store = GTK_TREE_STORE(args->store);
+	int		res;
 
 	LIST_HEAD(chain_list);
 
-	gui_get_chains_list(&chain_list, family, table_name, type);
+	res = gui_get_chains_list(&chain_list, family, table_name, type);
+	if (res != CHAIN_SUCCESS) {
+		GtkWidget *dialog;
+		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+                                 0,
+                                 GTK_MESSAGE_ERROR,
+                                 GTK_BUTTONS_OK,
+                                 chain_error[res]
+                                 );
+
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		return;
+	}
 
 	gtk_tree_store_clear (store);
-
 	// display chains in treeview
-	list_for_each_entry(chain, &chain_list, list) {
+	list_for_each_entry_safe(chain, c, &chain_list, list) {
+		list_del(&chain->list);
 		index++;
 		gtk_tree_store_append(GTK_TREE_STORE(store), &iter, NULL);
 		if (chain->basechain) {

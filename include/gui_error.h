@@ -23,6 +23,7 @@
 #define  SET_KERNEL_ERROR	1
 
 extern const char *table_error[TABLE_ERROR_NUM];
+extern const char *chain_error[CHAIN_ERROR_NUM];
 
 
 #endif

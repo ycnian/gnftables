@@ -87,50 +87,86 @@ struct chain_list_args {
 struct rule_list_args {
 	GtkWidget	*notebook;
 	GtkWidget	*list_rules;
+	GtkWidget	*store;
 	gint		family;
 	gchar		*table;
 	gchar		*chain;
 	gint		handle;
 };
 
-
-
-struct packet_tcp {
-	GtkWidget	*sport;
-	GtkWidget	*dport;
+enum transport_type {
+	TRANSPORT_ALL,
+	TRANSPORT_TCP,
+	TRANSPORT_UDP,
 };
 
-struct packet_udp {
-	GtkWidget	*sport;
-	GtkWidget	*dport;
+enum address_type {
+	ADDRESS_EXACT,
+	ADDRESS_SUBNET,
+	ADDRESS_RANGE,
+	ADDRESS_SET,
 };
 
-
-struct transport_callback_args {
-	GtkWidget	*background;
-	GtkWidget	*header;
-	GtkWidget	*meta;
-	GtkWidget	*fixed;
+struct transport_info {
+	enum transport_type	type;
 	struct {
 		struct {
 			GtkWidget	*sport;
+			GtkWidget	*sport_value;
 			GtkWidget	*dport;
+			GtkWidget	*dport_value;
 		}tcp;
 		struct {
 			GtkWidget	*sport;
+			GtkWidget	*sport_value;
 			GtkWidget	*dport;
+			GtkWidget	*dport_value;
 		}udp;
 	};
 };
 
-struct  packet_header {
-	GtkWidget	*saddr;
-	GtkWidget	*daddr;
-	GtkWidget	*protocol;
-	struct transport_callback_args  *args;
+struct ip_address {
+	enum address_type	type;
+	struct {
+		struct {
+			GtkWidget	*ip;
+		}exact_ip;
+		struct {
+			GtkWidget	*ip;
+			GtkWidget	*mask;
+		}subnet;
+		struct {
+			GtkWidget	*from;
+			GtkWidget	*to;
+		}range;
+		struct {
+			GtkWidget	*set;
+			GtkWidget	*value;
+		}sets;
+	};
 };
 
-struct packet_meta {
+struct  match_header {
+	GtkWidget	*expander;
+	GtkWidget	*fixed;
+	int		expanded;
+	struct {
+		GtkWidget		*type;
+		struct ip_address	*value;
+	}saddr;
+	struct {
+		GtkWidget		*type;
+		struct ip_address	*value;
+	}daddr;
+	struct {
+		GtkWidget		*type;
+		struct transport_info	*value;
+	}transport;
+};
+
+struct match_pktmeta {
+	GtkWidget	*expander;
+	int		expanded;
 	GtkWidget	*iifname;
 	GtkWidget	*oifname;
 	GtkWidget	*iiftype;
@@ -139,13 +175,21 @@ struct packet_meta {
 	GtkWidget	*skgid;
 };
 
+struct match_trackmeta {
+
+};
+
 struct rule_create_widget {
 	GtkWidget       *notebook;
+	GtkWidget	*fixed;
 	gint		family;
 	gchar		*table;
 	gchar		*chain;
-	struct packet_header	*header;
-	struct packet_meta	*meta;
+	struct match_header	*header;
+	struct match_pktmeta	*meta;
+	struct match_trackmeta	*track;
+	GtkWidget	*cancel;
+	GtkWidget	*ok;
 };
 
 
@@ -187,7 +231,7 @@ void begin_create_new_chain(GtkButton *button, gpointer  info);
 
 
 void gnftables_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkWidget *notebook);
-void rule_update_data(gint family, gchar *table_name, gchar *chain_name, GtkTreeStore *store);
+void rule_update_data(struct rule_list_args *args);
 
 void rule_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data);
 int gui_check_table_exist(int family, char *name);
@@ -198,10 +242,14 @@ void create_new_rule(GtkButton *button, gpointer  data);
 void transport_all(void);
 void transport_tcp(void);
 void transport_udp(void);
-void transport_callback(GtkComboBox *widget, gpointer data);
+void transport_callback(GtkComboBoxText *widget, gpointer data);
 void back_to_rule_list(GtkButton *button, gpointer  info);
 void begin_create_new_rule(GtkButton *button, gpointer  info);
 void chain_list_type_changed(GtkComboBoxText *widget, gpointer data);
 void chain_create_type_changed(GtkComboBoxText *widget, gpointer data);
+
+void update_header_transport_widgets(struct transport_info *transport);
+void transport_callback_do(struct rule_create_widget  *widget);
+void update_pktmeta_position(struct match_pktmeta *pktmeta);
 
 #endif

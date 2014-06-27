@@ -467,34 +467,36 @@ void back_to_table_list(GtkButton *button, gpointer args)
 	gnftables_table_init(GTK_WIDGET(notebook));
 }
 
-struct hhh {
-	GtkWidget	*fixed;
-	GtkWidget	*expander;
-};
-
 
 static void expander_callback (GObject    *object,
                    GParamSpec *param_spec,
                    gpointer    user_data)
 {
-	GtkExpander *expander;
-	struct hhh  *hh;
+	GtkExpander		*expander;
+	struct rule_create_widget	*widget;
 
-	expander = GTK_EXPANDER (object);
-	hh = (struct hhh  *)user_data;
+	expander = GTK_EXPANDER(object);
+	widget = (struct rule_create_widget *)user_data;
 
+	if (gtk_expander_get_expanded (expander)) {
+		gtk_fixed_move(GTK_FIXED(widget->fixed), widget->meta->expander, 0, 170);
+	} else {
+		gtk_fixed_move(GTK_FIXED(widget->fixed), widget->meta->expander, 0, 40);
+	}
+/*
 	if (gtk_expander_get_expanded (expander)) {
 		gtk_fixed_move(GTK_FIXED(hh->fixed), hh->expander, 0, 170);
 	} else {
 		gtk_fixed_move(GTK_FIXED(hh->fixed), hh->expander, 0, 40);
 	}
+*/
 }
 
 
-struct transport_callback_args *transport_args;
 
 void transport_all()
 {
+/*
 	GtkWidget	*fixed_back;
 
 	fixed_back = transport_args->header;
@@ -503,12 +505,13 @@ void transport_all()
 	gtk_fixed_put(GTK_FIXED(fixed_back), transport_args->fixed, 0, 140);
 	gtk_widget_show_all(transport_args->fixed);
 	gtk_fixed_move(GTK_FIXED(transport_args->background), transport_args->meta, 0, 170);
-
+*/
 }
 
 
 void transport_tcp()
 {
+/*
 	GtkWidget	*fixed_back;
 	GtkWidget	*sport;
 	GtkWidget	*dport;
@@ -533,12 +536,13 @@ void transport_tcp()
 
 	gtk_fixed_move(GTK_FIXED(transport_args->background), transport_args->meta, 0, 250);
 	gtk_widget_show_all(transport_args->fixed);
-
+*/
 }
 
 
 void transport_udp()
 {
+/*
 	GtkWidget	*fixed_back;
 	GtkWidget	*sport;
 	GtkWidget	*dport;
@@ -563,55 +567,75 @@ void transport_udp()
 
 	gtk_fixed_move(GTK_FIXED(transport_args->background), transport_args->meta, 0, 250);
 	gtk_widget_show_all(transport_args->fixed);
+*/
+}
+
+void update_header_transport_widgets(struct transport_info *transport)
+{
 
 }
 
-
-void transport_callback(GtkComboBox *widget, gpointer data)
+void update_pktmeta_position(struct match_pktmeta *pktmeta)
 {
-	GtkTreeModel	*model;
-	GtkTreeIter	iter;
-	gchar		*transport;
 
-	model = gtk_combo_box_get_model(GTK_COMBO_BOX(widget));
-	gtk_combo_box_get_active_iter(GTK_COMBO_BOX(widget), &iter);
-	gtk_tree_model_get(model, &iter, 0, &transport, -1);
-	if (!(strcmp(transport, "all")))
-		transport_all();
-	else if (!(strcmp(transport, "tcp")))
-		transport_tcp();
-	else if (!(strcmp(transport, "udp")))
-		transport_udp();
+}
+
+void transport_callback_do(struct rule_create_widget  *widget)
+{
+	update_header_transport_widgets(widget->header->transport.value);
+	update_pktmeta_position(widget->meta);
+	// update_trackmeta_position();
+}
+
+void transport_callback(GtkComboBoxText *widget, gpointer data)
+{
+	struct rule_create_widget  *args;
+	args = (struct rule_create_widget *)data;
+	
+	char	*type = gtk_combo_box_text_get_active_text(widget);
+	if (!(strcmp(type, "all")))
+		args->header->transport.value->type = TRANSPORT_ALL;
+	else if (!(strcmp(type, "tcp")))
+		args->header->transport.value->type = TRANSPORT_TCP;
+	else if (!(strcmp(type, "udp")))
+		args->header->transport.value->type = TRANSPORT_UDP;
 	// else
 	// 	bug();
-	free(transport);
 
-
-
+	transport_callback_do(args);
 }
 
 void create_new_rule(GtkButton *button, gpointer  data)
 {
-	GtkWidget	*label;
-	GtkWidget	*fixed;
-	GtkWidget	*fixed2;
-	GtkWidget	*fixed3;
-	GtkWidget	*fixed4;
+	GtkWidget	*title;
+	GtkWidget	*fixed_back;
+	GtkWidget	*fixed_content;
 	GtkWidget	*ok;
 	GtkWidget	*cancel;
 	GtkWidget	*notebook;
 	GtkWidget	*scrolledwindow;
-	GtkListStore	*store;
-	GtkCellRenderer	*renderer;
 
+	GtkWidget	*fixed_header;
+	GtkWidget	*expander_header;
 	GtkWidget	*saddr;
+	GtkWidget	*saddr_type;
 	GtkWidget	*saddr_value;
 	GtkWidget	*daddr;
+	GtkWidget	*daddr_type;
 	GtkWidget	*daddr_value;
 	GtkWidget	*transport;
 	GtkWidget	*transport_value;
-	GtkTreeIter	iter;
+	GtkWidget	*tcp_sport;
+	GtkWidget	*tcp_sport_value;
+	GtkWidget	*tcp_dport;
+	GtkWidget	*tcp_dport_value;
+	GtkWidget	*udp_sport;
+	GtkWidget	*udp_sport_value;
+	GtkWidget	*udp_dport;
+	GtkWidget	*udp_dport_value;
 
+	GtkWidget	*fixed_pktmeta;
+	GtkWidget	*expander_pktmeta;
 	GtkWidget	*iifname;
 	GtkWidget	*iifname_value;
 	GtkWidget	*oifname;
@@ -625,140 +649,181 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	GtkWidget	*skgid;
 	GtkWidget	*skgid_value;
 
-	GtkWidget	*expander;
-	GtkWidget	*expander2;
+	struct rule_list_args	*rule_arg;
+	struct rule_create_widget	*new_rule;
 
-	struct hhh	*hh = malloc(sizeof(struct hhh));
-	struct rule_create_widget	*new_rule = malloc(sizeof(struct rule_create_widget));
-	struct packet_header  *header = malloc(sizeof(struct packet_header));
-	struct packet_meta    *meta = malloc(sizeof(struct packet_meta));
-
-	struct rule_list_args	*rule_arg = (struct rule_list_args *)data;
+	rule_arg = (struct rule_list_args *)data;
+	new_rule = xmalloc(sizeof(struct rule_create_widget));
+	new_rule->header = xmalloc(sizeof(struct match_header));
+	new_rule->meta = xmalloc(sizeof(struct match_pktmeta));
+	new_rule->track = xmalloc(sizeof(struct match_trackmeta));
+	new_rule->header->saddr.value = xmalloc(sizeof(struct ip_address));
+	new_rule->header->daddr.value = xmalloc(sizeof(struct ip_address));
+	new_rule->header->transport.value = xmalloc(sizeof(struct transport_info));
 
 	notebook = rule_arg->notebook;
 	new_rule->notebook = notebook;
 	new_rule->family = rule_arg->family;
 	new_rule->table = rule_arg->table;
 	new_rule->chain = rule_arg->chain;
-	new_rule->header = header;
-	new_rule->meta = meta;
 
-	header->args = transport_args;
-
-
-	label = gtk_label_new("Create rule (Chain: input)");
-	gtk_widget_set_size_request(label, 200, 10);
-	fixed = gtk_fixed_new();
-	fixed2 = gtk_fixed_new();
-	fixed3 = gtk_fixed_new();
-	fixed4 = gtk_fixed_new();
-	transport_args = malloc(sizeof(struct transport_callback_args));
-	transport_args->fixed = gtk_fixed_new();
+	title = gtk_label_new("Create rule");
+	gtk_widget_set_size_request(title, 200, 10);
+	fixed_back = gtk_fixed_new();
+	fixed_header = gtk_fixed_new();
+	fixed_pktmeta = gtk_fixed_new();
+	fixed_content = gtk_fixed_new();
+	new_rule->fixed = fixed_content;
 	
-
-
-	expander = gtk_expander_new("Matching packet header fields");
-	gtk_fixed_put(GTK_FIXED(fixed4), expander, 0, 0);
-	gtk_container_add(GTK_CONTAINER(expander), fixed2);
-	g_signal_connect (expander, "notify::expanded", G_CALLBACK (expander_callback), hh);
-	hh->fixed = fixed4;
+	expander_header = gtk_expander_new("Matching packet header fields");
+	gtk_fixed_put(GTK_FIXED(fixed_content), expander_header, 0, 0);
+	gtk_container_add(GTK_CONTAINER(expander_header), fixed_header);
+	g_signal_connect(expander_header, "notify::expanded", G_CALLBACK(expander_callback), new_rule);
+	new_rule->header->expander = expander_header;
+	new_rule->header->fixed = fixed_header;
+	new_rule->header->expanded = 0;
 
 	saddr = gtk_label_new("source addres:");
-	gtk_fixed_put(GTK_FIXED(fixed2), saddr, 40, 20);
+	gtk_fixed_put(GTK_FIXED(fixed_header), saddr, 40, 20);
+	saddr_type = gtk_combo_box_text_new();
+	gtk_widget_set_size_request(saddr_type, 100, 10);
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(saddr_type),
+			"exact ip", "exact ip");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(saddr_type),
+			"subnet", "subnet");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(saddr_type),
+			"range", "range");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(saddr_type),
+			"sets", "sets");
+	gtk_combo_box_set_active(GTK_COMBO_BOX(saddr_type), 0);
+	gtk_fixed_put(GTK_FIXED(fixed_header), saddr_type, 150, 20);
 	saddr_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(saddr_value), 35);
-	gtk_fixed_put(GTK_FIXED(fixed2), saddr_value, 150, 20);
-	header->saddr = saddr_value;
+	gtk_fixed_put(GTK_FIXED(fixed_header), saddr_value, 280, 20);
+	new_rule->header->saddr.type = saddr_type;
+	new_rule->header->saddr.value->type = ADDRESS_EXACT;
+	new_rule->header->saddr.value->exact_ip.ip = saddr_value;
+
 	daddr = gtk_label_new("dest addres:");
-	gtk_fixed_put(GTK_FIXED(fixed2), daddr, 40, 60);
+	gtk_fixed_put(GTK_FIXED(fixed_header), daddr, 40, 60);
+	daddr_type = gtk_combo_box_text_new();
+	gtk_widget_set_size_request(daddr_type, 100, 10);
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(daddr_type),
+			"exact ip", "exact ip");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(daddr_type),
+			"subnet", "subnet");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(daddr_type),
+			"range", "range");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(daddr_type),
+			"sets", "sets");
+	gtk_combo_box_set_active(GTK_COMBO_BOX(daddr_type), 0);
+	gtk_fixed_put(GTK_FIXED(fixed_header), daddr_type, 150, 60);
 	daddr_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(daddr_value), 35);
-	gtk_fixed_put(GTK_FIXED(fixed2), daddr_value, 150, 60);
-	header->daddr = daddr_value;
+	gtk_fixed_put(GTK_FIXED(fixed_header), daddr_value, 280, 60);
+	new_rule->header->daddr.type = daddr_type;
+	new_rule->header->daddr.value->type = ADDRESS_EXACT;
+	new_rule->header->daddr.value->exact_ip.ip = daddr_value;
 
 	transport = gtk_label_new("transport:");
-	gtk_fixed_put(GTK_FIXED(fixed2), transport, 40, 100);
-	store = gtk_list_store_new(1, G_TYPE_STRING);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "all", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "tcp", -1);
-	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, 0, "udp", -1);
-	transport_value = gtk_combo_box_new_with_model(GTK_TREE_MODEL(store));
-	renderer = gtk_cell_renderer_text_new();
+	gtk_fixed_put(GTK_FIXED(fixed_header), transport, 40, 100);
+
+	transport_value = gtk_combo_box_text_new();
+	gtk_widget_set_size_request(transport_value, 100, 10);
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(transport_value),
+			"all", "all");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(transport_value),
+			"tcp", "tcp");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(transport_value),
+			"udp", "udp");
 	gtk_combo_box_set_active(GTK_COMBO_BOX(transport_value), 0);
-	gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(transport_value), renderer, TRUE);
-	gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(transport_value), renderer, "text", 0, NULL);
-	g_signal_connect(transport_value, "changed", G_CALLBACK(transport_callback), NULL);
-	gtk_fixed_put(GTK_FIXED(fixed2), transport_value, 150, 100);
-	header->protocol = transport_value;
+	g_signal_connect(transport_value, "changed", G_CALLBACK(transport_callback), new_rule);
+	gtk_fixed_put(GTK_FIXED(fixed_header), transport_value, 150, 100);
+	new_rule->header->transport.type = transport_value;
+	new_rule->header->transport.value->type = TRANSPORT_ALL;
 
-	gtk_fixed_put(GTK_FIXED(fixed2), transport_args->fixed, 0, 140);
-	transport_args->header = fixed2;
-	transport_args->background = fixed4;
+	tcp_sport = gtk_label_new("source port:");
+	tcp_sport_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(tcp_sport_value), 35);
+	tcp_dport = gtk_label_new("dest port:");
+	tcp_dport_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(tcp_dport_value), 35);
+	new_rule->header->transport.value->tcp.sport = tcp_sport;
+	new_rule->header->transport.value->tcp.sport_value = tcp_sport_value;
+	new_rule->header->transport.value->tcp.dport = tcp_dport;
+	new_rule->header->transport.value->tcp.dport_value = tcp_dport_value;
+
+	udp_sport = gtk_label_new("source port:");
+	udp_sport_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(udp_sport_value), 35);
+	udp_dport = gtk_label_new("dest port:");
+	udp_dport_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(udp_dport_value), 35);
+	new_rule->header->transport.value->udp.sport = udp_sport;
+	new_rule->header->transport.value->udp.sport_value = udp_sport_value;
+	new_rule->header->transport.value->udp.dport = udp_dport;
+	new_rule->header->transport.value->udp.dport_value = udp_dport_value;
 
 
-	expander2 = gtk_expander_new("Matching packet metainformation");
-	gtk_fixed_put(GTK_FIXED(fixed4), expander2, 0, 40);
-	gtk_container_add(GTK_CONTAINER(expander2), fixed3);
-	hh->expander = expander2;
+	expander_pktmeta = gtk_expander_new("Matching packet metainformation");
+	gtk_fixed_put(GTK_FIXED(fixed_content), expander_pktmeta, 0, 40);
+	gtk_container_add(GTK_CONTAINER(expander_pktmeta), fixed_pktmeta);
+	new_rule->meta->expander = expander_pktmeta;
+	new_rule->meta->expanded = 0;
 
 	iifname = gtk_label_new("input interface:");
-	gtk_fixed_put(GTK_FIXED(fixed3), iifname, 40, 20);
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), iifname, 40, 20);
 	iifname_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(iifname_value), 35);
-	gtk_fixed_put(GTK_FIXED(fixed3), iifname_value, 150, 20);
-	meta->iifname = iifname_value;
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), iifname_value, 150, 20);
+	new_rule->meta->iifname = iifname_value;
 
 	oifname = gtk_label_new("output interface:");
-	gtk_fixed_put(GTK_FIXED(fixed3), oifname, 40, 60);
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), oifname, 40, 60);
 	oifname_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(oifname_value), 35);
-	gtk_fixed_put(GTK_FIXED(fixed3), oifname_value, 150, 60);
-	meta->oifname = oifname_value;
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), oifname_value, 150, 60);
+	new_rule->meta->oifname = oifname_value;
 
 	iiftype = gtk_label_new("input type:");
-	gtk_fixed_put(GTK_FIXED(fixed3), iiftype, 40, 100);
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), iiftype, 40, 100);
 	iiftype_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(iiftype_value), 35);
-	gtk_fixed_put(GTK_FIXED(fixed3), iiftype_value, 150, 100);
-	meta->iiftype = iiftype_value;
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), iiftype_value, 150, 100);
+	new_rule->meta->iiftype = iiftype_value;
 
 	oiftype = gtk_label_new("output type:");
-	gtk_fixed_put(GTK_FIXED(fixed3), oiftype, 40, 140);
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), oiftype, 40, 140);
 	oiftype_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(oiftype_value), 35);
-	gtk_fixed_put(GTK_FIXED(fixed3), oiftype_value, 150, 140);
-	meta->oiftype = oiftype_value;
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), oiftype_value, 150, 140);
+	new_rule->meta->oiftype = oiftype_value;
 
 	skuid = gtk_label_new("user:");
-	gtk_fixed_put(GTK_FIXED(fixed3), skuid, 40, 180);
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), skuid, 40, 180);
 	skuid_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(skuid_value), 35);
-	gtk_fixed_put(GTK_FIXED(fixed3), skuid_value, 150, 180);
-	meta->skuid = skuid_value;
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), skuid_value, 150, 180);
+	new_rule->meta->skuid = skuid_value;
 
 	skgid = gtk_label_new("group:");
-	gtk_fixed_put(GTK_FIXED(fixed3), skgid, 40, 220);
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), skgid, 40, 220);
 	skgid_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(skgid_value), 35);
-	gtk_fixed_put(GTK_FIXED(fixed3), skgid_value, 150, 220);
-	meta->skgid = skgid_value;
-
-	transport_args->meta = expander2;
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), skgid_value, 150, 220);
+	new_rule->meta->skgid = skgid_value;
 
     	cancel = gtk_button_new_with_label("Cancel");
 	gtk_widget_set_size_request(cancel, 100, 10);
 	g_signal_connect(G_OBJECT(cancel), "clicked", G_CALLBACK(back_to_rule_list), new_rule);
-	gtk_fixed_put(GTK_FIXED(fixed4), cancel, 540, 330);
+	gtk_fixed_put(GTK_FIXED(fixed_content), cancel, 540, 330);
+	new_rule->cancel = cancel;
 
     	ok = gtk_button_new_with_label("OK");
 	gtk_widget_set_size_request(ok, 100, 10);
-	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_rule), new_rule);
-	gtk_fixed_put(GTK_FIXED(fixed4), ok, 660, 330);
-
-
+//	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_rule), new_rule);
+	gtk_fixed_put(GTK_FIXED(fixed_content), ok, 660, 330);
+	new_rule->ok = ok;
 
         scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
 	gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(scrolledwindow), 856);
@@ -766,17 +831,14 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolledwindow), GTK_SHADOW_ETCHED_IN);
         gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledwindow),
                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-	gtk_container_add(GTK_CONTAINER(scrolledwindow), fixed4);
+	gtk_container_add(GTK_CONTAINER(scrolledwindow), fixed_content);
 
-	gtk_fixed_put(GTK_FIXED(fixed), scrolledwindow, 10, 40);
-//	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 2);
-	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), fixed, label, 2);
+	gtk_fixed_put(GTK_FIXED(fixed_back), scrolledwindow, 10, 40);
+	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 2);
+	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), fixed_back, title, 2);
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
-
-
-
 }
 
 
@@ -1039,6 +1101,7 @@ void gnftables_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkW
 	store = gtk_tree_store_new(RULE_TOTAL, G_TYPE_INT, G_TYPE_INT,
 			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
 			G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
+	rule_arg->store = store;
 
 	title = gtk_label_new("Rules");
 	gtk_widget_set_size_request(title, 200, 10);
@@ -1050,7 +1113,7 @@ void gnftables_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkW
 			G_CALLBACK(create_new_rule), rule_arg);
 	gtk_layout_put(GTK_LAYOUT(layout), create_rule, 700, 10);
 
-	rule_update_data(family, table_name, chain_name, GTK_TREE_STORE(store));
+	rule_update_data(rule_arg);
 
 	// treeview style
 	list_rules = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
@@ -1215,7 +1278,7 @@ void rule_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer
 		gtk_tree_model_get(model, &iter, RULE_HANDLE, &handle, -1);
 
 		gui_delete_rule(family, table, chain, handle);
-		rule_update_data(family, table, chain, GTK_TREE_STORE(model));
+		rule_update_data(rule_args);
 	}
 
 	gtk_widget_destroy(dialog);
@@ -1261,25 +1324,34 @@ void chain_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 }
 
 
-void rule_update_data(gint family, gchar *table_name, gchar *chain_name, GtkTreeStore *store)
+/*
+ * Get rules from kernel and display in rule list page.
+ */
+void rule_update_data(struct rule_list_args *args)
 {
 	uint32_t	index = 0;
 	GtkTreeIter	iter;
 
-	struct gui_rule   *rule;
+	struct gui_rule   *rule, *r;
 	LIST_HEAD(rule_list);
 
-	gui_get_rules_list(&rule_list, family, table_name, chain_name);
-
-	gtk_tree_store_clear (store);
-
-
+	gui_get_rules_list(&rule_list, args->family, args->table, args->chain);
+	gtk_tree_store_clear(GTK_TREE_STORE(args->store));
 
 	// display rules in treeview 
-	list_for_each_entry(rule, &rule_list, list) {
+	list_for_each_entry_safe(rule, r, &rule_list, list) {
+		list_del(&rule->list);
 		index++;
-		gtk_tree_store_append(GTK_TREE_STORE(store), &iter, NULL);
-		gtk_tree_store_set(GTK_TREE_STORE(store), &iter, RULE_ID, index, RULE_HANDLE, rule->handle, RULE_TABLE, rule->table, RULE_CHAIN, rule->chain, RULE_CONTENT, rule->stmt, RULE_DETAIL, TRUE, RULE_DELETE, TRUE, -1);
+		gtk_tree_store_append(GTK_TREE_STORE(args->store), &iter, NULL);
+		gtk_tree_store_set(GTK_TREE_STORE(args->store), &iter,
+			RULE_ID, index,
+			RULE_HANDLE, rule->handle,
+			RULE_TABLE, rule->table,
+			RULE_CHAIN, rule->chain,
+			RULE_CONTENT, rule->stmt,
+			RULE_DETAIL, TRUE,
+			RULE_DELETE, TRUE,
+			-1);
 		gui_rule_free(rule);	
 	}
 }

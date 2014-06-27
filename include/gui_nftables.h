@@ -186,7 +186,7 @@ void back_to_chain_list(GtkButton *button, gpointer  info);
 void begin_create_new_chain(GtkButton *button, gpointer  info);
 
 
-void gnftables_set_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkWidget *notebook);
+void gnftables_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkWidget *notebook);
 void rule_update_data(gint family, gchar *table_name, gchar *chain_name, GtkTreeStore *store);
 
 void rule_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data);

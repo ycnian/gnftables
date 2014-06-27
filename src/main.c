@@ -340,7 +340,7 @@ void begin_create_new_rule(GtkButton *button, gpointer  info)
 	gui_add_rule(rule);
 
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 2);
-	gnftables_set_rule_init(rule->family, rule->table, rule->chain, notebook);
+	gnftables_rule_init(rule->family, rule->table, rule->chain, notebook);
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
@@ -440,7 +440,7 @@ void back_to_rule_list(GtkButton *button, gpointer  info)
 	GtkWidget	*notebook = rule->notebook;
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 2);
 
-	gnftables_set_rule_init(rule->family, rule->table, rule->chain, notebook);
+	gnftables_rule_init(rule->family, rule->table, rule->chain, notebook);
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
@@ -1017,18 +1017,17 @@ void create_new_table(GtkButton *button, gpointer  notebook)
 
 
 
-void gnftables_set_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkWidget *notebook)
+void gnftables_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkWidget *notebook)
 {
-
-	GtkWidget	*label;
+	GtkWidget	*title;
 	GtkWidget	*layout;
 	GtkWidget	*create_rule;
 	GtkWidget	*list_rules;
 	GtkWidget	*scrolledwindow;
-	GtkListStore	*store;
+	GtkTreeStore	*store;
 	GtkCellRenderer	*renderer;
-	GtkCellRenderer	*renderer1;
-	GtkCellRenderer	*renderer2;
+	GtkCellRenderer	*renderer_details;
+	GtkCellRenderer	*renderer_delete;
 	GtkTreeViewColumn	*column;
 
 	struct rule_list_args  *rule_arg = g_malloc(sizeof(*rule_arg));
@@ -1037,79 +1036,93 @@ void gnftables_set_rule_init(gint family, gchar *table_name, gchar *chain_name, 
 	rule_arg->table = table_name;
 	rule_arg->chain = chain_name;
 
-	store = gtk_tree_store_new(RULE_TOTAL, G_TYPE_INT, G_TYPE_INT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
+	store = gtk_tree_store_new(RULE_TOTAL, G_TYPE_INT, G_TYPE_INT,
+			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
+			G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
 
-	label = gtk_label_new("Rules (Chain: input)");
-	gtk_widget_set_size_request(label, 200, 10);
+	title = gtk_label_new("Rules");
+	gtk_widget_set_size_request(title, 200, 10);
 	layout = gtk_layout_new(NULL, NULL);
-
 
     	create_rule = gtk_button_new_with_label("Create Rule");
 	gtk_widget_set_size_request(create_rule, 150, 10);
-	g_signal_connect(G_OBJECT(create_rule), "clicked", G_CALLBACK(create_new_rule), rule_arg);
+	g_signal_connect(G_OBJECT(create_rule), "clicked",
+			G_CALLBACK(create_new_rule), rule_arg);
 	gtk_layout_put(GTK_LAYOUT(layout), create_rule, 700, 10);
-
 
 	rule_update_data(family, table_name, chain_name, GTK_TREE_STORE(store));
 
 	// treeview style
 	list_rules = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
-//	g_signal_connect(list_rules, "button-press-event", G_CALLBACK(show_treeview_menu), NULL); 
+//	g_signal_connect(list_rules, "button-press-event",
+//			G_CALLBACK(show_treeview_menu), NULL); 
 	renderer = gtk_cell_renderer_text_new();
 	rule_arg->list_rules = list_rules;
 
-	column = gtk_tree_view_column_new_with_attributes("Id", renderer, "text", RULE_ID, NULL);
+	column = gtk_tree_view_column_new_with_attributes("Id", renderer,
+			"text", RULE_ID, NULL);
 	gtk_tree_view_column_set_clickable(column, TRUE);
-	gtk_tree_view_column_set_min_width(column, 50);
+	gtk_tree_view_column_set_min_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_rules), column);
-	column = gtk_tree_view_column_new_with_attributes("Handle", renderer, "text", RULE_HANDLE, NULL);
+	column = gtk_tree_view_column_new_with_attributes("Handle", renderer,
+			"text", RULE_HANDLE, NULL);
 	gtk_tree_view_column_set_visible(column, FALSE);
 	gtk_tree_view_column_set_min_width(column, 50);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_rules), column);
-	column = gtk_tree_view_column_new_with_attributes("Table", renderer, "text", RULE_TABLE, NULL);
+	column = gtk_tree_view_column_new_with_attributes("Table", renderer,
+			"text", RULE_TABLE, NULL);
+	gtk_tree_view_column_set_visible(column, FALSE);
 	gtk_tree_view_column_set_min_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_rules), column);
-	column = gtk_tree_view_column_new_with_attributes("Chain", renderer, "text", RULE_CHAIN, NULL);
+	column = gtk_tree_view_column_new_with_attributes("Chain", renderer,
+			"text", RULE_CHAIN, NULL);
+	gtk_tree_view_column_set_visible(column, FALSE);
 	gtk_tree_view_column_set_min_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_rules), column);
-	column = gtk_tree_view_column_new_with_attributes("Contents", renderer, "text", RULE_CONTENT, NULL);
-	gtk_tree_view_column_set_min_width(column, 200);
+	column = gtk_tree_view_column_new_with_attributes("Contents", renderer,
+			"text", RULE_CONTENT, NULL);
+	gtk_tree_view_column_set_min_width(column, 550);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_rules), column);
 
 
-	renderer1 = gtk_cell_renderer_toggle_new();
-//	g_signal_connect(renderer1, "toggled", G_CALLBACK(rule_callback_detail), rule_arg) ;
-	column = gtk_tree_view_column_new_with_attributes("Detail", renderer1, "active", RULE_DETAIL, NULL);
-	gtk_tree_view_column_set_min_width(column, 60);
-	gtk_tree_view_column_set_max_width(column, 60);
+	renderer_details = gtk_cell_renderer_toggle_new();
+//	g_signal_connect(renderer_details, "toggled",
+//			G_CALLBACK(rule_callback_detail), rule_arg) ;
+	column = gtk_tree_view_column_new_with_attributes("Details",
+			renderer_details, "active", RULE_DETAIL, NULL);
+	gtk_tree_view_column_set_min_width(column, 100);
+	gtk_tree_view_column_set_max_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_rules), column);
 
-	renderer2 = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer2, "toggled", G_CALLBACK(rule_callback_delete), rule_arg) ;
-	column = gtk_tree_view_column_new_with_attributes("Delete", renderer2, "active", RULE_DELETE, NULL);
-	gtk_tree_view_column_set_min_width(column, 60);
-	gtk_tree_view_column_set_max_width(column, 60);
+	renderer_delete = gtk_cell_renderer_toggle_new();
+	g_signal_connect(renderer_delete, "toggled",
+			G_CALLBACK(rule_callback_delete), rule_arg) ;
+	column = gtk_tree_view_column_new_with_attributes("Delete",
+			renderer_delete, "active", RULE_DELETE, NULL);
+	gtk_tree_view_column_set_min_width(column, 100);
+	gtk_tree_view_column_set_max_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_rules), column);
-
-
 
         scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
-	gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(scrolledwindow), 876);
-	gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(scrolledwindow), 410);
-	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolledwindow), GTK_SHADOW_ETCHED_IN);
-        gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledwindow),
-                                GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+	gtk_scrolled_window_set_min_content_width(
+			GTK_SCROLLED_WINDOW(scrolledwindow), 876);
+	gtk_scrolled_window_set_min_content_height(
+			GTK_SCROLLED_WINDOW(scrolledwindow), 410);
+	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolledwindow),
+			GTK_SHADOW_ETCHED_IN);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledwindow),
+			GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_container_add(GTK_CONTAINER(scrolledwindow), list_rules);
 
 	gtk_layout_put(GTK_LAYOUT(layout), scrolledwindow, 0, 50);
-	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, label, 2);
+	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, title, 2);
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
 }
@@ -1142,7 +1155,7 @@ void chain_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 	// 	chain_update_data(family, table, GTK_TREE_STORE(model));
 	// else
 	// 	show rule list page
-		gnftables_set_rule_init(family, table, chain, notebook);
+		gnftables_rule_init(family, table, chain, notebook);
 
 	return;
 

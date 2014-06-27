@@ -570,9 +570,73 @@ void transport_udp()
 */
 }
 
-void update_header_transport_widgets(struct transport_info *transport)
+void header_transport_show_all(GtkWidget *fixed, struct transport_info *transport)
 {
+	gtk_widget_hide(transport->tcp.sport);
+	gtk_widget_hide(transport->tcp.sport_value);
+	gtk_widget_hide(transport->tcp.dport);
+	gtk_widget_hide(transport->tcp.dport_value);
+	gtk_widget_hide(transport->udp.sport);
+	gtk_widget_hide(transport->udp.sport_value);
+	gtk_widget_hide(transport->udp.dport);
+	gtk_widget_hide(transport->udp.dport_value);
+}
 
+void header_transport_show_tcp(GtkWidget *fixed, struct transport_info *transport)
+{
+	gtk_widget_hide(transport->udp.sport);
+	gtk_widget_hide(transport->udp.sport_value);
+	gtk_widget_hide(transport->udp.dport);
+	gtk_widget_hide(transport->udp.dport_value);
+
+	gtk_fixed_move(GTK_FIXED(fixed), transport->tcp.sport, 40, 140);
+	gtk_fixed_move(GTK_FIXED(fixed), transport->tcp.sport_value, 150, 140);
+	gtk_entry_set_text(GTK_ENTRY(transport->tcp.sport_value), "");
+	gtk_fixed_move(GTK_FIXED(fixed), transport->tcp.dport, 40, 180);
+	gtk_fixed_move(GTK_FIXED(fixed), transport->tcp.dport_value, 150, 180);
+	gtk_entry_set_text(GTK_ENTRY(transport->tcp.dport_value), "");
+	gtk_widget_show(transport->tcp.sport);
+	gtk_widget_show(transport->tcp.sport_value);
+	gtk_widget_show(transport->tcp.dport);
+	gtk_widget_show(transport->tcp.dport_value);
+}
+
+void header_transport_show_udp(GtkWidget *fixed, struct transport_info *transport)
+{
+	gtk_widget_hide(transport->tcp.sport);
+	gtk_widget_hide(transport->tcp.sport_value);
+	gtk_widget_hide(transport->tcp.dport);
+	gtk_widget_hide(transport->tcp.dport_value);
+
+	gtk_fixed_move(GTK_FIXED(fixed), transport->udp.sport, 40, 140);
+	gtk_fixed_move(GTK_FIXED(fixed), transport->udp.sport_value, 150, 140);
+	gtk_entry_set_text(GTK_ENTRY(transport->udp.sport_value), "");
+	gtk_fixed_move(GTK_FIXED(fixed), transport->udp.dport, 40, 180);
+	gtk_fixed_move(GTK_FIXED(fixed), transport->udp.dport_value, 150, 180);
+	gtk_entry_set_text(GTK_ENTRY(transport->udp.dport_value), "");
+	gtk_widget_show(transport->udp.sport);
+	gtk_widget_show(transport->udp.sport_value);
+	gtk_widget_show(transport->udp.dport);
+	gtk_widget_show(transport->udp.dport_value);
+}
+
+
+void update_header_transport_widgets(GtkWidget *fixed, struct transport_info *transport)
+{
+	enum transport_type type = transport->type;
+	switch (type) {
+	case TRANSPORT_ALL:
+		header_transport_show_all(fixed, transport);
+		break;
+	case TRANSPORT_TCP:
+		header_transport_show_tcp(fixed, transport);
+		break;
+	case TRANSPORT_UDP:
+		header_transport_show_udp(fixed, transport);
+		break;
+	default:
+		break;
+	}
 }
 
 void update_pktmeta_position(struct match_pktmeta *pktmeta)
@@ -582,7 +646,9 @@ void update_pktmeta_position(struct match_pktmeta *pktmeta)
 
 void transport_callback_do(struct rule_create_widget  *widget)
 {
-	update_header_transport_widgets(widget->header->transport.value);
+	GtkWidget	*fixed_header = widget->header->fixed;
+	struct transport_info *transport = widget->header->transport.value;
+	update_header_transport_widgets(fixed_header, transport);
 	update_pktmeta_position(widget->meta);
 	// update_trackmeta_position();
 }
@@ -743,22 +809,31 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	new_rule->header->transport.value->type = TRANSPORT_ALL;
 
 	tcp_sport = gtk_label_new("source port:");
+	gtk_fixed_put(GTK_FIXED(fixed_header), tcp_sport, 0, 0);
 	tcp_sport_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(tcp_sport_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed_header), tcp_sport_value, 0, 0);
 	tcp_dport = gtk_label_new("dest port:");
+	gtk_fixed_put(GTK_FIXED(fixed_header), tcp_dport, 0, 0);
 	tcp_dport_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(tcp_dport_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed_header), tcp_dport_value, 0, 0);
+
 	new_rule->header->transport.value->tcp.sport = tcp_sport;
 	new_rule->header->transport.value->tcp.sport_value = tcp_sport_value;
 	new_rule->header->transport.value->tcp.dport = tcp_dport;
 	new_rule->header->transport.value->tcp.dport_value = tcp_dport_value;
 
 	udp_sport = gtk_label_new("source port:");
+	gtk_fixed_put(GTK_FIXED(fixed_header), udp_sport, 0, 0);
 	udp_sport_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(udp_sport_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed_header), udp_sport_value, 0, 0);
 	udp_dport = gtk_label_new("dest port:");
+	gtk_fixed_put(GTK_FIXED(fixed_header), udp_dport, 0, 0);
 	udp_dport_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(udp_dport_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed_header), udp_dport_value, 0, 0);
 	new_rule->header->transport.value->udp.sport = udp_sport;
 	new_rule->header->transport.value->udp.sport_value = udp_sport_value;
 	new_rule->header->transport.value->udp.dport = udp_dport;
@@ -839,6 +914,15 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
+
+	gtk_widget_hide(tcp_sport);
+	gtk_widget_hide(tcp_sport_value);
+	gtk_widget_hide(tcp_dport);
+	gtk_widget_hide(tcp_dport_value);
+	gtk_widget_hide(udp_sport);
+	gtk_widget_hide(udp_sport_value);
+	gtk_widget_hide(udp_dport);
+	gtk_widget_hide(udp_dport_value);
 }
 
 

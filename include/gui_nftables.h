@@ -248,8 +248,11 @@ void begin_create_new_rule(GtkButton *button, gpointer  info);
 void chain_list_type_changed(GtkComboBoxText *widget, gpointer data);
 void chain_create_type_changed(GtkComboBoxText *widget, gpointer data);
 
-void update_header_transport_widgets(struct transport_info *transport);
 void transport_callback_do(struct rule_create_widget  *widget);
 void update_pktmeta_position(struct match_pktmeta *pktmeta);
+void update_header_transport_widgets(GtkWidget *fixed, struct transport_info *transport);
+void header_transport_show_all(GtkWidget *fixed, struct transport_info *transport);
+void header_transport_show_tcp(GtkWidget *fixed, struct transport_info *transport);
+void header_transport_show_udp(GtkWidget *fixed, struct transport_info *transport);
 
 #endif

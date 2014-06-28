@@ -111,12 +111,17 @@ struct transport_info {
 	enum transport_type	type;
 	struct {
 		struct {
+			int		len;
+		}all;
+		struct {
+			int		len;
 			GtkWidget	*sport;
 			GtkWidget	*sport_value;
 			GtkWidget	*dport;
 			GtkWidget	*dport_value;
 		}tcp;
 		struct {
+			int		len;
 			GtkWidget	*sport;
 			GtkWidget	*sport_value;
 			GtkWidget	*dport;
@@ -147,6 +152,8 @@ struct ip_address {
 };
 
 struct  match_header {
+	int		offset;
+	int		len;
 	GtkWidget	*expander;
 	GtkWidget	*fixed;
 	int		expanded;
@@ -165,6 +172,8 @@ struct  match_header {
 };
 
 struct match_pktmeta {
+	int		offset;
+	int		len;
 	GtkWidget	*expander;
 	int		expanded;
 	GtkWidget	*iifname;
@@ -239,9 +248,6 @@ int gui_check_table_exist(int family, char *name);
 
 void create_new_rule(GtkButton *button, gpointer  data);
 
-void transport_all(void);
-void transport_tcp(void);
-void transport_udp(void);
 void transport_callback(GtkComboBoxText *widget, gpointer data);
 void back_to_rule_list(GtkButton *button, gpointer  info);
 void begin_create_new_rule(GtkButton *button, gpointer  info);
@@ -249,7 +255,8 @@ void chain_list_type_changed(GtkComboBoxText *widget, gpointer data);
 void chain_create_type_changed(GtkComboBoxText *widget, gpointer data);
 
 void transport_callback_do(struct rule_create_widget  *widget);
-void update_pktmeta_position(struct match_pktmeta *pktmeta);
+void update_pktmeta_position(struct rule_create_widget  *widget);
+void update_cancel_ok_position(struct rule_create_widget  *widget);
 void update_header_transport_widgets(GtkWidget *fixed, struct transport_info *transport);
 void header_transport_show_all(GtkWidget *fixed, struct transport_info *transport);
 void header_transport_show_tcp(GtkWidget *fixed, struct transport_info *transport);

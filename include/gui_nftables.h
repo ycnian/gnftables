@@ -138,10 +138,12 @@ struct ip_address {
 		}exact_ip;
 		struct {
 			GtkWidget	*ip;
+			GtkWidget	*slash;
 			GtkWidget	*mask;
 		}subnet;
 		struct {
 			GtkWidget	*from;
+			GtkWidget	*dash;
 			GtkWidget	*to;
 		}range;
 		struct {
@@ -261,5 +263,13 @@ void update_header_transport_widgets(GtkWidget *fixed, struct transport_info *tr
 void header_transport_show_all(GtkWidget *fixed, struct transport_info *transport);
 void header_transport_show_tcp(GtkWidget *fixed, struct transport_info *transport);
 void header_transport_show_udp(GtkWidget *fixed, struct transport_info *transport);
+void header_addr_exactip_show(struct ip_address *addr);
+void header_addr_exactip_hide(struct ip_address *addr);
+void header_addr_subnet_show(struct ip_address *addr);
+void header_addr_subnet_hide(struct ip_address *addr);
+void header_addr_range_show(struct ip_address *addr);
+void header_addr_range_hide(struct ip_address *addr);
+void header_saddr_callback(GtkComboBoxText *widget, gpointer data);
+void header_daddr_callback(GtkComboBoxText *widget, gpointer data);
 
 #endif

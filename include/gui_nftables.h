@@ -132,6 +132,7 @@ struct transport_info {
 
 struct ip_address {
 	enum address_type	type;
+	int			exclude;
 	struct {
 		struct {
 			GtkWidget	*ip;
@@ -271,5 +272,8 @@ void header_addr_range_show(struct ip_address *addr);
 void header_addr_range_hide(struct ip_address *addr);
 void header_saddr_callback(GtkComboBoxText *widget, gpointer data);
 void header_daddr_callback(GtkComboBoxText *widget, gpointer data);
+void header_saddr_exclude(GtkWidget *check_button, gpointer data);
+void header_daddr_exclude(GtkWidget *check_button, gpointer data);
+
 
 #endif

@@ -717,6 +717,32 @@ void header_daddr_callback(GtkComboBoxText *widget, gpointer data)
 	// 	bug();
 }
 
+void header_saddr_exclude(GtkWidget *check_button, gpointer data) 
+{
+	struct ip_address	*saddr;
+	struct rule_create_widget  *args;
+	args = (struct rule_create_widget *)data;
+	saddr = args->header->saddr.value;
+
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(check_button)))
+		saddr->exclude = 1;
+	else
+		saddr->exclude = 0;
+}
+
+void header_daddr_exclude(GtkWidget *check_button, gpointer data) 
+{
+	struct ip_address	*daddr;
+	struct rule_create_widget  *args;
+	args = (struct rule_create_widget *)data;
+	daddr = args->header->daddr.value;
+
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(check_button)))
+		daddr->exclude = 1;
+	else
+		daddr->exclude = 0;
+}
+
 void transport_callback(GtkComboBoxText *widget, gpointer data)
 {
 	struct rule_create_widget  *args;
@@ -749,6 +775,7 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	GtkWidget	*expander_header;
 	GtkWidget	*saddr;
 	GtkWidget	*saddr_type;
+	GtkWidget	*saddr_not;
 	GtkWidget	*saddr_exact_ip;
 	GtkWidget	*saddr_subnet_ip;
 	GtkWidget	*saddr_subnet_slash;
@@ -758,6 +785,7 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	GtkWidget	*saddr_range_to;
 	GtkWidget	*daddr;
 	GtkWidget	*daddr_type;
+	GtkWidget	*daddr_not;
 	GtkWidget	*daddr_exact_ip;
 	GtkWidget	*daddr_subnet_ip;
 	GtkWidget	*daddr_subnet_slash;
@@ -845,6 +873,11 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	new_rule->header->saddr.type = saddr_type;
 	new_rule->header->saddr.value->type = ADDRESS_EXACT;
 
+	saddr_not = gtk_check_button_new_with_label("Exclude");
+	g_signal_connect(saddr_not, "toggled", G_CALLBACK(header_saddr_exclude), new_rule);
+	gtk_fixed_put(GTK_FIXED(fixed_header), saddr_not, 700, 20);
+	new_rule->header->saddr.value->exclude = 0;
+
 	saddr_exact_ip = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(saddr_exact_ip), 47);
 	gtk_fixed_put(GTK_FIXED(fixed_header), saddr_exact_ip, 280, 20);
@@ -892,6 +925,11 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	gtk_fixed_put(GTK_FIXED(fixed_header), daddr_type, 150, 60);
 	new_rule->header->daddr.type = daddr_type;
 	new_rule->header->daddr.value->type = ADDRESS_EXACT;
+
+	daddr_not = gtk_check_button_new_with_label("Exclude");
+	g_signal_connect(daddr_not, "toggled", G_CALLBACK(header_daddr_exclude), new_rule);
+	gtk_fixed_put(GTK_FIXED(fixed_header), daddr_not, 700, 60);
+	new_rule->header->daddr.value->exclude = 0;
 
 	daddr_exact_ip = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(daddr_exact_ip), 47);

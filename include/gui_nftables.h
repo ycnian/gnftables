@@ -107,27 +107,62 @@ enum address_type {
 	ADDRESS_SET,
 };
 
-struct transport_info {
-	enum transport_type	type;
+enum port_type {
+	PORT_EXACT,
+	PORT_RANGE,
+	PORT_SET,
+};
+
+struct transport_port_details {
+	enum port_type		type;
+	int			exclude;
 	struct {
 		struct {
-			int		len;
-		}all;
+			GtkWidget	*port;
+		}portlist;
 		struct {
-			int		len;
-			GtkWidget	*sport;
-			GtkWidget	*sport_value;
-			GtkWidget	*dport;
-			GtkWidget	*dport_value;
-		}tcp;
+			GtkWidget	*from;
+			GtkWidget	*dash;
+			GtkWidget	*to;
+		}range;
 		struct {
-			int		len;
-			GtkWidget	*sport;
-			GtkWidget	*sport_value;
-			GtkWidget	*dport;
-			GtkWidget	*dport_value;
-		}udp;
+			GtkWidget	*set;
+			GtkWidget	*value;
+		}sets;
 	};
+};
+
+struct transport_port_info {
+	GtkWidget	*label;
+	GtkWidget	*type;
+	struct transport_port_details	*value;
+	GtkWidget	*exclude;
+};
+
+struct transport_tcp {
+	int		len;
+	GtkWidget	*fixed;
+	struct transport_port_info	*sport;
+	struct transport_port_info	*dport;
+};
+
+struct transport_udp {
+	int		len;
+	GtkWidget	*fixed;
+	struct transport_port_info	*sport;
+	struct transport_port_info	*dport;
+};
+
+struct transport_all {
+	int		len;
+	GtkWidget	*fixed;
+};
+
+struct transport_info {
+	enum transport_type	type;
+	struct	transport_all	*all;
+	struct	transport_tcp	*tcp;
+	struct	transport_udp	*udp;
 };
 
 struct ip_address {
@@ -274,6 +309,15 @@ void header_saddr_callback(GtkComboBoxText *widget, gpointer data);
 void header_daddr_callback(GtkComboBoxText *widget, gpointer data);
 void header_saddr_exclude(GtkWidget *check_button, gpointer data);
 void header_daddr_exclude(GtkWidget *check_button, gpointer data);
-
+void header_trans_port_init(const char *string, GtkWidget *fixed, int vertical,
+                struct transport_port_info *port,
+                void (* porttype_callback)(GtkComboBoxText *widget, gpointer data),
+                void (* port_exclude)(GtkWidget *check_button, gpointer data));
+void header_trans_all_init(void);
+void header_trans_tcp_init(GtkWidget *fixed, struct transport_port_info *sport, struct transport_port_info *dport);
+void header_trans_udp_init(GtkWidget *fixed, struct transport_port_info *sport, struct transport_port_info *dport);
+void transport_port_callback(GtkComboBoxText *widget, gpointer data);
+void transport_port_exclude(GtkWidget *check_button, gpointer data);
+void header_transport_porttype_changed(struct transport_port_info  *port_info);
 
 #endif

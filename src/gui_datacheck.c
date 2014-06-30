@@ -7,6 +7,7 @@
 #include <gui_error.h>
 #include <gui_datacheck.h>
 #include <gui_nftables.h>
+#include <gui_expression.h>
 
 
 /*
@@ -205,6 +206,57 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 }
 
 
+int get_header_addr_from_page(struct ip_address  *widget,
+		struct ip_addr_data *data)
+{
+
+	return RULE_SUCCESS;
+}
+
+
+
+int get_header_data_from_page(struct match_header  *widget,
+		struct header *data)
+{
+	int	res;
+
+	res = get_header_addr_from_page(widget->saddr.value, data->saddr);
+	if (res != RULE_SUCCESS)
+		return res;
+	res = get_header_addr_from_page(widget->saddr.value, data->daddr);
+	if (res != RULE_SUCCESS)
+		return res;
+	return RULE_SUCCESS;
+}
+
+
+int get_pktmeta_data_from_page(struct match_pktmeta  *widget,
+		struct pktmeta *data)
+{
+
+	return RULE_SUCCESS;
+}
+
+int get_data_from_page(struct rule_create_widget  *widget,
+		struct rule_create_data *data)
+{
+	int	res;
+
+	res = get_header_data_from_page(widget->header, data->header);
+	if (res != RULE_SUCCESS)
+		return res;
+	res = get_pktmeta_data_from_page(widget->meta, data->pktmeta);
+	if (res != RULE_SUCCESS)
+		return res;
+
+	return RULE_SUCCESS;
+}
+
+void rule_free_data(struct rule_create_data *data)
+{
+
+}
+
 /*
  * Get data from page, and check it
  * @widget:  widgets containing data in rule creating page
@@ -212,5 +264,18 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 int rule_create_getdata(struct rule_create_widget  *widget,
 		struct rule_create_data **data)
 {
+	int	res;
+	struct rule_create_data	*p;
+	p = xmalloc(sizeof(struct rule_create_data));
 
+	res = get_data_from_page(widget, p);
+	if (res != RULE_SUCCESS)
+		goto error;
+	res = rule_gen_expressions(p);
+	if (res != RULE_SUCCESS)
+		goto error;
+	return RULE_SUCCESS;
+error:
+	rule_free_data(p);
+	return res;
 }

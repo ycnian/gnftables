@@ -19,25 +19,68 @@ struct chain_create_data {
 };
 
 
+struct ip_addr_data {
+	int	ip_type;
+	union {
+		struct {
+			char	*iplist;
+		}iplist;
+		struct {
+			char	*ip;
+			char	*mask;
+		}subnet;
+		struct {
+			char	*from;
+			char	*to;
+		}range;
+	};
+};
+
+struct trans_port_data {
+	int	port_type;
+	union {
+		struct {
+			char	*portlist;
+		}portlist;
+		struct {
+			char	*from;
+			char	*to;
+		}range;
+	};
+};
+
+struct trans_all_data {
+
+};
+
+struct trans_tcp_data {
+	int			protocol;
+	struct trans_port_data	*sport;
+	struct trans_port_data	*dport;
+};
+
+struct trans_udp_data {
+	int			protocol;
+	struct trans_port_data	*sport;
+	struct trans_port_data	*dport;
+};
+
 struct transport_data {
-	struct {
-		int	sport;
-		int	dport;
-	}tcp;
-	struct {
-		int	sport;
-		int	dport;
-	}udp;
+	int	trans_type;
+	union {
+		struct trans_all_data	*all;
+		struct trans_tcp_data	*tcp;
+		struct trans_udp_data	*udp;
+	};
 };
 
 struct header {
-	char	saddr[4];
-	char	daddr[4];
-	int	transport;
+	struct ip_addr_data	*saddr;
+	struct ip_addr_data	*daddr;
 	struct transport_data	*transport_data;
 };
 
-struct meta {
+struct pktmeta {
 	char	*iifname;
 	char	*oifname;
 	int	iiftype;
@@ -51,7 +94,8 @@ struct rule_create_data {
 	char		*table;
 	char		*chain;
 	struct header	*header;
-	struct meta	*meta;
+	struct pktmeta	*pktmeta;
+	struct list_head exprs;
 };
 
 
@@ -69,4 +113,16 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 
 int rule_create_getdata(struct rule_create_widget  *widget,
                 struct rule_create_data **data);
+
+int get_header_addr_from_page(struct ip_address  *widget,
+                struct ip_addr_data *data);
+int get_header_data_from_page(struct match_header  *widget,
+                struct header *data);
+int get_pktmeta_data_from_page(struct match_pktmeta  *widget,
+                struct pktmeta *data);
+int get_data_from_page(struct rule_create_widget  *widget,
+                struct rule_create_data *data);
+int get_data_from_page(struct rule_create_widget  *widget,
+                struct rule_create_data *data);
+void rule_free_data(struct rule_create_data *data);
 #endif

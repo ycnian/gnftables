@@ -1,13 +1,11 @@
 #include <gui_expression.h>
 #include <gui_nftables.h>
 #include <gui_rule.h>
+#include <gui_error.h>
 
 
 
-
-int rule_gen_expressions(struct rule_create_widget  *gui_rule, struct gui_rule *rule)
+int rule_gen_expressions(struct rule_create_data *data)
 {
-
-
-	return 0;
+	return RULE_SUCCESS;
 }

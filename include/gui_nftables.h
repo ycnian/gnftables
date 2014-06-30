@@ -237,6 +237,7 @@ struct rule_create_widget {
 	struct match_trackmeta	*track;
 	GtkWidget	*cancel;
 	GtkWidget	*ok;
+	GtkWidget	*msg;
 };
 
 

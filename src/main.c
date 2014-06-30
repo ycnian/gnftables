@@ -325,22 +325,53 @@ GdkPixbuf  *create_pixbuf(const gchar *filename)
 //  nft add rule ip filter input ip saddr 192.168.1.101 ip daddr 192.168.1.102  counter accept
 void begin_create_new_rule(GtkButton *button, gpointer  info)
 {
-	struct rule_create_widget  *gui_rule = (struct rule_create_widget *)info;
-	GtkWidget	*notebook = gui_rule->notebook;
-	struct gui_rule	*rule = malloc(sizeof(struct gui_rule));
-	rule->family = gui_rule->family;
-	rule->table = gui_rule->table;
-	rule->chain = gui_rule->chain;
-	init_list_head(&rule->list);
+	GtkWidget	*notebook;
+	int		res;
+	struct rule_create_widget	*widget;
+	struct rule_create_data		*data;
 
-	// data check
-	//
-	rule_gen_expressions(gui_rule, rule);
+	widget = (struct rule_create_widget *)info;
+	notebook = widget->notebook;
 
-	gui_add_rule(rule);
+	// check table exists
+	res = gui_check_table_exist(widget->family, widget->table);
+	if (res == TABLE_NOT_EXIST) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), rule_error[RULE_TABLE_NOT_EXIST]);
+		return;
+	} else if (res == TABLE_KERNEL_ERROR) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), rule_error[RULE_KERNEL_ERROR]);
+		return;
+	}
+
+	// check chain exists
+	res = gui_check_chain_exist(widget->family, widget->table, widget->chain);
+	if (res == CHAIN_NOT_EXIST) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), rule_error[RULE_CHAIN_NOT_EXIST]);
+		return;
+	} else if (res == CHAIN_KERNEL_ERROR) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), rule_error[CHAIN_KERNEL_ERROR]);
+		return;
+	}
+
+	// get data
+	res = rule_create_getdata(widget, &data);
+/*
+	// rule_gen_expressions(gui_rule, rule);
+	if (res != CHAIN_SUCCESS) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[res]);
+		return;
+	}
+
+	res = gui_add_rule(data);
+	// xfree(data);
+	if (res != CHAIN_SUCCESS) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[res]);
+		return;
+	}
+*/
 
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 2);
-	gnftables_rule_init(rule->family, rule->table, rule->chain, notebook);
+	gnftables_rule_init(widget->family, widget->table, widget->chain, notebook);
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
@@ -366,7 +397,7 @@ void begin_create_new_chain(GtkButton *button, gpointer  info)
 		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[CHAIN_TABLE_NOT_EXIST]);
 		return;
 	} else if (res == TABLE_KERNEL_ERROR) {
-		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[CHAIN_TABLE_KERNEL_ERROR]);
+		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[CHAIN_KERNEL_ERROR]);
 		return;
 	}
 
@@ -514,8 +545,8 @@ void header_transport_porttype_changed(struct transport_port_info  *port_info)
 		gtk_widget_show(port_info->value->range.to);
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(port_info->exclude), FALSE);
 		break;
-//	case PORT_SET:
-//		break;
+	case PORT_SET:
+		break;
 	}
 
 }
@@ -591,6 +622,7 @@ void update_pktmeta_position(struct rule_create_widget  *widget)
 void update_cancel_ok_position(struct rule_create_widget  *widget)
 {
 	GtkWidget  *fixed = widget->fixed;
+	GtkWidget  *msg = widget->msg;
 	GtkWidget  *cancel = widget->cancel;
 	GtkWidget  *ok = widget->ok;
 	int	len = widget->meta->offset;
@@ -599,6 +631,7 @@ void update_cancel_ok_position(struct rule_create_widget  *widget)
 	len += 40;
 	if (len < 360)
 		len = 360;
+	gtk_fixed_move(GTK_FIXED(fixed), msg, 40, len);
 	gtk_fixed_move(GTK_FIXED(fixed), cancel, 540, len);
 	gtk_fixed_move(GTK_FIXED(fixed), ok, 660, len);
 }
@@ -870,6 +903,7 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	GtkWidget	*fixed_content;
 	GtkWidget	*ok;
 	GtkWidget	*cancel;
+	GtkWidget	*msg;
 	GtkWidget	*notebook;
 	GtkWidget	*scrolledwindow;
 
@@ -1160,6 +1194,9 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), skgid_value, 150, 220);
 	new_rule->meta->skgid = skgid_value;
 
+	msg = gtk_label_new("");
+	gtk_fixed_put(GTK_FIXED(fixed_content), msg, 40, 360);
+	new_rule->msg = msg;
 
     	cancel = gtk_button_new_with_label("Cancel");
 	gtk_widget_set_size_request(cancel, 100, 10);
@@ -1169,7 +1206,7 @@ void create_new_rule(GtkButton *button, gpointer  data)
 
     	ok = gtk_button_new_with_label("OK");
 	gtk_widget_set_size_request(ok, 100, 10);
-//	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_rule), new_rule);
+	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_rule), new_rule);
 	gtk_fixed_put(GTK_FIXED(fixed_content), ok, 660, 360);
 	new_rule->ok = ok;
 

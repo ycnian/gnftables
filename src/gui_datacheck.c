@@ -203,3 +203,14 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 	*data = p;
 	return CHAIN_SUCCESS;
 }
+
+
+/*
+ * Get data from page, and check it
+ * @widget:  widgets containing data in rule creating page
+ */
+int rule_create_getdata(struct rule_create_widget  *widget,
+		struct rule_create_data **data)
+{
+
+}

@@ -447,6 +447,40 @@ int gui_add_chain(struct chain_create_data *gui_chain)
 
 
 /*
+ * Check whether a chain exists.
+ * @family:  nftables family
+ * @table:   table name
+ * @chain:   chain name
+ */
+int gui_check_chain_exist(int family, char *table, char *chain)
+{
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	int			res;
+
+	LIST_HEAD(msgs);
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+	ctx.seqnum  = mnl_seqnum_alloc();
+	init_list_head(&ctx.list);
+
+	handle.family = family;
+	handle.table = table;
+	handle.chain = chain;
+
+	res = netlink_get_chain(&ctx, &handle, &loc);
+	if (res < 0) {
+		if (errno == ENOENT)
+			return CHAIN_NOT_EXIST;
+		else
+			return CHAIN_KERNEL_ERROR;
+	}
+	return CHAIN_SUCCESS;
+}
+
+/*
  * Get basic information of tables from kernel, 
  * including: family, table name, number of chains, number of sets.
  * @head: list used to store data

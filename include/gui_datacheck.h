@@ -66,4 +66,7 @@ int chain_name_check(char *name, int *start, int *end);
 int chain_priority_check(char *priority);
 int chain_create_getdata(struct chain_create_widget  *widget,
 		struct chain_create_data **data);
+
+int rule_create_getdata(struct rule_create_widget  *widget,
+                struct rule_create_data **data);
 #endif

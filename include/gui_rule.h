@@ -60,5 +60,6 @@ int gui_get_sets_number(int family, char *table, int *nsets);
 
 int gui_add_table(struct table_create_data *data);
 int gui_get_rules_number(int family, char *table, char *chain, int *nrules);
+int gui_check_chain_exist(int family, char *table, char *chain);
 
 #endif

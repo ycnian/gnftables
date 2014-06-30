@@ -27,4 +27,5 @@ const char *rule_error[RULE_ERROR_NUM] = {
 	[RULE_KERNEL_ERROR]	= "Could not receive data from kernel.",
 	[RULE_TABLE_NOT_EXIST]	= "Table doesn't exist.",
 	[RULE_CHAIN_NOT_EXIST]	= "Chain doesn't exist.",
+	[RULE_HEADER_IP_INVALID]= "Network address is invalid.",
 };

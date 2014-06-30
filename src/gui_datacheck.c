@@ -1,6 +1,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <arpa/inet.h>
 
 #include <utils.h>
 #include <gui_rule.h>
@@ -206,24 +207,84 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 }
 
 
-int get_header_addr_from_page(struct ip_address  *widget,
+int get_heade_iplist_from_page(struct ip_address  *widget,
 		struct ip_addr_data *data)
 {
+	char	*ip;
+	char	*iplist;
+	struct ip_convert  *ipnet;
+	iplist = xstrdup(gtk_entry_get_text(GTK_ENTRY(widget->exact_ip.ip)));
+	ip = strtok(iplist, " ");
+	while (ip) {
+		ipnet = xmalloc(sizeof(struct ip_convert));
+		if (!inet_pton(AF_INET, ip, ipnet->ip)) {
+			xfree(ipnet);
+			xfree(iplist);
+			return RULE_HEADER_IP_INVALID;
+		}
+		list_add_tail(&ipnet->list, &data->iplist.ips);
+		ip = strtok(NULL, " ");
+	}
+	xfree(iplist);
+	return RULE_SUCCESS;
+}
+
+int get_heade_ipsubnet_from_page(struct ip_address  *widget,
+		struct ip_addr_data *data)
+{
+
 
 	return RULE_SUCCESS;
 }
 
+int get_heade_iprange_from_page(struct ip_address  *widget,
+		struct ip_addr_data *data)
+{
 
 
-int get_header_data_from_page(struct match_header  *widget,
-		struct header *data)
+	return RULE_SUCCESS;
+}
+
+int get_header_addr_from_page(struct ip_address  *widget,
+		struct ip_addr_data *data)
+{
+	enum address_type       type;
+	int	exclude;
+	int	res = RULE_SUCCESS;
+
+	type = widget->type;
+	exclude = widget->exclude;
+	data->ip_type = type;
+	data->exclude = exclude;
+	switch (type) {
+	case ADDRESS_EXACT:
+		res = get_heade_iplist_from_page(widget, data);
+		break;
+	case ADDRESS_SUBNET:
+		res = get_heade_ipsubnet_from_page(widget, data);
+		break;
+	case ADDRESS_RANGE:
+		res = get_heade_iprange_from_page(widget, data);
+		break;
+	case ADDRESS_SET:
+		break;
+	default:
+		break;
+	}
+
+	return res;
+}
+
+
+
+int get_header_data_from_page(struct match_header *widget, struct header *data)
 {
 	int	res;
 
 	res = get_header_addr_from_page(widget->saddr.value, data->saddr);
 	if (res != RULE_SUCCESS)
 		return res;
-	res = get_header_addr_from_page(widget->saddr.value, data->daddr);
+	res = get_header_addr_from_page(widget->daddr.value, data->daddr);
 	if (res != RULE_SUCCESS)
 		return res;
 	return RULE_SUCCESS;
@@ -267,10 +328,25 @@ int rule_create_getdata(struct rule_create_widget  *widget,
 	int	res;
 	struct rule_create_data	*p;
 	p = xmalloc(sizeof(struct rule_create_data));
+	p->header = xmalloc(sizeof(struct header));
+	p->pktmeta = xmalloc(sizeof(struct pktmeta));
+	init_list_head(&p->exprs);
+	p->header->saddr = xmalloc(sizeof(struct ip_addr_data));
+	p->header->daddr = xmalloc(sizeof(struct ip_addr_data));
+	p->header->transport_data = xmalloc(sizeof(struct transport_data));
+	init_list_head(&p->header->saddr->iplist.ips);
+	init_list_head(&p->header->daddr->iplist.ips);
 
 	res = get_data_from_page(widget, p);
 	if (res != RULE_SUCCESS)
 		goto error;
+
+//	struct ip_convert   *convert;
+//	list_for_each_entry(convert, &p->header->saddr->iplist.ips, list)
+//		printf("%d  %d  %d  %d\n", convert->ip[0]&0xff, convert->ip[1]&0xff, convert->ip[2]&0xff, convert->ip[3]&0xff);
+//	list_for_each_entry(convert, &p->header->daddr->iplist.ips, list)
+//		printf("%d  %d  %d  %d\n", convert->ip[0]&0xff, convert->ip[1]&0xff, convert->ip[2]&0xff, convert->ip[3]&0xff);
+
 	res = rule_gen_expressions(p);
 	if (res != RULE_SUCCESS)
 		goto error;

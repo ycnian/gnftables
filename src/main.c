@@ -355,13 +355,13 @@ void begin_create_new_rule(GtkButton *button, gpointer  info)
 
 	// get data
 	res = rule_create_getdata(widget, &data);
-/*
 	// rule_gen_expressions(gui_rule, rule);
-	if (res != CHAIN_SUCCESS) {
-		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[res]);
+	if (res != RULE_SUCCESS) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), rule_error[res]);
 		return;
 	}
 
+/*
 	res = gui_add_rule(data);
 	// xfree(data);
 	if (res != CHAIN_SUCCESS) {

@@ -25,7 +25,8 @@
 #define  RULE_KERNEL_ERROR	1
 #define  RULE_TABLE_NOT_EXIST	2
 #define  RULE_CHAIN_NOT_EXIST	3
-#define  RULE_ERROR_NUM		4
+#define  RULE_HEADER_IP_INVALID	4
+#define  RULE_ERROR_NUM		5
 
 #define  SET_SUCCESS		0
 #define  SET_KERNEL_ERROR	1

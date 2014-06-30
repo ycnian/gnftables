@@ -18,12 +18,17 @@ struct chain_create_data {
 	int	priority;
 };
 
+struct ip_convert {
+	char	ip[4];
+	struct list_head  list;
+};
 
 struct ip_addr_data {
 	int	ip_type;
+	int	exclude;
 	union {
 		struct {
-			char	*iplist;
+			struct list_head ips;
 		}iplist;
 		struct {
 			char	*ip;
@@ -125,4 +130,11 @@ int get_data_from_page(struct rule_create_widget  *widget,
 int get_data_from_page(struct rule_create_widget  *widget,
                 struct rule_create_data *data);
 void rule_free_data(struct rule_create_data *data);
+int get_heade_iplist_from_page(struct ip_address  *widget,
+                struct ip_addr_data *data);
+int get_heade_ipsubnet_from_page(struct ip_address  *widget,
+                struct ip_addr_data *data);
+int get_heade_iprange_from_page(struct ip_address  *widget,
+                struct ip_addr_data *data);
+
 #endif

@@ -225,6 +225,7 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 	int	basechain;
 	char	*type;
 	const char	*hook_str;
+	int	priority;
 	int	hook;
 	char	*priority_str = NULL;
 	int	start = -1;
@@ -269,8 +270,15 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 		p->basechain = 1;
 		p->type = xstrdup(type);
 		p->hook = hook;
-		if (priority_str)
-			p->priority = atoi(priority_str);
+		if (priority_str) {
+			res = strtoint(priority_str, &priority);
+			if (res == -1) {
+				xfree(name);
+				xfree(priority_str);
+				return CHAIN_PRIORITY_OVERFLOW;
+			} else
+				p->priority = priority;
+		}
 		else
 			p->priority = 0;
 	} else {

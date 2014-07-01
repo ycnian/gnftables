@@ -68,6 +68,17 @@ char *xstrdup(const char *s)
 	return res;
 }
 
+char *xstrndup(const char *s, size_t n)
+{
+	char *res;
+
+	assert(s != NULL);
+	res = strndup(s, n);
+	if (res == NULL)
+		memory_allocation_error();
+	return res;
+}
+
 uint32_t str2hooknum(uint32_t family, const char *hook)
 {
 	switch (family) {

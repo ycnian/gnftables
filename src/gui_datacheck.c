@@ -10,6 +10,24 @@
 #include <gui_nftables.h>
 #include <gui_expression.h>
 
+char *get_data_from_entry(GtkEntry *entry)
+{
+	int	start = 0;
+	int	end;
+	char	*p;
+        char	*data = (char *)gtk_entry_get_text(entry);
+	int	len = strlen(data) - 1;
+
+	end = len;
+	if (string_is_null(data))
+		return NULL;
+	while (isblank(data[start]))
+		start++;
+	while (isblank(data[end]))
+		end--;
+	p = xstrndup(data + start, end - start + 1);
+	return p;
+}
 
 /*
  * Check name, only letter, number, underscore allowed.
@@ -64,7 +82,6 @@ int integer_check(char *integer)
 	int	i = 0;
 	int	j;
 	int	len = strlen(integer);
-
 	if (len == 0)
 		return 0;
 
@@ -139,14 +156,18 @@ int table_create_getdata(struct table_create_widget  *widget,
 	GtkTreeIter     iter;
 	struct table_create_data *p = NULL;
 
-        name = (char *)gtk_entry_get_text(GTK_ENTRY(widget->name));
-        model = gtk_combo_box_get_model(GTK_COMBO_BOX(widget->family));
-        gtk_combo_box_get_active_iter(GTK_COMBO_BOX(widget->family), &iter);
-        gtk_tree_model_get(model, &iter, 0, &family, -1);
+	name = get_data_from_entry(GTK_ENTRY(widget->name));
+	model = gtk_combo_box_get_model(GTK_COMBO_BOX(widget->family));
+	gtk_combo_box_get_active_iter(GTK_COMBO_BOX(widget->family), &iter);
+	gtk_tree_model_get(model, &iter, 0, &family, -1);
+	if (!name)
+		return TABLE_NAME_EMPTY;
 
 	res = table_name_check(name, &start, &end);
-	if (res == -1)
+	if (res == -1) {
+		xfree(name);
 		return TABLE_NAME_INVALID;
+	}
 	else if (res == -2)
 		return TABLE_NAME_EMPTY;
 
@@ -156,6 +177,7 @@ int table_create_getdata(struct table_create_widget  *widget,
 	p->table[end + 1] = '\0';
 	p->family = family;
 	*data = p;
+	xfree(name);
 	return TABLE_SUCCESS;
 }
 
@@ -186,30 +208,37 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 	char	*type;
 	const char	*hook_str;
 	int	hook;
-	char	*priority_str;
+	char	*priority_str = NULL;
 	int	start = -1;
 	int	end = -1;
 	struct chain_create_data *p = NULL;
 
-	name = (char *)gtk_entry_get_text(GTK_ENTRY(widget->name));
+	name = get_data_from_entry(GTK_ENTRY(widget->name));
+	if (!name)
+		return CHAIN_NAME_EMPTY;
 	basechain = !!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget->basechain));
 	if (basechain) {
 		type = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget->type));
 		hook_str = (const char *)gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget->hook));
 		hook = str2hooknum(widget->family, hook_str);
-		priority_str = (char *)gtk_entry_get_text(GTK_ENTRY(widget->priority));
+		priority_str = get_data_from_entry(GTK_ENTRY(widget->priority));
 	}
 
 	res = chain_name_check(name, &start, &end);
-	if (res == -1)
+	if (res == -1) {
+		xfree(name);
 		return CHAIN_NAME_INVALID;
+	}
 	else if (res == -2)
 		return CHAIN_NAME_EMPTY;
 
-	if (basechain) {
+	if (basechain && priority_str) {
 		res = chain_priority_check(priority_str);
-		if (res != 0)
+		if (res != 0) {
+			xfree(name);
+			xfree(priority_str);
 			return CHAIN_PRIORITY_INVALID;
+		}
 	}
 
 	p = xmalloc(sizeof (struct chain_create_data));
@@ -222,13 +251,18 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 		p->basechain = 1;
 		p->type = xstrdup(type);
 		p->hook = hook;
-		p->priority = atoi(priority_str);
+		if (priority_str)
+			p->priority = atoi(priority_str);
+		else
+			p->priority = 0;
 	} else {
 		p->basechain = 0;
 		p->type = NULL;
 	}
 
 	*data = p;
+	xfree(name);
+	xfree(priority_str);
 	return CHAIN_SUCCESS;
 }
 
@@ -239,7 +273,7 @@ int get_heade_iplist_from_page(struct ip_address  *widget,
 	char	*ip;
 	char	*iplist;
 	struct ip_convert  *ipnet;
-	iplist = xstrdup(gtk_entry_get_text(GTK_ENTRY(widget->exact_ip.ip)));
+	iplist = get_data_from_entry(GTK_ENTRY(widget->exact_ip.ip));
 	ip = strtok(iplist, " ");
 	while (ip) {
 		ipnet = xmalloc(sizeof(struct ip_convert));
@@ -341,23 +375,19 @@ int get_heade_ipsubnet_from_page(struct ip_address  *widget,
 {
 	char	*ip;
 	char	*mask;
-	int	inull;
-	int	mnull;
 	int	res = RULE_SUCCESS;
 
-	ip = xstrdup(gtk_entry_get_text(GTK_ENTRY(widget->subnet.ip)));
-	mask = xstrdup(gtk_entry_get_text(GTK_ENTRY(widget->subnet.mask)));
-	inull = string_is_null(ip);
-	mnull = string_is_null(mask);
+	ip = get_data_from_entry(GTK_ENTRY(widget->subnet.ip));
+	mask = get_data_from_entry(GTK_ENTRY(widget->subnet.mask));
 
-	if (inull && mnull)
+	if (!ip && !mask)
 		goto out;
-	if (inull) {
+	if (!ip) {
 		memset(data->subnet.ip, 0, 4);
 		res = RULE_HEADER_IP_EMPTY;
 		goto out;
 	}
-	if (mnull) {
+	if (!mask) {
 		data->subnet.mask = 0;
 		res = RULE_HEADER_MASK_EMPTY;
 		goto out;
@@ -403,28 +433,24 @@ int get_heade_iprange_from_page(struct ip_address  *widget,
 {
 	char	*from;
 	char	*to;
-	int	fnull;
-	int	tnull;
 	int	res = RULE_SUCCESS;
 
-	from = xstrdup(gtk_entry_get_text(GTK_ENTRY(widget->range.from)));
-	to = xstrdup(gtk_entry_get_text(GTK_ENTRY(widget->range.to)));
-	fnull = string_is_null(from);
-	tnull = string_is_null(to);
+	from = get_data_from_entry(GTK_ENTRY(widget->range.from));
+	to = get_data_from_entry(GTK_ENTRY(widget->range.to));
 
-	if (fnull)
+	if (!from)
 		memset(data->range.from, 0, 4);
 	else if (!inet_pton(AF_INET, from, data->range.from)) {
 		res = RULE_HEADER_IP_INVALID;
 		goto out;
 	}
-	if (tnull)
+	if (!to)
 		memset(data->range.to, 0, 4);
 	else if (!inet_pton(AF_INET, to, data->range.to)) {
 		res = RULE_HEADER_IP_INVALID;
 		goto out;
 	}
-	if (!fnull && !tnull && ipv4_addr_cmp(data->range.from, data->range.to) >= 0)
+	if (from && to && ipv4_addr_cmp(data->range.from, data->range.to) >= 0)
 		res = RULE_HEADER_IP_RANGE_INVALID;
 out:
 	xfree(from);

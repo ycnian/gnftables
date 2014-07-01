@@ -141,5 +141,6 @@ int string_is_null(char *str);
 int ipv4_addr_mask_sub(unsigned char token);
 int ipv4_addr_mask(char *str, int *interger);
 int unsigned_int_check(char *integer);
+char *get_data_from_entry(GtkEntry *entry);
 
 #endif

@@ -86,6 +86,7 @@ extern void *xmalloc(size_t size);
 extern void *xrealloc(void *ptr, size_t size);
 extern void *xzalloc(size_t size);
 extern char *xstrdup(const char *s);
+extern char *xstrndup(const char *s, size_t n);
 extern uint32_t str2hooknum(uint32_t family, const char *hook);
 
 #endif /* NFTABLES_UTILS_H */

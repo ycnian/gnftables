@@ -32,4 +32,7 @@ const char *rule_error[RULE_ERROR_NUM] = {
 	[RULE_HEADER_IP_EMPTY]	= "Network address is empty",
 	[RULE_HEADER_MASK_EMPTY]	= "Network address mask is empty",
 	[RULE_HEADER_MASK_INVALID]	= "Network address mask is invalid.",
+	[RULE_HEADER_PORT_INVALID]	= "Port is invalid.",
+	[RULE_HEADER_PORT_OVERFLOW]	= "Port is out of range, the upper value is 65535.",
+	[RULE_HEADER_PORT_RANGE_INVALID]= "Port range has zero or negative size",
 };

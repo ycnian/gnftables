@@ -23,6 +23,11 @@ struct ip_convert {
 	struct list_head  list;
 };
 
+struct port_convert {
+	unsigned short	port;
+	struct list_head  list;
+};
+
 struct ip_addr_data {
 	int	ip_type;
 	int	exclude;
@@ -43,13 +48,14 @@ struct ip_addr_data {
 
 struct trans_port_data {
 	int	port_type;
+	int	exclude;
 	union {
 		struct {
-			char	*portlist;
+			struct list_head ports;
 		}portlist;
 		struct {
-			char	*from;
-			char	*to;
+			unsigned short	from;
+			unsigned short	to;
 		}range;
 	};
 };
@@ -71,7 +77,7 @@ struct trans_udp_data {
 };
 
 struct transport_data {
-	int	trans_type;
+	enum port_type	trans_type;
 	union {
 		struct trans_all_data	*all;
 		struct trans_tcp_data	*tcp;
@@ -130,11 +136,11 @@ int get_data_from_page(struct rule_create_widget  *widget,
 int get_data_from_page(struct rule_create_widget  *widget,
                 struct rule_create_data *data);
 void rule_free_data(struct rule_create_data *data);
-int get_heade_iplist_from_page(struct ip_address  *widget,
+int get_header_iplist_from_page(struct ip_address  *widget,
                 struct ip_addr_data *data);
-int get_heade_ipsubnet_from_page(struct ip_address  *widget,
+int get_header_ipsubnet_from_page(struct ip_address  *widget,
                 struct ip_addr_data *data);
-int get_heade_iprange_from_page(struct ip_address  *widget,
+int get_header_iprange_from_page(struct ip_address  *widget,
                 struct ip_addr_data *data);
 int ipv4_addr_cmp(unsigned char *ip1, unsigned char *ip2);
 int string_is_null(char *str);
@@ -142,5 +148,19 @@ int ipv4_addr_mask_sub(unsigned char token);
 int ipv4_addr_mask(char *str, int *interger);
 int unsigned_int_check(char *integer);
 char *get_data_from_entry(GtkEntry *entry);
+int get_header_portlist_from_page(struct transport_port_details *widget,
+                struct trans_port_data *data);
+int get_header_portrange_from_page(struct transport_port_details *widget,
+                struct trans_port_data *data);
+int get_header_port_from_page(struct transport_port_info *widget,
+                struct trans_port_data *data);
+int get_header_transall_from_page(struct transport_all * widget,
+                struct trans_all_data *data);
+int get_header_transtcp_from_page(struct transport_tcp * widget,
+                struct trans_tcp_data *data);
+int get_header_transudp_from_page(struct transport_udp * widget,
+                struct trans_udp_data *data);
+int get_header_trans_from_page(struct transport_info * widget,
+                struct transport_data *data);
 
 #endif

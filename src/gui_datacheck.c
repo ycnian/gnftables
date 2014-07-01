@@ -2,6 +2,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 
 #include <utils.h>
 #include <gui_rule.h>
@@ -267,7 +268,7 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 }
 
 
-int get_heade_iplist_from_page(struct ip_address  *widget,
+int get_header_iplist_from_page(struct ip_address  *widget,
 		struct ip_addr_data *data)
 {
 	char	*ip;
@@ -370,7 +371,7 @@ int ipv4_addr_mask(char *str, int *integer)
 	}
 }
 
-int get_heade_ipsubnet_from_page(struct ip_address  *widget,
+int get_header_ipsubnet_from_page(struct ip_address  *widget,
 		struct ip_addr_data *data)
 {
 	char	*ip;
@@ -428,7 +429,7 @@ int string_is_null(char *str)
 	return 1;
 }
 
-int get_heade_iprange_from_page(struct ip_address  *widget,
+int get_header_iprange_from_page(struct ip_address  *widget,
 		struct ip_addr_data *data)
 {
 	char	*from;
@@ -472,13 +473,13 @@ int get_header_addr_from_page(struct ip_address  *widget,
 	data->exclude = exclude;
 	switch (type) {
 	case ADDRESS_EXACT:
-		res = get_heade_iplist_from_page(widget, data);
+		res = get_header_iplist_from_page(widget, data);
 		break;
 	case ADDRESS_SUBNET:
-		res = get_heade_ipsubnet_from_page(widget, data);
+		res = get_header_ipsubnet_from_page(widget, data);
 		break;
 	case ADDRESS_RANGE:
-		res = get_heade_iprange_from_page(widget, data);
+		res = get_header_iprange_from_page(widget, data);
 		break;
 	case ADDRESS_SET:
 		break;
@@ -489,6 +490,168 @@ int get_header_addr_from_page(struct ip_address  *widget,
 	return res;
 }
 
+int get_header_portlist_from_page(struct transport_port_details *widget,
+		struct trans_port_data *data)
+{
+	unsigned short pt;
+	char	*port;
+	char	*portlist;
+	struct port_convert  *portnet;
+
+	init_list_head(&data->portlist.ports);
+	portlist = get_data_from_entry(GTK_ENTRY(widget->portlist.port));
+	port = strtok(portlist, " ");
+	while (port) {
+		if (unsigned_int_check(port) == -1) {
+			xfree(portlist);
+			return RULE_HEADER_PORT_INVALID;
+		}
+		if (str2unshort(port, &pt) == -1) {
+			xfree(portlist);
+			return RULE_HEADER_PORT_OVERFLOW;
+		}
+		portnet = xmalloc(sizeof(struct port_convert));
+		portnet->port = pt;
+		list_add_tail(&portnet->list, &data->portlist.ports);
+		port = strtok(NULL, " ");
+	}
+	xfree(portlist);
+	return RULE_SUCCESS;
+}
+
+int get_header_portrange_from_page(struct transport_port_details *widget,
+		struct trans_port_data *data)
+{
+	unsigned short pt;
+	char	*from;
+	char	*to;
+	int	res = RULE_SUCCESS;
+
+	from = get_data_from_entry(GTK_ENTRY(widget->range.from));
+	to = get_data_from_entry(GTK_ENTRY(widget->range.to));
+
+	if (!from)
+		data->range.from = 0;
+	else {
+		if (unsigned_int_check(from) == -1) {
+			res = RULE_HEADER_PORT_INVALID;
+			goto out;
+		}
+		if (str2unshort(from, &pt) == -1) {
+			res = RULE_HEADER_PORT_OVERFLOW;
+			goto out;
+		}
+		data->range.from = pt;
+	}
+
+	if (!to)
+		data->range.to = 0;
+	else {
+		if (unsigned_int_check(to) == -1) {
+			res = RULE_HEADER_PORT_INVALID;
+			goto out;
+		}
+		if (str2unshort(to, &pt) == -1) {
+			res = RULE_HEADER_PORT_OVERFLOW;
+			goto out;
+		}
+		data->range.to = pt;
+	}
+
+	if (from && to && (data->range.from >= data->range.to))
+		res = RULE_HEADER_PORT_RANGE_INVALID;
+out:
+	xfree(from);
+	xfree(to);
+	return res;
+}
+
+int get_header_port_from_page(struct transport_port_info *widget,
+		struct trans_port_data *data)
+{
+	enum port_type	type;
+	int	exclude;
+	int	res = RULE_SUCCESS;
+
+	type = widget->value->type;
+	exclude = widget->value->exclude;
+	data->port_type = type;
+	data->exclude = exclude;
+	switch (type) {
+	case PORT_EXACT:
+		res = get_header_portlist_from_page(widget->value, data);
+		break;
+	case PORT_RANGE:
+		res = get_header_portrange_from_page(widget->value, data);
+		break;
+	case PORT_SET:
+		break;
+	default:
+		break;
+	}
+
+	return res;
+}
+
+int get_header_transall_from_page(struct transport_all *widget,
+		struct trans_all_data *data)
+{
+
+	return RULE_SUCCESS;
+}
+
+int get_header_transtcp_from_page(struct transport_tcp *widget,
+		struct trans_tcp_data *data)
+{
+	int	res;
+	data->protocol = IPPROTO_TCP;
+	data->sport = xmalloc(sizeof(struct trans_port_data));
+	res = get_header_port_from_page(widget->sport, data->sport);
+	if (res != RULE_SUCCESS)
+		return res;
+	data->dport = xmalloc(sizeof(struct trans_port_data));
+	res = get_header_port_from_page(widget->dport, data->dport);
+	return res;
+}
+
+int get_header_transudp_from_page(struct transport_udp *widget,
+		struct trans_udp_data *data)
+{
+	int	res;
+	data->protocol = IPPROTO_UDP;
+	data->sport = xmalloc(sizeof(struct trans_port_data));
+	res = get_header_port_from_page(widget->sport, data->sport);
+	if (res != RULE_SUCCESS)
+		return res;
+	data->dport = xmalloc(sizeof(struct trans_port_data));
+	res = get_header_port_from_page(widget->dport, data->dport);
+	return res;
+}
+
+int get_header_trans_from_page(struct transport_info *widget,
+		struct transport_data *data)
+{
+	enum transport_type     type;
+	int  res = RULE_SUCCESS;
+
+	type = widget->type;
+	data->trans_type = type;
+	switch (type) {
+	case TRANSPORT_ALL:
+		res = get_header_transall_from_page(widget->all, data->all);
+		break;
+	case TRANSPORT_TCP:
+		data->tcp = xmalloc(sizeof(struct trans_tcp_data));
+		res = get_header_transtcp_from_page(widget->tcp, data->tcp);
+		break;
+	case TRANSPORT_UDP:
+		res = get_header_transudp_from_page(widget->udp, data->udp);
+		break;
+	default:
+		break;
+	}
+	return res;
+}
 
 
 int get_header_data_from_page(struct match_header *widget, struct header *data)
@@ -501,7 +664,8 @@ int get_header_data_from_page(struct match_header *widget, struct header *data)
 	res = get_header_addr_from_page(widget->daddr.value, data->daddr);
 	if (res != RULE_SUCCESS)
 		return res;
-	return RULE_SUCCESS;
+	res = get_header_trans_from_page(widget->transport.value, data->transport_data);
+	return res;
 }
 
 

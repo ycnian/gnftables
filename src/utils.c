@@ -111,3 +111,21 @@ uint32_t str2hooknum(uint32_t family, const char *hook)
 	return NF_INET_NUMHOOKS;
 }
 
+int str2unshort(char *str, unsigned short *num)
+{
+	unsigned int    res = 0;
+	int     len;
+	int     i;
+
+	if (!str)
+		return 0;
+	len = strlen(str);
+	for (i = 0; i < len; i ++) {
+		res = res * 10 + str[i] - '0';
+		if (res > 0xffff)
+			return -1;
+	}
+	*num = res;
+	return 0;
+}
+

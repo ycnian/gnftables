@@ -249,24 +249,44 @@ int ipv4_addr_cmp(unsigned char *ip1, unsigned char *ip2)
 	return 0;
 }
 
+int string_is_null(char *str)
+{
+	int	i = 0;
+	int	len = strlen(str);
+	for (i = 0; i < len; i++) {
+		if (!isblank(str[i]))
+			return 0;
+	}
+	return 1;
+}
+
 int get_heade_iprange_from_page(struct ip_address  *widget,
 		struct ip_addr_data *data)
 {
 	char	*from;
 	char	*to;
+	int	fnull;
+	int	tnull;
 	int	res = RULE_SUCCESS;
 
 	from = xstrdup(gtk_entry_get_text(GTK_ENTRY(widget->range.from)));
 	to = xstrdup(gtk_entry_get_text(GTK_ENTRY(widget->range.to)));
-	if (!inet_pton(AF_INET, from, data->range.from)) {
+	fnull = string_is_null(from);
+	tnull = string_is_null(to);
+
+	if (fnull)
+		memset(data->range.from, 0, 4);
+	else if (!inet_pton(AF_INET, from, data->range.from)) {
 		res = RULE_HEADER_IP_INVALID;
 		goto out;
 	}
-	if (!inet_pton(AF_INET, to, data->range.to)) {
+	if (tnull)
+		memset(data->range.to, 0, 4);
+	else if (!inet_pton(AF_INET, to, data->range.to)) {
 		res = RULE_HEADER_IP_INVALID;
 		goto out;
 	}
-	if (ipv4_addr_cmp(data->range.from, data->range.to) >= 0)
+	if (!fnull && !tnull && ipv4_addr_cmp(data->range.from, data->range.to) >= 0)
 		res = RULE_HEADER_IP_RANGE_INVALID;
 out:
 	xfree(from);

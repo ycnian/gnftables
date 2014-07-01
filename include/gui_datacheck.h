@@ -137,5 +137,6 @@ int get_heade_ipsubnet_from_page(struct ip_address  *widget,
 int get_heade_iprange_from_page(struct ip_address  *widget,
                 struct ip_addr_data *data);
 int ipv4_addr_cmp(unsigned char *ip1, unsigned char *ip2);
+int string_is_null(char *str);
 
 #endif

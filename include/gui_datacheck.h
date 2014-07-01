@@ -31,8 +31,8 @@ struct ip_addr_data {
 			struct list_head ips;
 		}iplist;
 		struct {
-			char	*ip;
-			char	*mask;
+			unsigned char	ip[4];
+			int	mask;
 		}subnet;
 		struct {
 			unsigned char	from[4];
@@ -138,5 +138,8 @@ int get_heade_iprange_from_page(struct ip_address  *widget,
                 struct ip_addr_data *data);
 int ipv4_addr_cmp(unsigned char *ip1, unsigned char *ip2);
 int string_is_null(char *str);
+int ipv4_addr_mask_sub(unsigned char token);
+int ipv4_addr_mask(char *str, int *interger);
+int unsigned_int_check(char *integer);
 
 #endif

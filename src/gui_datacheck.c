@@ -88,6 +88,32 @@ int integer_check(char *integer)
 }
 
 
+int unsigned_int_check(char *integer)
+{
+	int	i = 0;
+	int	j;
+	int	len = strlen(integer);
+
+	if (len == 0)
+		return 0;
+
+	while (isblank(integer[i]))
+		i++;
+	if (i == len)
+		return 0;
+	for (j = i + 1; j < len; j++) {
+		if (isblank(integer[j]))
+			break;
+		if (!isdigit(integer[j]))
+			return -1;
+	}
+	for (i = j + 1; i < len; i++) {
+		if (!isblank(integer[i]))
+			return -1;
+	}
+	return 0;
+}
+
 /*
  * Check table name
  */
@@ -229,12 +255,124 @@ int get_heade_iplist_from_page(struct ip_address  *widget,
 	return RULE_SUCCESS;
 }
 
+int ipv4_addr_mask_sub(unsigned char token)
+{
+	unsigned char  tmp = token;
+	int shift = 0;
+
+	for (shift = 0; shift < 8; shift++) {
+		token >>= 1;
+		if (token * 2 + 1 == tmp)
+			break;
+		tmp = token;
+	}
+
+	if (tmp == 255 >> shift)
+		return 8 - shift;
+	else
+		return -1;
+}
+
+
+
+int ipv4_addr_mask(char *str, int *integer)
+{
+	int	res;
+	int	mask;
+	unsigned char	ip[4];
+
+	res = unsigned_int_check(str);
+	if (!res) {
+		mask = atoi(str);
+		if (mask >= 0 && mask <= 32) {
+			*integer = mask;
+			return RULE_SUCCESS;
+		} else
+			return RULE_HEADER_MASK_INVALID;
+	}
+	if (!inet_pton(AF_INET, str, ip)) {
+		return RULE_HEADER_MASK_INVALID;
+	}
+
+	if (ip[0] != 255) {
+		if (ip[1] != 0 || ip[2] != 0 || ip[3] != 0)
+			return RULE_HEADER_MASK_INVALID;
+		mask = ipv4_addr_mask_sub(ip[0]);
+		if (mask != 0)
+			return RULE_HEADER_MASK_INVALID;
+		else {
+			*integer = mask;
+			return RULE_SUCCESS;
+		}
+	}
+	else if (ip[1] != 255) {
+		if (ip[2] != 0 || ip[3] != 0)
+			return RULE_HEADER_MASK_INVALID;
+		mask = ipv4_addr_mask_sub(ip[1]);
+		if (mask != 0)
+			return RULE_HEADER_MASK_INVALID;
+		else {
+			*integer = 8 + mask;
+			return RULE_SUCCESS;
+		}
+	} else if (ip[2] != 255) {
+		if (ip[3] != 0)
+			return RULE_HEADER_MASK_INVALID;
+		mask = ipv4_addr_mask_sub(ip[2]);
+		if (mask != 0)
+			return RULE_HEADER_MASK_INVALID;
+		else {
+			*integer = 16 + mask;
+			return RULE_SUCCESS;
+		}
+	} else {
+		mask = ipv4_addr_mask_sub(ip[3]);
+		if (mask != 0)
+			return RULE_HEADER_MASK_INVALID;
+		else {
+			*integer = 24 + mask;
+			return RULE_SUCCESS;
+		}
+	}
+}
+
 int get_heade_ipsubnet_from_page(struct ip_address  *widget,
 		struct ip_addr_data *data)
 {
+	char	*ip;
+	char	*mask;
+	int	inull;
+	int	mnull;
+	int	res = RULE_SUCCESS;
 
+	ip = xstrdup(gtk_entry_get_text(GTK_ENTRY(widget->subnet.ip)));
+	mask = xstrdup(gtk_entry_get_text(GTK_ENTRY(widget->subnet.mask)));
+	inull = string_is_null(ip);
+	mnull = string_is_null(mask);
 
-	return RULE_SUCCESS;
+	if (inull && mnull)
+		goto out;
+	if (inull) {
+		memset(data->subnet.ip, 0, 4);
+		res = RULE_HEADER_IP_EMPTY;
+		goto out;
+	}
+	if (mnull) {
+		data->subnet.mask = 0;
+		res = RULE_HEADER_MASK_EMPTY;
+		goto out;
+	}
+
+	if (!inet_pton(AF_INET, ip, data->subnet.ip)) {
+		res = RULE_HEADER_IP_INVALID;
+		goto out;
+	}
+	res = ipv4_addr_mask(mask, &data->subnet.mask);
+
+out:
+	xfree(ip);
+	xfree(mask);
+	return res;
 }
 
 int ipv4_addr_cmp(unsigned char *ip1, unsigned char *ip2)

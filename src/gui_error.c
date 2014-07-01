@@ -29,4 +29,7 @@ const char *rule_error[RULE_ERROR_NUM] = {
 	[RULE_CHAIN_NOT_EXIST]	= "Chain doesn't exist.",
 	[RULE_HEADER_IP_INVALID]= "Network address is invalid.",
 	[RULE_HEADER_IP_RANGE_INVALID]	= "Network address range has zero or negative size",
+	[RULE_HEADER_IP_EMPTY]	= "Network address is empty",
+	[RULE_HEADER_MASK_EMPTY]	= "Network address mask is empty",
+	[RULE_HEADER_MASK_INVALID]	= "Network address mask is invalid.",
 };

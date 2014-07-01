@@ -237,12 +237,42 @@ int get_heade_ipsubnet_from_page(struct ip_address  *widget,
 	return RULE_SUCCESS;
 }
 
+int ipv4_addr_cmp(unsigned char *ip1, unsigned char *ip2)
+{
+	int i = 0;
+	for (i = 0; i < 4; i++) {
+		if (ip1[i] > ip2[i])
+			return 1;
+		else if (ip1[i] < ip2[i])
+			return -1;
+	}
+	return 0;
+}
+
 int get_heade_iprange_from_page(struct ip_address  *widget,
 		struct ip_addr_data *data)
 {
+	char	*from;
+	char	*to;
+	int	res = RULE_SUCCESS;
 
+	from = xstrdup(gtk_entry_get_text(GTK_ENTRY(widget->range.from)));
+	to = xstrdup(gtk_entry_get_text(GTK_ENTRY(widget->range.to)));
+	if (!inet_pton(AF_INET, from, data->range.from)) {
+		res = RULE_HEADER_IP_INVALID;
+		goto out;
+	}
+	if (!inet_pton(AF_INET, to, data->range.to)) {
+		res = RULE_HEADER_IP_INVALID;
+		goto out;
+	}
+	if (ipv4_addr_cmp(data->range.from, data->range.to) >= 0)
+		res = RULE_HEADER_IP_RANGE_INVALID;
+out:
+	xfree(from);
+	xfree(to);
+	return res;
 
-	return RULE_SUCCESS;
 }
 
 int get_header_addr_from_page(struct ip_address  *widget,

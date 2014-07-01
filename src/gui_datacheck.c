@@ -11,6 +11,10 @@
 #include <gui_nftables.h>
 #include <gui_expression.h>
 
+/*
+ * Get data from gtk page. Skipe spaces at begin or end of data.
+ * @entry: gtk entry.
+ */
 char *get_data_from_entry(GtkEntry *entry)
 {
 	int	start = 0;
@@ -106,6 +110,14 @@ int integer_check(char *integer)
 }
 
 
+/*
+ * Check positive integer, 0-9 allowed.
+ * Skipe spaces at the start and end of integer.
+ * @integer:  a string to be checked
+ * Return Value:
+ * 	0:  integer is valid
+ * 	-1: integer is not valid
+ */
 int unsigned_int_check(char *integer)
 {
 	int	i = 0;
@@ -191,6 +203,11 @@ int chain_name_check(char *name, int *start, int *end)
 	return name_check(name, start, end);
 }
 
+/*
+ * Check chain priority. This function needs enhancement.
+ * We must make sure the priority isn't overflow.
+ * @priority: chain priority in string format.
+ */
 int chain_priority_check(char *priority)
 {
 	return integer_check(priority);
@@ -268,6 +285,12 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 }
 
 
+/*
+ * Get ipv4 address list from rule creating page. The addresses are separated
+ * by space.
+ * @widget: gtk widget which contains ipv4 addresses.
+ * @data:   parameter used to save ipv4 addresses.
+ */
 int get_header_iplist_from_page(struct ip_address  *widget,
 		struct ip_addr_data *data)
 {
@@ -290,6 +313,14 @@ int get_header_iplist_from_page(struct ip_address  *widget,
 	return RULE_SUCCESS;
 }
 
+
+/*
+ * Check whether an unsigned char variable is apart of ipv4 network mask.
+ * Return number of set bits in this variable.
+ * For example， 11111000 is apart of network mask, 11101000 isn't a part
+ * of network mask.
+ * @token: variable to be checked.
+ */
 int ipv4_addr_mask_sub(unsigned char token)
 {
 	unsigned char  tmp = token;
@@ -308,8 +339,15 @@ int ipv4_addr_mask_sub(unsigned char token)
 		return -1;
 }
 
-
-
+/*
+ * Check the validation of ipv4 network mask, and convert to a interger.
+ * 24 ==> 24
+ * 255.255.0.0 ==> 16
+ * 33 is not a valid ipv4 network mask
+ * 255.255.7.0 is not a valid ipv4 network mask
+ * @str: ipv4 network mask in string format.
+ * @integer: parameter used to save converted mask.
+ */
 int ipv4_addr_mask(char *str, int *integer)
 {
 	int	res;
@@ -371,6 +409,11 @@ int ipv4_addr_mask(char *str, int *integer)
 	}
 }
 
+/*
+ * get ipv4 address and subnet mask from rule creating page.
+ * @widget:  gtk widget which contains ipv4 address and mask.
+ * @data:    parameter used to save ipv4 address and mask.
+ */
 int get_header_ipsubnet_from_page(struct ip_address  *widget,
 		struct ip_addr_data *data)
 {
@@ -406,6 +449,15 @@ out:
 	return res;
 }
 
+/*
+ * Compare two ipv4 address.
+ * @ip1: the first ipv4 address
+ * @ip2: the second ipv4 address
+ * Result:
+ *   -1: ip1 < ip2
+ *    0: ip1 = ip2
+ *    1: ip1 > ip2
+ */
 int ipv4_addr_cmp(unsigned char *ip1, unsigned char *ip2)
 {
 	int i = 0;
@@ -418,10 +470,18 @@ int ipv4_addr_cmp(unsigned char *ip1, unsigned char *ip2)
 	return 0;
 }
 
+
+/*
+ * Check whether a string is empty or contains only space.
+ */
 int string_is_null(char *str)
 {
 	int	i = 0;
-	int	len = strlen(str);
+	int	len;
+
+	if (!str)
+		return 1;
+	len = strlen(str);
 	for (i = 0; i < len; i++) {
 		if (!isblank(str[i]))
 			return 0;
@@ -429,6 +489,11 @@ int string_is_null(char *str)
 	return 1;
 }
 
+
+/*
+ * Get the start and end ipv4 address of a ipv4 range from rule creating page.
+ *
+ */
 int get_header_iprange_from_page(struct ip_address  *widget,
 		struct ip_addr_data *data)
 {
@@ -460,6 +525,11 @@ out:
 
 }
 
+/*
+ * Get ip address information from rule creating page. It's maybe ip address
+ * list or a subnet or an ip address range.
+ * 
+ */
 int get_header_addr_from_page(struct ip_address  *widget,
 		struct ip_addr_data *data)
 {
@@ -490,6 +560,10 @@ int get_header_addr_from_page(struct ip_address  *widget,
 	return res;
 }
 
+/*
+ * Get (tcp or udp) port list from rule creating page.
+ *
+ */
 int get_header_portlist_from_page(struct transport_port_details *widget,
 		struct trans_port_data *data)
 {
@@ -519,6 +593,9 @@ int get_header_portlist_from_page(struct transport_port_details *widget,
 	return RULE_SUCCESS;
 }
 
+/*
+ * Get port range from rule creating page.
+ */
 int get_header_portrange_from_page(struct transport_port_details *widget,
 		struct trans_port_data *data)
 {
@@ -566,6 +643,11 @@ out:
 	return res;
 }
 
+/*
+ * Get port information from rule creating page. It's maybe a port list or
+ * port range.
+ *
+ */
 int get_header_port_from_page(struct transport_port_info *widget,
 		struct trans_port_data *data)
 {
@@ -593,6 +675,10 @@ int get_header_port_from_page(struct transport_port_info *widget,
 	return res;
 }
 
+/*
+ * If transport protocol is "all", this function will be runned.
+ * "all" means matching packets no natter what tranport protocol it using.
+ */
 int get_header_transall_from_page(struct transport_all *widget,
 		struct trans_all_data *data)
 {
@@ -600,6 +686,11 @@ int get_header_transall_from_page(struct transport_all *widget,
 	return RULE_SUCCESS;
 }
 
+
+/*
+ * Get TCP information from rule creating page. Currently, we only get
+ * source port and destination port.
+ */
 int get_header_transtcp_from_page(struct transport_tcp *widget,
 		struct trans_tcp_data *data)
 {
@@ -614,6 +705,11 @@ int get_header_transtcp_from_page(struct transport_tcp *widget,
 	return res;
 }
 
+
+/*
+ * Get UDP information from rule creating page. Currently, we only get
+ * source port and destination port.
+ */
 int get_header_transudp_from_page(struct transport_udp *widget,
 		struct trans_udp_data *data)
 {
@@ -628,6 +724,10 @@ int get_header_transudp_from_page(struct transport_udp *widget,
 	return res;
 }
 
+
+/*
+ * Get transport protocol information from rule creating page.
+ */
 int get_header_trans_from_page(struct transport_info *widget,
 		struct transport_data *data)
 {
@@ -654,6 +754,11 @@ int get_header_trans_from_page(struct transport_info *widget,
 }
 
 
+/*
+ * Get packet header informations from rule creating page, includeing
+ * networking layer and transport layer.
+ *
+ */
 int get_header_data_from_page(struct match_header *widget, struct header *data)
 {
 	int	res;
@@ -669,6 +774,9 @@ int get_header_data_from_page(struct match_header *widget, struct header *data)
 }
 
 
+/*
+ * Get packet metainformations from rule creating page.
+ */
 int get_pktmeta_data_from_page(struct match_pktmeta  *widget,
 		struct pktmeta *data)
 {
@@ -676,6 +784,10 @@ int get_pktmeta_data_from_page(struct match_pktmeta  *widget,
 	return RULE_SUCCESS;
 }
 
+
+/*
+ * Get all informations from rule creating page.
+ */
 int get_data_from_page(struct rule_create_widget  *widget,
 		struct rule_create_data *data)
 {
@@ -691,6 +803,10 @@ int get_data_from_page(struct rule_create_widget  *widget,
 	return RULE_SUCCESS;
 }
 
+
+/*
+ * Free memory a rule_create_data instance used.
+ */
 void rule_free_data(struct rule_create_data *data)
 {
 

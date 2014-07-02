@@ -29,7 +29,7 @@ struct port_convert {
 };
 
 struct ip_addr_data {
-	int	ip_type;
+	enum address_type	ip_type;
 	int	exclude;
 	union {
 		struct {
@@ -47,7 +47,7 @@ struct ip_addr_data {
 };
 
 struct trans_port_data {
-	int	port_type;
+	enum port_type	port_type;
 	int	exclude;
 	union {
 		struct {
@@ -77,7 +77,7 @@ struct trans_udp_data {
 };
 
 struct transport_data {
-	enum port_type	trans_type;
+	enum transport_type	trans_type;
 	union {
 		struct trans_all_data	*all;
 		struct trans_tcp_data	*tcp;

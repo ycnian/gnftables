@@ -26,6 +26,14 @@ struct chain_list_data {
 	struct list_head	list;
 };
 
+struct set_list_data {
+	int		family;
+	char		*table;
+	char		*name;
+	int		nelems;
+	struct list_head	list;
+};
+
 struct gui_rule {
 	int		handle;		// NOTE: handle in struct handle is 8 bytes.
 	int		position;
@@ -61,5 +69,7 @@ int gui_get_sets_number(int family, char *table, int *nsets);
 int gui_add_table(struct table_create_data *data);
 int gui_get_rules_number(int family, char *table, char *chain, int *nrules);
 int gui_check_chain_exist(int family, char *table, char *chain);
+
+int gui_get_sets_list(struct list_head *head, int family, char *table);
 
 #endif

@@ -38,10 +38,16 @@
 
 #define  SET_SUCCESS		0
 #define  SET_KERNEL_ERROR	1
+#define  SET_ERROR_NUM		2
+
+#define  ELEMENT_SUCCESS	0
+#define  ELEMENT_KERNEL_ERROR	1
+#define  ELEMENT_ERROR_NUM	2
 
 extern const char *table_error[TABLE_ERROR_NUM];
 extern const char *chain_error[CHAIN_ERROR_NUM];
 extern const char *rule_error[RULE_ERROR_NUM];
-
+extern const char *set_error[SET_ERROR_NUM];
+extern const char *element_error[ELEMENT_ERROR_NUM];
 
 #endif

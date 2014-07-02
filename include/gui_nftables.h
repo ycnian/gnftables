@@ -27,6 +27,13 @@
 #define   CHAIN_DELETE		8
 #define   CHAIN_TOTAL		9
 
+#define   SET_ID		0
+#define   SET_NAME		1
+#define   SET_ELEMS		2
+#define   SET_DETAIL		3
+#define   SET_DELETE		4
+#define   SET_TOTAL		5
+
 
 #define   RULE_ID		0
 #define   RULE_HANDLE		1
@@ -83,6 +90,16 @@ struct chain_list_args {
 	gchar		*type;
 };
 
+
+struct set_list_args {
+	GtkWidget	*notebook;
+	GtkWidget	*model;
+	GtkWidget	*store;
+	gint		family;
+	gchar		*table;
+	gchar		*set;
+	gchar		*type;
+};
 
 struct rule_list_args {
 	GtkWidget	*notebook;
@@ -259,6 +276,10 @@ GtkWidget *create_family_list(gint list, void (*callback)(GtkComboBox *widget, g
 void table_update_data(gint family, GtkTreeStore *store);
 
 
+void gnftables_set_init(GtkButton *button, gpointer  data);
+
+
+
 int  get_table_list(struct list_head *table_list, uint32_t family);
 int gui_delete_table(int family, char *name);
 
@@ -320,5 +341,8 @@ void header_trans_udp_init(GtkWidget *fixed, struct transport_port_info *sport, 
 void transport_port_callback(GtkComboBoxText *widget, gpointer data);
 void transport_port_exclude(GtkWidget *check_button, gpointer data);
 void header_transport_porttype_changed(struct transport_port_info  *port_info);
+
+void gnftables_goto_chain_list(GtkButton *button, gpointer  data);
+void set_update_data(struct set_list_args *args);
 
 #endif

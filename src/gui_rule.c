@@ -309,6 +309,7 @@ int gui_get_sets_number(int family, char *table, int *nsets)
 	struct location		loc;
 	struct set		*set, *tmp;
 
+	*nsets = 0;
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.seqnum  = mnl_seqnum_alloc();
 	init_list_head(&ctx.list);
@@ -326,6 +327,66 @@ int gui_get_sets_number(int family, char *table, int *nsets)
 	}
 	return SET_SUCCESS;
 }
+
+
+int gui_get_sets_list(struct list_head *head, int family, char *table)
+{
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	struct set		*set, *s;
+	struct set_list_data  *gui_set, *gs;
+	int	nelems;
+	int	res;
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.seqnum  = mnl_seqnum_alloc();
+	init_list_head(&ctx.list);
+
+	handle.family = family;
+	handle.table = table;
+	handle.set = NULL;
+
+	if (netlink_list_sets(&ctx, &handle, &loc) < 0)
+		return SET_KERNEL_ERROR;
+
+	list_for_each_entry_safe(set, s, &ctx.list, list) {
+		gui_set = (struct set_list_data *)xmalloc(sizeof(struct set_list_data));
+		gui_set->family = set->handle.family;
+		gui_set->table = xstrdup(set->handle.table);
+		gui_set->name = xstrdup(set->handle.set);
+//		res = gui_get_rules_number(gui_set->family, gui_set->table, gui_set->name, &nelems);
+//		if (res != ELEMENT_SUCCESS) {
+//			xfree(gui_set->table);
+//			xfree(gui_set->name);
+//			xfree(gui_set);
+//			goto error;
+//		}
+		nelems = 2;
+		gui_set->nelems = nelems;
+		list_add_tail(&gui_set->list, head);
+
+		list_del(&set->list);
+		set_free(set);
+	}
+
+	return SET_SUCCESS;
+error:
+	list_for_each_entry_safe(set, s, &ctx.list, list) {
+		list_del(&set->list);
+		set_free(set);
+	}
+	list_for_each_entry_safe(gui_set, gs, head, list) {
+		list_del(&gui_set->list);
+		xfree(gui_set->table);
+		xfree(gui_set->name);
+		xfree(gui_set);
+	}
+	return SET_KERNEL_ERROR;
+
+	return 0;
+}
+
 
 /*
  * Get basic information of chains in nftables.
@@ -709,7 +770,7 @@ int gui_delete_table(int family, char *name)
 	handle.family = family;
 	handle.table = name;
 
-	res = gui_get_chains_list(&chains_list, family, name, "all");
+	res = gui_get_chains_list(&chains_list, family, name, (char *)"all");
 	if (res != CHAIN_SUCCESS)
 		return TABLE_KERNEL_ERROR;
 	list_for_each_entry_safe(gui_chain, gc, &chains_list, list) {

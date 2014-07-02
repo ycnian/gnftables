@@ -37,3 +37,15 @@ const char *rule_error[RULE_ERROR_NUM] = {
 	[RULE_HEADER_PORT_OVERFLOW]	= "Port is out of range, the upper value is 65535.",
 	[RULE_HEADER_PORT_RANGE_INVALID]= "Port range has zero or negative size",
 };
+
+
+const char *set_error[SET_ERROR_NUM]  = {
+	[SET_SUCCESS]		= "OK",
+	[SET_KERNEL_ERROR]	= "Could not receive data from kernel.",
+};
+
+
+const char *element_error[ELEMENT_ERROR_NUM]  = {
+	[ELEMENT_SUCCESS]	= "OK",
+	[ELEMENT_KERNEL_ERROR]	= "Could not receive data from kernel.",
+};

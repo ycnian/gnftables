@@ -96,10 +96,12 @@ int gui_get_rules_number(int family, char *table, char *chain, int *nrules)
 	tablee = table_lookup(&handle);
 	if (tablee == NULL) {
 		tablee = table_alloc();
+		init_list_head(&tablee->sets);
 		handle_merge(&tablee->handle, &handle);
 		table_add_hash(tablee);
 	}
 
+	table_list_sets(tablee);
 	res = netlink_list_chain(&ctx, &handle, &loc);
 	if (res < 0)
 		return RULE_KERNEL_ERROR;
@@ -328,6 +330,26 @@ int gui_get_sets_number(int family, char *table, int *nsets)
 	return SET_SUCCESS;
 }
 
+int table_list_sets(struct table *table)
+{
+	struct netlink_ctx	ctx;
+	struct location		loc;
+        struct set *set, *nset;
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.seqnum  = mnl_seqnum_alloc();
+	init_list_head(&ctx.list);
+
+        if (netlink_list_sets(&ctx, &table->handle, &loc) < 0)
+                return -1;
+
+        list_for_each_entry_safe(set, nset, &ctx.list, list) {
+                if (netlink_get_setelems(&ctx, &set->handle, &loc, set) < 0)
+                        return -1;
+                list_move_tail(&set->list, &table->sets);
+        }
+        return 0;
+}
 
 int gui_get_sets_list(struct list_head *head, int family, char *table)
 {

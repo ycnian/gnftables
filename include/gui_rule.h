@@ -72,4 +72,5 @@ int gui_check_chain_exist(int family, char *table, char *chain);
 
 int gui_get_sets_list(struct list_head *head, int family, char *table);
 
+int table_list_sets(struct table *table);
 #endif

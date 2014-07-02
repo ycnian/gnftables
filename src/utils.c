@@ -136,7 +136,7 @@ int str2unshort(char *str, unsigned short *num)
 
 int strtoint(char *str, int *num)
 {
-	long int    res = 0;
+	long long int    res = 0;
 	int     len;
 	int     i;
 

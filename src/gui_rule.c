@@ -324,7 +324,8 @@ int gui_get_sets_number(int family, char *table, int *nsets)
 		return SET_KERNEL_ERROR;
 
 	list_for_each_entry_safe(set, tmp, &ctx.list, list) {
-		(*nsets)++;
+		if (!(set->flags & SET_F_ANONYMOUS))
+			(*nsets)++;
 		set_free(set);
 	}
 	return SET_SUCCESS;
@@ -373,6 +374,8 @@ int gui_get_sets_list(struct list_head *head, int family, char *table)
 		return SET_KERNEL_ERROR;
 
 	list_for_each_entry_safe(set, s, &ctx.list, list) {
+		if (set->flags & SET_F_ANONYMOUS)
+			goto skipe;
 		gui_set = (struct set_list_data *)xmalloc(sizeof(struct set_list_data));
 		gui_set->family = set->handle.family;
 		gui_set->table = xstrdup(set->handle.table);
@@ -387,7 +390,7 @@ int gui_get_sets_list(struct list_head *head, int family, char *table)
 		nelems = 2;
 		gui_set->nelems = nelems;
 		list_add_tail(&gui_set->list, head);
-
+skipe:
 		list_del(&set->list);
 		set_free(set);
 	}

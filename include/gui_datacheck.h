@@ -107,6 +107,7 @@ struct rule_create_data {
 	struct header	*header;
 	struct pktmeta	*pktmeta;
 	struct list_head exprs;
+	struct list_head sets;
 };
 
 

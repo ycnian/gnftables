@@ -838,6 +838,7 @@ int rule_create_getdata(struct rule_create_widget  *widget,
 	p->header->transport_data = xmalloc(sizeof(struct transport_data));
 	init_list_head(&p->header->saddr->iplist.ips);
 	init_list_head(&p->header->daddr->iplist.ips);
+	p->loc = xzalloc(sizeof(struct location));
 
 	res = get_data_from_page(widget, p);
 	if (res != RULE_SUCCESS)
@@ -852,6 +853,7 @@ int rule_create_getdata(struct rule_create_widget  *widget,
 	res = rule_gen_expressions(p);
 	if (res != RULE_SUCCESS)
 		goto error;
+	*data = p;
 	return RULE_SUCCESS;
 error:
 	rule_free_data(p);

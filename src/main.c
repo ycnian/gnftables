@@ -361,14 +361,16 @@ void begin_create_new_rule(GtkButton *button, gpointer  info)
 		return;
 	}
 
-/*
+	data->family = widget->family;
+	data->table = xstrdup(widget->table);
+	data->chain = xstrdup(widget->chain);
 	res = gui_add_rule(data);
 	// xfree(data);
 	if (res != CHAIN_SUCCESS) {
 		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[res]);
 		return;
 	}
-*/
+
 
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 2);
 	gnftables_rule_init(widget->family, widget->table, widget->chain, notebook);

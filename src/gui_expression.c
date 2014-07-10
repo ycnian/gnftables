@@ -2,10 +2,23 @@
 #include <gui_nftables.h>
 #include <gui_rule.h>
 #include <gui_error.h>
+#include <statement.h>
+#include <proto.h>
 
 
 int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr)
 {
+	struct expr  *payload;
+	struct expr  *symbol;
+	struct expr *rela;
+	struct stmt *stmt;
+
+	payload = payload_expr_alloc(data->loc, &proto_ip, IPHDR_SADDR);
+	symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, "192.168.10.2");
+	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, symbol);
+	rela->op = OP_EQ;
+	stmt = expr_stmt_alloc(data->loc, rela);
+	list_add_tail(&stmt->list, &data->exprs);
 
 	return RULE_SUCCESS;
 }
@@ -167,6 +180,18 @@ int rule_pktmeta_gen_exprs(struct rule_create_data *data, struct pktmeta *pktmet
 	return RULE_SUCCESS;
 }
 
+int rule_counter_gen_exprs(struct rule_create_data *data)
+{
+	struct stmt *stmt;
+	stmt = counter_stmt_alloc(data->loc);
+	stmt->counter.packets = 0;
+	stmt->counter.bytes = 0;
+	list_add_tail(&stmt->list, &data->exprs);
+
+	return RULE_SUCCESS;
+}
+
+
 
 /*
  * Gen expressions according to data from rule creating page.
@@ -175,12 +200,13 @@ int rule_pktmeta_gen_exprs(struct rule_create_data *data, struct pktmeta *pktmet
 int rule_gen_expressions(struct rule_create_data *data)
 {
 	int res = RULE_SUCCESS;
-
 	init_list_head(&data->exprs);
 	res = rule_header_gen_exprs(data, data->header);
 	if (res != RULE_SUCCESS)
 		return res;
 	res = rule_pktmeta_gen_exprs(data, data->pktmeta);
-
+	if (res != RULE_SUCCESS)
+	res = rule_counter_gen_exprs(data);
+		return res;
 	return res;
 }

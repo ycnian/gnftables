@@ -20,6 +20,7 @@ int rule_trans_gen_exprs(struct rule_create_data *data, struct transport_data *t
 int rule_header_gen_exprs(struct rule_create_data *data, struct header *header);
 int rule_pktmeta_gen_exprs(struct rule_create_data *data, struct pktmeta *pktmeta);
 
+int rule_counter_gen_exprs(struct rule_create_data *data);
 int rule_gen_expressions(struct rule_create_data *data);
 
 #endif

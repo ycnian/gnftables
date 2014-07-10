@@ -108,6 +108,7 @@ struct rule_create_data {
 	struct pktmeta	*pktmeta;
 	struct list_head exprs;
 	struct list_head sets;
+	struct location	*loc;
 };
 
 

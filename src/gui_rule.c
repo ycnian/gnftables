@@ -226,7 +226,7 @@ int gui_delete_rule(int family, const char *table, const char *chain, int handle
 }
 
 
-int gui_add_rule(struct gui_rule *gui_rule)
+int gui_add_rule(struct rule_create_data *data)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
@@ -252,15 +252,16 @@ int gui_add_rule(struct gui_rule *gui_rule)
 	init_list_head(&ctx.list);
 	init_list_head(&rule.stmts);
 
-	handle.family = gui_rule->family;
-	handle.table = gui_rule->table;
-	handle.chain = gui_rule->chain;
+	handle.family = data->family;
+	handle.table = xstrdup(data->table);
+	handle.chain = xstrdup(data->chain);
 	handle.handle = 0;
 	handle.position = 0;
 	handle.comment = NULL;
 	rule.handle = handle;
 
 	// add statements.
+/*
 	char   ip[4];
 	ip[0] = 0xc0;
 	ip[1] = 0xa8;
@@ -277,20 +278,25 @@ int gui_add_rule(struct gui_rule *gui_rule)
 	stmt->counter.packets = 0;
 	stmt->counter.bytes = 0;
 	list_add_tail(&stmt->list, &rule.stmts);
+*/
+	list_splice_tail(&data->exprs, &rule.stmts);
+
+	list_for_each_entry(stmt, &rule.stmts, list) {
+		printf("yyyyyyyyyyyyyyyyy  name = %s\n", stmt->ops->name);
+	}
+
+
 	mnl_batch_begin();
-	// delete rule.
 	if (netlink_add_rule_batch(&ctx, &handle, &rule, NLM_F_APPEND) < 0) {
 			res = TABLE_KERNEL_ERROR;
 	}
 	mnl_batch_end();
 
-//	list_for_each_entry(stmt, &rule.stmts, list) {
-//		stmt_free(stmt);
-//	}
 
 	if (mnl_batch_ready()) {
 		netlink_batch_send(&err_list);
-	}
+	} else
+		mnl_batch_reset();
 	return res;
 
 }

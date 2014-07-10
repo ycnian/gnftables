@@ -6,37 +6,45 @@
 #include <proto.h>
 
 
-int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr)
+int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
 {
 	struct expr  *payload;
-	struct expr  *symbol;
+	struct expr  *constant;
 	struct expr *rela;
 	struct stmt *stmt;
+	unsigned int	type;
+	enum ops	op;
 
-	payload = payload_expr_alloc(data->loc, &proto_ip, IPHDR_SADDR);
-	symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, "192.168.10.2");
-	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, symbol);
-	rela->op = OP_EQ;
+	if (list_empty(&(addr->iplist.ips)))
+		return RULE_SUCCESS;
+
+	type = source ? IPHDR_SADDR: IPHDR_DADDR;
+	op = (addr->exclude) ? OP_NEQ: OP_EQ;
+	payload = payload_expr_alloc(data->loc, &proto_ip, type);
+	constant = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
+			4 * 8, list_first_entry(&(addr->iplist.ips), struct ip_convert, list)->ip);
+	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, constant);
+	rela->op = op;
 	stmt = expr_stmt_alloc(data->loc, rela);
 	list_add_tail(&stmt->list, &data->exprs);
 
 	return RULE_SUCCESS;
 }
 
-int rule_addrsubnet_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr)
+int rule_addrsubnet_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
 {
 
 	return RULE_SUCCESS;
 }
 
-int rule_addrrange_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr)
+int rule_addrrange_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
 {
 
 	return RULE_SUCCESS;
 }
 
 
-int rule_addr_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr)
+int rule_addr_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
 {
 	enum address_type	ip_type;
 	int	res = RULE_SUCCESS;
@@ -44,13 +52,13 @@ int rule_addr_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr
 	ip_type = addr->ip_type;
 	switch (ip_type) {
 	case ADDRESS_EXACT:
-		res = rule_addrlist_gen_exprs(data, addr);
+		res = rule_addrlist_gen_exprs(data, addr, source);
 		break;
 	case ADDRESS_SUBNET:
-		res = rule_addrsubnet_gen_exprs(data, addr);
+		res = rule_addrsubnet_gen_exprs(data, addr, source);
 		break;
 	case ADDRESS_RANGE:
-		res = rule_addrrange_gen_exprs(data, addr);
+		res = rule_addrrange_gen_exprs(data, addr, source);
 		break;
 	case ADDRESS_SET:
 		break;
@@ -163,10 +171,10 @@ int rule_header_gen_exprs(struct rule_create_data *data, struct header *header)
 {
 	int	res = RULE_SUCCESS;
 
-	res = rule_addr_gen_exprs(data, header->saddr);
+	res = rule_addr_gen_exprs(data, header->saddr, 1);
 	if (res != RULE_SUCCESS)
 		return res;
-	res = rule_addr_gen_exprs(data, header->daddr);
+	res = rule_addr_gen_exprs(data, header->daddr, 0);
 	if (res != RULE_SUCCESS)
 		return res;
 	res = rule_trans_gen_exprs(data, header->transport_data);
@@ -206,7 +214,7 @@ int rule_gen_expressions(struct rule_create_data *data)
 		return res;
 	res = rule_pktmeta_gen_exprs(data, data->pktmeta);
 	if (res != RULE_SUCCESS)
-	res = rule_counter_gen_exprs(data);
 		return res;
+	res = rule_counter_gen_exprs(data);
 	return res;
 }

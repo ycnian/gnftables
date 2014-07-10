@@ -4,10 +4,10 @@
 #include <gui_rule.h>
 #include <gui_nftables.h>
 
-int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr);
-int rule_addrsubnet_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr);
-int rule_addrrange_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr);
-int rule_addr_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr);
+int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source);
+int rule_addrsubnet_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source);
+int rule_addrrange_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source);
+int rule_addr_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source);
 int rule_portlist_gen_exprs(struct rule_create_data *data,
                 struct trans_port_data *port);
 int rule_portrange_gen_exprs(struct rule_create_data *data,

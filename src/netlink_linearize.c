@@ -182,6 +182,10 @@ static enum nft_cmp_ops netlink_gen_cmp_op(enum ops op)
 	}
 }
 
+static void netlink_gen_range(struct netlink_linearize_ctx *ctx,
+			const struct expr *expr,
+			enum nft_registers dreg);
+
 static void netlink_gen_cmp(struct netlink_linearize_ctx *ctx,
 			    const struct expr *expr,
 			    enum nft_registers dreg)
@@ -216,6 +220,9 @@ static void netlink_gen_cmp(struct netlink_linearize_ctx *ctx,
 		nft_rule_add_expr(ctx->nlr, nle);
 
 		right = expr->right->prefix;
+
+	} else if (expr->right->ops->type == EXPR_RANGE) {
+                return netlink_gen_range(ctx, expr, dreg);
 	} else {
 		right = expr->right;
 	}
@@ -247,16 +254,40 @@ static void netlink_gen_range(struct netlink_linearize_ctx *ctx,
 
 	nle = alloc_nft_expr("cmp");
 	nft_rule_expr_set_u32(nle, NFT_EXPR_CMP_SREG, sreg);
-	nft_rule_expr_set_u32(nle, NFT_EXPR_CMP_OP,
-			      netlink_gen_cmp_op(OP_GTE));
+	switch (expr->op) {
+	case OP_NEQ:
+		nft_rule_expr_set_u32(nle, NFT_EXPR_CMP_OP,
+			netlink_gen_cmp_op(OP_LT));
+		break;
+	case OP_RANGE:
+	case OP_EQ:
+		nft_rule_expr_set_u32(nle, NFT_EXPR_CMP_OP,
+		netlink_gen_cmp_op(OP_GTE));
+		break;
+	default:
+		BUG("invalid range operation %u\n", expr->op);
+	}
+
 	netlink_gen_data(range->left, &nld);
 	nft_rule_expr_set(nle, NFT_EXPR_CMP_DATA, nld.value, nld.len);
 	nft_rule_add_expr(ctx->nlr, nle);
 
 	nle = alloc_nft_expr("cmp");
 	nft_rule_expr_set_u32(nle, NFT_EXPR_CMP_SREG, sreg);
-	nft_rule_expr_set_u32(nle, NFT_EXPR_CMP_OP,
-			      netlink_gen_cmp_op(OP_LTE));
+	switch (expr->op) {
+	case OP_NEQ:
+		nft_rule_expr_set_u32(nle, NFT_EXPR_CMP_OP,
+		netlink_gen_cmp_op(OP_GT));
+		break;
+	case OP_RANGE:
+	case OP_EQ:
+		nft_rule_expr_set_u32(nle, NFT_EXPR_CMP_OP,
+		netlink_gen_cmp_op(OP_LTE));
+		break;
+	default:
+		BUG("invalid range operation %u\n", expr->op);
+	}
+
 	netlink_gen_data(range->right, &nld);
 	nft_rule_expr_set(nle, NFT_EXPR_CMP_DATA, nld.value, nld.len);
 	nft_rule_add_expr(ctx->nlr, nle);
@@ -721,8 +752,9 @@ int netlink_linearize_rule(struct netlink_ctx *ctx, struct nft_rule *nlr,
 	lctx.reg_low = NFT_REG_1;
 	lctx.nlr = nlr;
 
-	list_for_each_entry(stmt, &rule->stmts, list)
+	list_for_each_entry(stmt, &rule->stmts, list) {
 		netlink_gen_stmt(&lctx, stmt);
+	}
 
 	netlink_dump_rule(nlr);
 	return 0;

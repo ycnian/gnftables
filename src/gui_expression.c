@@ -39,6 +39,33 @@ int rule_addrsubnet_gen_exprs(struct rule_create_data *data, struct ip_addr_data
 
 int rule_addrrange_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
 {
+	struct expr  *payload;
+	struct expr  *left;
+	struct expr  *right;
+	struct expr  *range;
+	struct expr  *rela;
+	struct stmt  *stmt;
+	unsigned int	type;
+	enum ops	op;
+
+	if (list_empty(&(addr->iplist.ips)))
+		return RULE_SUCCESS;
+
+	type = source ? IPHDR_SADDR: IPHDR_DADDR;
+	op = (addr->exclude) ? OP_NEQ: OP_EQ;
+	payload = payload_expr_alloc(data->loc, &proto_ip, type);
+
+	left = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
+			4 * 8, addr->range.from);
+	right = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
+			4 * 8, addr->range.to);
+	range = range_expr_alloc(data->loc, left, right);
+
+	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, range);
+	rela->op = op;
+
+	stmt = expr_stmt_alloc(data->loc, rela);
+	list_add_tail(&stmt->list, &data->exprs);
 
 	return RULE_SUCCESS;
 }

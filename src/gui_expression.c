@@ -47,22 +47,35 @@ int rule_addrrange_gen_exprs(struct rule_create_data *data, struct ip_addr_data 
 	struct stmt  *stmt;
 	unsigned int	type;
 	enum ops	op;
-
-	if (list_empty(&(addr->iplist.ips)))
-		return RULE_SUCCESS;
+	unsigned int	from = *(unsigned int *)(addr->range.from);
+	unsigned int	to = *(unsigned int *)(addr->range.to);
 
 	type = source ? IPHDR_SADDR: IPHDR_DADDR;
-	op = (addr->exclude) ? OP_NEQ: OP_EQ;
 	payload = payload_expr_alloc(data->loc, &proto_ip, type);
 
-	left = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
-			4 * 8, addr->range.from);
-	right = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
-			4 * 8, addr->range.to);
-	range = range_expr_alloc(data->loc, left, right);
-
-	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, range);
-	rela->op = op;
+	if (from && to) {
+		op = (addr->exclude) ? OP_NEQ : OP_EQ;
+		left = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
+				4 * 8, addr->range.from);
+		right = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
+				4 * 8, addr->range.to);
+		range = range_expr_alloc(data->loc, left, right);
+		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, range);
+		rela->op = op;
+	} else if (from) {
+		op = (addr->exclude) ? OP_LT : OP_GTE;
+		left = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
+				4 * 8, addr->range.from);
+		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, left);
+		rela->op = op;
+	} else if (to) {
+		op = (addr->exclude) ? OP_GT : OP_LTE;
+		right = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
+				4 * 8, addr->range.to);
+		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, right);
+		rela->op = op;
+	} else
+		return RULE_SUCCESS;
 
 	stmt = expr_stmt_alloc(data->loc, rela);
 	list_add_tail(&stmt->list, &data->exprs);

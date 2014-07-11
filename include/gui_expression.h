@@ -22,5 +22,6 @@ int rule_pktmeta_gen_exprs(struct rule_create_data *data, struct pktmeta *pktmet
 
 int rule_counter_gen_exprs(struct rule_create_data *data);
 int rule_gen_expressions(struct rule_create_data *data);
+int rule_ip_upper_expr(struct rule_create_data *data, enum transport_type upper);
 
 #endif

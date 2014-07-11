@@ -112,6 +112,37 @@ int rule_transall_gen_exprs(struct rule_create_data *data, struct trans_all_data
 	return RULE_SUCCESS;
 }
 
+
+int rule_ip_upper_expr(struct rule_create_data *data, enum transport_type upper)
+{
+	struct expr  *payload;
+	struct expr  *constant;
+	struct expr *rela;
+	struct stmt *stmt;
+	unsigned char	proto = -1;
+
+	switch (upper) {
+	case TRANSPORT_TCP:
+		proto = IPPROTO_TCP;
+		break;
+	case TRANSPORT_UDP:
+		proto = IPPROTO_UDP;
+		break;
+	default:
+		break;
+	}
+
+	payload = payload_expr_alloc(data->loc, &proto_ip, IPHDR_PROTOCOL);
+	constant = constant_expr_alloc(data->loc, &inet_protocol_type, BYTEORDER_HOST_ENDIAN,
+			8, &proto);
+	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, constant);
+	rela->op = OP_EQ;
+	stmt = expr_stmt_alloc(data->loc, rela);
+	list_add_tail(&stmt->list, &data->exprs);
+
+	return RULE_SUCCESS;
+}
+
 int rule_transtcp_gen_exprs(struct rule_create_data *data, struct trans_tcp_data *tcp)
 {
 	int	res = RULE_SUCCESS;
@@ -154,9 +185,15 @@ int rule_trans_gen_exprs(struct rule_create_data *data, struct transport_data *t
 		res = rule_transall_gen_exprs(data, trans->all);
 		break;
 	case TRANSPORT_TCP:
+		res = rule_ip_upper_expr(data, type);
+		if (res != RULE_SUCCESS)
+			break;
 		res = rule_transtcp_gen_exprs(data, trans->tcp);
 		break;
 	case TRANSPORT_UDP:
+		res = rule_ip_upper_expr(data, type);
+		if (res != RULE_SUCCESS)
+			break;
 		res = rule_transudp_gen_exprs(data, trans->udp);
 		break;
 	default:

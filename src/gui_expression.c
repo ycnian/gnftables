@@ -4,6 +4,7 @@
 #include <gui_error.h>
 #include <statement.h>
 #include <proto.h>
+#include <netlink.h>
 #include <string.h>
 
 
@@ -11,20 +12,64 @@ int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *
 {
 	struct expr  *payload;
 	struct expr  *constant;
-	struct expr *rela;
-	struct stmt *stmt;
+	struct expr  *rela;
+	struct expr  *elem;
+	struct expr  *se;
+	struct stmt  *stmt;
+	struct set   *set;
 	unsigned int	type;
 	enum ops	op;
+	struct ip_convert	*convert;
 
 	if (list_empty(&(addr->iplist.ips)))
 		return RULE_SUCCESS;
 
 	type = source ? IPHDR_SADDR: IPHDR_DADDR;
-	op = (addr->exclude) ? OP_NEQ: OP_EQ;
+//	op = (addr->exclude) ? OP_NEQ: OP_EQ;
+	op = OP_LOOKUP;
 	payload = payload_expr_alloc(data->loc, &proto_ip, type);
-	constant = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
-			4 * 8, list_first_entry(&(addr->iplist.ips), struct ip_convert, list)->ip);
-	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, constant);
+	elem = set_expr_alloc(data->loc);
+
+	list_for_each_entry(convert, &(addr->iplist.ips), list) {
+		constant = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
+			4 * 8, convert->ip);
+		compound_expr_add(elem, constant);
+	}
+
+	set = set_alloc(data->loc);
+        set->flags	= SET_F_CONSTANT | SET_F_ANONYMOUS;
+        set->handle.set = xstrdup("set%d");
+        set->keytype    = &ipaddr_type;
+        set->keylen     = 4 * 8;
+        set->init       = elem;
+	set->handle.family = data->family;
+	set->handle.table = xstrdup(data->table);
+
+	struct netlink_ctx      ctx;
+	struct table		*table;
+	struct set		*clone;
+	LIST_HEAD(msgs);
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+//	ctx.seqnum  = mnl_seqnum_alloc();
+	netlink_add_set(&ctx, &set->handle, set);
+	netlink_add_setelems(&ctx, &set->handle, set->init);
+
+	table = table_lookup(&set->handle);
+	if (table == NULL) {
+		table = table_alloc();
+		init_list_head(&table->sets);
+		handle_merge(&table->handle, &set->handle);
+		table_add_hash(table);
+	}
+	if (!set_lookup(table, set->handle.set)) {
+		clone = set_clone(set);
+		set_add_hash(clone, table);
+	}
+
+	se = set_ref_expr_alloc(data->loc, set);
+
+	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, se);
 	rela->op = op;
 	stmt = expr_stmt_alloc(data->loc, rela);
 	list_add_tail(&stmt->list, &data->exprs);

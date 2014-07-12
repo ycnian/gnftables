@@ -840,6 +840,10 @@ int rule_create_getdata(struct rule_create_widget  *widget,
 	init_list_head(&p->header->daddr->iplist.ips);
 	p->loc = xzalloc(sizeof(struct location));
 
+	p->family = widget->family;
+	p->table = xstrdup(widget->table);
+	p->chain = xstrdup(widget->chain);
+
 	res = get_data_from_page(widget, p);
 	if (res != RULE_SUCCESS)
 		goto error;

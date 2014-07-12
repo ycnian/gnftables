@@ -4,6 +4,7 @@
 #include <gui_error.h>
 #include <statement.h>
 #include <proto.h>
+#include <string.h>
 
 
 int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
@@ -33,6 +34,40 @@ int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *
 
 int rule_addrsubnet_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
 {
+	struct expr  *payload;
+	struct expr  *constant;
+	struct expr  *prefix;
+	struct expr *rela;
+	struct stmt *stmt;
+	unsigned int	type;
+	enum ops	op;
+	unsigned char   ip[4];
+	int	mask;
+	int	i;
+	memcpy(ip, addr->subnet.ip, 4);
+	mask = addr->subnet.mask;
+
+	for (i = 0; i < 4; i++) {
+		if (mask < 0)
+			ip[i] = 0;
+		else if (mask < 8) {
+			ip[i] = (ip[i] & ((-1 << (8-mask)) & 0xff));
+		}
+		mask -= 8;
+	}
+
+	type = source ? IPHDR_SADDR: IPHDR_DADDR;
+	op = (addr->exclude) ? OP_NEQ: OP_EQ;
+	payload = payload_expr_alloc(data->loc, &proto_ip, type);
+	constant = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
+			4 * 8, ip);
+	prefix = prefix_expr_alloc(data->loc, constant, addr->subnet.mask);
+	prefix->byteorder = BYTEORDER_BIG_ENDIAN;
+	prefix->len = 4 * 8;
+	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, prefix);
+	rela->op = op;
+	stmt = expr_stmt_alloc(data->loc, rela);
+	list_add_tail(&stmt->list, &data->exprs);
 
 	return RULE_SUCCESS;
 }

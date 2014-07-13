@@ -360,16 +360,8 @@ int gui_get_sets_list(struct list_head *head, int family, char *table)
 		gui_set->keytype = xstrdup(set->keytype->desc);
 		if (set->flags & SET_F_MAP)
 			gui_set->datatype = xstrdup(set->datatype->desc);
-
-//		res = gui_get_rules_number(gui_set->family, gui_set->table, gui_set->name, &nelems);
-//		if (res != ELEMENT_SUCCESS) {
-//			xfree(gui_set->table);
-//			xfree(gui_set->name);
-//			xfree(gui_set);
-//			goto error;
-//		}
-		nelems = 2;
-		gui_set->nelems = nelems;
+		netlink_get_setelems(&ctx, &set->handle, &loc, set);
+		gui_set->nelems = set->init->size;
 		list_add_tail(&gui_set->list, head);
 skipe:
 		list_del(&set->list);

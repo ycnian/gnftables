@@ -190,14 +190,91 @@ int rule_addr_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr
 }
 
 int rule_portlist_gen_exprs(struct rule_create_data *data,
-		struct trans_port_data *port, int source)
+		struct trans_port_data *port, enum transport_type type, int source)
 {
+	struct expr  *payload;
+	struct expr  *constant;
+	struct expr  *rela;
+	struct expr  *elem;
+	struct expr  *se;
+	struct stmt  *stmt;
+	struct set   *set;
+	unsigned int	sport;
+	const struct proto_desc *desc;
+	enum ops	op;
+	struct port_convert	*convert;
+	unsigned short	port_value;
+
+	if (list_empty(&(port->portlist.ports)))
+		return RULE_SUCCESS;
+
+	switch (type) {
+	case TRANSPORT_TCP:
+		sport = source ? TCPHDR_SPORT : TCPHDR_DPORT;
+		desc = &proto_tcp;
+		break;
+	case TRANSPORT_UDP:
+		sport = source ? UDPHDR_SPORT : UDPHDR_DPORT;
+		desc = &proto_udp;
+		break;
+	default:
+		BUG("invalid transport protocol.");
+	}
+//	op = (addr->exclude) ? OP_NEQ: OP_EQ;
+	op = OP_LOOKUP;
+	payload = payload_expr_alloc(data->loc, desc, sport);
+	elem = set_expr_alloc(data->loc);
+
+	list_for_each_entry(convert, &(port->portlist.ports), list) {
+		port_value = ((convert->port & 0xff) << 8) + ((convert->port >> 8) & 0xff);
+		constant = constant_expr_alloc(data->loc, &inet_service_type, BYTEORDER_BIG_ENDIAN,
+				2 * 8, &port_value);
+		compound_expr_add(elem, constant);
+	}
+
+	set = set_alloc(data->loc);
+        set->flags	= SET_F_CONSTANT | SET_F_ANONYMOUS;
+        set->handle.set = xstrdup("set%d");
+        set->keytype    = &inet_service_type;
+        set->keylen     = 2 * 8;
+        set->init       = elem;
+	set->handle.family = data->family;
+	set->handle.table = xstrdup(data->table);
+
+	struct netlink_ctx      ctx;
+	struct table		*table;
+	struct set		*clone;
+	LIST_HEAD(msgs);
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+//	ctx.seqnum  = mnl_seqnum_alloc();
+	netlink_add_set(&ctx, &set->handle, set);
+	netlink_add_setelems(&ctx, &set->handle, set->init);
+
+	table = table_lookup(&set->handle);
+	if (table == NULL) {
+		table = table_alloc();
+		init_list_head(&table->sets);
+		handle_merge(&table->handle, &set->handle);
+		table_add_hash(table);
+	}
+	if (!set_lookup(table, set->handle.set)) {
+		clone = set_clone(set);
+		set_add_hash(clone, table);
+	}
+
+	se = set_ref_expr_alloc(data->loc, set);
+
+	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, se);
+	rela->op = op;
+	stmt = expr_stmt_alloc(data->loc, rela);
+	list_add_tail(&stmt->list, &data->exprs);
 
 	return RULE_SUCCESS;
 }
 
 int rule_portrange_gen_exprs(struct rule_create_data *data,
-		struct trans_port_data *port, int source)
+		struct trans_port_data *port, enum transport_type type, int source)
 {
 	struct expr  *payload;
 	struct expr  *left;
@@ -205,15 +282,27 @@ int rule_portrange_gen_exprs(struct rule_create_data *data,
 	struct expr  *range;
 	struct expr  *rela;
 	struct stmt  *stmt;
-	unsigned int	type;
+	unsigned int	sport;
+	const struct proto_desc *desc;
 	enum ops	op;
 	unsigned short	from = port->range.from;
 	unsigned short	to = port->range.to;
 	from = ((from & 0xff) << 8) + ((from >> 8) & 0xff);
 	to = ((to & 0xff) << 8) + ((to >> 8) & 0xff);
 
-	type = source ? TCPHDR_SPORT : TCPHDR_DPORT;
-	payload = payload_expr_alloc(data->loc, &proto_tcp, type);
+	switch (type) {
+	case TRANSPORT_TCP:
+		sport = source ? TCPHDR_SPORT : TCPHDR_DPORT;
+		desc = &proto_tcp;
+		break;
+	case TRANSPORT_UDP:
+		sport = source ? UDPHDR_SPORT : UDPHDR_DPORT;
+		desc = &proto_udp;
+		break;
+	default:
+		BUG("invalid transport protocol.");
+	}
+	payload = payload_expr_alloc(data->loc, desc, sport);
 
 	if (from && to) {
 		op = (port->exclude) ? OP_NEQ : OP_EQ;
@@ -245,7 +334,7 @@ int rule_portrange_gen_exprs(struct rule_create_data *data,
 	return RULE_SUCCESS;
 }
 
-int rule_port_gen_exprs(struct rule_create_data *data, struct trans_port_data *port, int source)
+int rule_port_gen_exprs(struct rule_create_data *data, struct trans_port_data *port, enum transport_type type, int source)
 {
 	enum port_type	port_type;
 	int	res = RULE_SUCCESS;
@@ -253,10 +342,10 @@ int rule_port_gen_exprs(struct rule_create_data *data, struct trans_port_data *p
 	port_type = port->port_type;
 	switch (port_type) {
 	case PORT_EXACT:
-		res = rule_portlist_gen_exprs(data, port, source);
+		res = rule_portlist_gen_exprs(data, port, type, source);
 		break;
 	case PORT_RANGE:
-		res = rule_portrange_gen_exprs(data, port, source);
+		res = rule_portrange_gen_exprs(data, port, type, source);
 		break;
 	case PORT_SET:
 		break;
@@ -305,32 +394,32 @@ int rule_ip_upper_expr(struct rule_create_data *data, enum transport_type upper)
 	return RULE_SUCCESS;
 }
 
-int rule_transtcp_gen_exprs(struct rule_create_data *data, struct trans_tcp_data *tcp)
+int rule_transtcp_gen_exprs(struct rule_create_data *data, struct trans_tcp_data *tcp, enum transport_type type)
 {
 	int	res = RULE_SUCCESS;
 
 	// res = rule_ip_tcp_expr(data);
 	// if (res == RULE_SUCCESS)
 	// 	return res;
-	res = rule_port_gen_exprs(data, tcp->sport, 1);
+	res = rule_port_gen_exprs(data, tcp->sport, type, 1);
 	if (res != RULE_SUCCESS)
 		return res;
-	res = rule_port_gen_exprs(data, tcp->dport, 0);
+	res = rule_port_gen_exprs(data, tcp->dport, type, 0);
 
 	return res;
 }
 
-int rule_transudp_gen_exprs(struct rule_create_data *data, struct trans_udp_data *udp)
+int rule_transudp_gen_exprs(struct rule_create_data *data, struct trans_udp_data *udp, enum transport_type type)
 {
 	int	res = RULE_SUCCESS;
 
 	// res = rule_ip_udp_expr(data);
 	// if (res == RULE_SUCCESS)
 	// 	return res;
-	res = rule_port_gen_exprs(data, udp->sport, 1);
+	res = rule_port_gen_exprs(data, udp->sport, type, 1);
 	if (res != RULE_SUCCESS)
 		return res;
-	res = rule_port_gen_exprs(data, udp->dport, 0);
+	res = rule_port_gen_exprs(data, udp->dport, type, 0);
 
 	return res;
 
@@ -350,13 +439,13 @@ int rule_trans_gen_exprs(struct rule_create_data *data, struct transport_data *t
 		res = rule_ip_upper_expr(data, type);
 		if (res != RULE_SUCCESS)
 			break;
-		res = rule_transtcp_gen_exprs(data, trans->tcp);
+		res = rule_transtcp_gen_exprs(data, trans->tcp, TRANSPORT_TCP);
 		break;
 	case TRANSPORT_UDP:
 		res = rule_ip_upper_expr(data, type);
 		if (res != RULE_SUCCESS)
 			break;
-		res = rule_transudp_gen_exprs(data, trans->udp);
+		res = rule_transudp_gen_exprs(data, trans->udp, TRANSPORT_UDP);
 		break;
 	default:
 		break;

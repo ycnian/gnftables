@@ -753,6 +753,7 @@ int get_header_trans_from_page(struct transport_info *widget,
 		res = get_header_transtcp_from_page(widget->tcp, data->tcp);
 		break;
 	case TRANSPORT_UDP:
+		data->udp = xmalloc(sizeof(struct trans_udp_data));
 		res = get_header_transudp_from_page(widget->udp, data->udp);
 		break;
 	default:

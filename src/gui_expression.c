@@ -190,20 +190,62 @@ int rule_addr_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr
 }
 
 int rule_portlist_gen_exprs(struct rule_create_data *data,
-		struct trans_port_data *port)
+		struct trans_port_data *port, int source)
 {
 
 	return RULE_SUCCESS;
 }
 
 int rule_portrange_gen_exprs(struct rule_create_data *data,
-		struct trans_port_data *port)
+		struct trans_port_data *port, int source)
 {
+	struct expr  *payload;
+	struct expr  *left;
+	struct expr  *right;
+	struct expr  *range;
+	struct expr  *rela;
+	struct stmt  *stmt;
+	unsigned int	type;
+	enum ops	op;
+	unsigned short	from = port->range.from;
+	unsigned short	to = port->range.to;
+	from = ((from & 0xff) << 8) + ((from >> 8) & 0xff);
+	to = ((to & 0xff) << 8) + ((to >> 8) & 0xff);
+
+	type = source ? TCPHDR_SPORT : TCPHDR_DPORT;
+	payload = payload_expr_alloc(data->loc, &proto_tcp, type);
+
+	if (from && to) {
+		op = (port->exclude) ? OP_NEQ : OP_EQ;
+		left = constant_expr_alloc(data->loc, &inet_service_type, BYTEORDER_BIG_ENDIAN,
+				2 * 8, &from);
+		right = constant_expr_alloc(data->loc, &inet_service_type, BYTEORDER_BIG_ENDIAN,
+				2 * 8, &to);
+		range = range_expr_alloc(data->loc, left, right);
+		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, range);
+		rela->op = op;
+	} else if (from) {
+		op = (port->exclude) ? OP_LT : OP_GTE;
+		left = constant_expr_alloc(data->loc, &inet_service_type, BYTEORDER_BIG_ENDIAN,
+				2 * 8, &from);
+		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, left);
+		rela->op = op;
+	} else if (to) {
+		op = (port->exclude) ? OP_GT : OP_LTE;
+		right = constant_expr_alloc(data->loc, &inet_service_type, BYTEORDER_BIG_ENDIAN,
+				2 * 8, &to);
+		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, right);
+		rela->op = op;
+	} else
+		return RULE_SUCCESS;
+
+	stmt = expr_stmt_alloc(data->loc, rela);
+	list_add_tail(&stmt->list, &data->exprs);
 
 	return RULE_SUCCESS;
 }
 
-int rule_port_gen_exprs(struct rule_create_data *data, struct trans_port_data *port)
+int rule_port_gen_exprs(struct rule_create_data *data, struct trans_port_data *port, int source)
 {
 	enum port_type	port_type;
 	int	res = RULE_SUCCESS;
@@ -211,10 +253,10 @@ int rule_port_gen_exprs(struct rule_create_data *data, struct trans_port_data *p
 	port_type = port->port_type;
 	switch (port_type) {
 	case PORT_EXACT:
-		res = rule_portlist_gen_exprs(data, port);
+		res = rule_portlist_gen_exprs(data, port, source);
 		break;
 	case PORT_RANGE:
-		res = rule_portrange_gen_exprs(data, port);
+		res = rule_portrange_gen_exprs(data, port, source);
 		break;
 	case PORT_SET:
 		break;
@@ -270,10 +312,10 @@ int rule_transtcp_gen_exprs(struct rule_create_data *data, struct trans_tcp_data
 	// res = rule_ip_tcp_expr(data);
 	// if (res == RULE_SUCCESS)
 	// 	return res;
-	res = rule_port_gen_exprs(data, tcp->sport);
+	res = rule_port_gen_exprs(data, tcp->sport, 1);
 	if (res != RULE_SUCCESS)
 		return res;
-	res = rule_port_gen_exprs(data, tcp->dport);
+	res = rule_port_gen_exprs(data, tcp->dport, 0);
 
 	return res;
 }
@@ -285,10 +327,10 @@ int rule_transudp_gen_exprs(struct rule_create_data *data, struct trans_udp_data
 	// res = rule_ip_udp_expr(data);
 	// if (res == RULE_SUCCESS)
 	// 	return res;
-	res = rule_port_gen_exprs(data, udp->sport);
+	res = rule_port_gen_exprs(data, udp->sport, 1);
 	if (res != RULE_SUCCESS)
 		return res;
-	res = rule_port_gen_exprs(data, udp->dport);
+	res = rule_port_gen_exprs(data, udp->dport, 0);
 
 	return res;
 

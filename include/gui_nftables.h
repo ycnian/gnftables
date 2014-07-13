@@ -29,10 +29,12 @@
 
 #define   SET_ID		0
 #define   SET_NAME		1
-#define   SET_ELEMS		2
-#define   SET_DETAIL		3
-#define   SET_DELETE		4
-#define   SET_TOTAL		5
+#define   SET_KEYTYPE		2
+#define   SET_DATATYPE		3
+#define   SET_ELEMS		4
+#define   SET_DETAIL		5
+#define   SET_DELETE		6
+#define   SET_TOTAL		7
 
 
 #define   RULE_ID		0

@@ -30,6 +30,8 @@ struct set_list_data {
 	int		family;
 	char		*table;
 	char		*name;
+	char		*keytype;
+	char		*datatype;
 	int		nelems;
 	struct list_head	list;
 };

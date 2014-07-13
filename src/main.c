@@ -1797,6 +1797,8 @@ void set_update_data(struct set_list_args *args)
 		gtk_tree_store_set(GTK_TREE_STORE(store), &iter,
 			SET_ID, index,
 			SET_NAME, xstrdup(set->name),
+			SET_KEYTYPE, xstrdup(set->keytype),
+			SET_DATATYPE, set->datatype ? xstrdup(set->datatype) : "X",
 			SET_ELEMS, set->nelems,
 			SET_DETAIL, TRUE,
 			SET_DELETE, TRUE, -1);
@@ -1950,7 +1952,7 @@ void gnftables_set_init(GtkButton *button, gpointer  data)
 	notebook = chain_arg->notebook;
 
 	store = gtk_tree_store_new(SET_TOTAL, G_TYPE_INT, G_TYPE_STRING,
-			G_TYPE_INT, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
+			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INT, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
 
 	title = gtk_label_new("Sets");
 	gtk_widget_set_size_request(title, 200, 10);
@@ -1987,6 +1989,17 @@ void gnftables_set_init(GtkButton *button, gpointer  data)
 	gtk_tree_view_column_set_min_width(column, 200);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
+	column = gtk_tree_view_column_new_with_attributes("Key Type", renderer,
+			"text", SET_KEYTYPE, NULL);
+	gtk_tree_view_column_set_min_width(column, 200);
+	gtk_tree_view_column_set_alignment(column, 0.0);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
+	column = gtk_tree_view_column_new_with_attributes("Data Type", renderer,
+			"text", SET_DATATYPE, NULL);
+	gtk_tree_view_column_set_min_width(column, 200);
+	gtk_tree_view_column_set_alignment(column, 0.0);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
+	gtk_tree_view_column_set_visible(column, FALSE);
 	column = gtk_tree_view_column_new_with_attributes("Elements", renderer,
 			"text", SET_ELEMS, NULL);
 	gtk_tree_view_column_set_min_width(column, 90);
@@ -2027,8 +2040,6 @@ void gnftables_set_init(GtkButton *button, gpointer  data)
 	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, title, 1);
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 1);
-
-	printf("hello world\n");
 }
 
 /*

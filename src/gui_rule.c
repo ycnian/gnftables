@@ -353,10 +353,14 @@ int gui_get_sets_list(struct list_head *head, int family, char *table)
 	list_for_each_entry_safe(set, s, &ctx.list, list) {
 		if (set->flags & SET_F_ANONYMOUS)
 			goto skipe;
-		gui_set = (struct set_list_data *)xmalloc(sizeof(struct set_list_data));
+		gui_set = (struct set_list_data *)xzalloc(sizeof(struct set_list_data));
 		gui_set->family = set->handle.family;
 		gui_set->table = xstrdup(set->handle.table);
 		gui_set->name = xstrdup(set->handle.set);
+		gui_set->keytype = xstrdup(set->keytype->desc);
+		if (set->flags & SET_F_MAP)
+			gui_set->datatype = xstrdup(set->datatype->desc);
+
 //		res = gui_get_rules_number(gui_set->family, gui_set->table, gui_set->name, &nelems);
 //		if (res != ELEMENT_SUCCESS) {
 //			xfree(gui_set->table);

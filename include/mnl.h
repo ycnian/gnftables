@@ -32,6 +32,8 @@ int mnl_nft_rule_delete(struct mnl_socket *nf_sock, struct nft_rule *r,
 			unsigned int flags);
 struct nft_rule_list *mnl_nft_rule_dump(struct mnl_socket *nf_sock,
 					int family);
+int mnl_nft_rule_get(struct mnl_socket *nf_sock, struct nft_rule *nlr,
+                      unsigned int flags);
 
 int mnl_nft_chain_add(struct mnl_socket *nf_sock, struct nft_chain *nlc,
 		      unsigned int flags);

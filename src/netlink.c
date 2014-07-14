@@ -460,6 +460,28 @@ static int netlink_flush_rules(struct netlink_ctx *ctx, const struct handle *h,
 	return netlink_del_rule_batch(ctx, h, loc);
 }
 
+int netlink_get_rule(struct netlink_ctx *ctx, const struct handle *h,
+		      const struct location *loc)
+{
+	struct nft_rule *nlr;
+	struct rule *rule;
+	int err;
+
+	nlr = alloc_nft_rule(h);
+	err = mnl_nft_rule_get(nf_sock, nlr, 0);
+
+	rule = netlink_delinearize_rule(ctx, nlr);
+	list_add_tail(&rule->list, &ctx->list);
+	nft_rule_free(nlr);
+
+	if (err < 0)
+		return netlink_io_error(ctx, loc,
+					"Could not receive rule from kernel: %s",
+					strerror(errno));
+	return err;
+}
+
+
 void netlink_dump_chain(struct nft_chain *nlc)
 {
 #ifdef DEBUG

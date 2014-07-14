@@ -6,6 +6,7 @@
 #include <proto.h>
 #include <netlink.h>
 #include <string.h>
+#include <netdb.h>
 
 
 int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
@@ -540,35 +541,43 @@ int rule_parse_ip_saddr_expr(struct expr *expr, struct header *header, enum ops 
 	addr = header->saddr;
 
 	if (expr->ops->type == EXPR_PREFIX) {
+		char  buf[NI_MAXHOST + 10];
+		char  *ip, *mask;
+		memset(buf, 0, NI_MAXHOST + 10);
 		addr->ip_type = ADDRESS_SUBNET;
-
-
+		if (op == OP_EQ)
+			addr->exclude = 0;
+		else if (op == OP_NEQ)
+			addr->exclude = 1;
+		else
+			BUG();
+		expr->ops->snprint(buf, NI_MAXHOST + 10, expr);
+		ip = strtok(buf, "/");
+		addr->subnet_str.ip = xstrdup(ip);
+		mask = strtok(NULL, "/");
+		addr->subnet_str.mask = xstrdup(mask);
 	} else if (expr->ops->type == EXPR_VALUE) {
-		struct datatype   *dtype;
-
 		addr->ip_type = ADDRESS_RANGE;
-		dtype = expr->dtype;
-		dtype->print(expr);
 		switch (op) {
 		case OP_LT:
 			addr->exclude = 1;
-			addr->range_str.from = xzalloc(100);
-			dtype->sprintf(addr->range_str.from, expr);
+			addr->range_str.from = xzalloc(NI_MAXHOST);
+			expr->ops->snprint(addr->range_str.from, NI_MAXHOST, expr);
 			break;
 		case OP_GT:
 			addr->exclude = 1;
-			addr->range_str.to = xzalloc(100);
-			dtype->sprintf(addr->range_str.to, expr);
+			addr->range_str.to = xzalloc(NI_MAXHOST);
+			expr->ops->snprint(addr->range_str.to, NI_MAXHOST, expr);
 			break;
 		case OP_LTE:
 			addr->exclude = 0;
-			addr->range_str.to = xzalloc(100);
-			dtype->sprintf(addr->range_str.to, expr);
+			addr->range_str.to = xzalloc(NI_MAXHOST);
+			expr->ops->snprint(addr->range_str.to, NI_MAXHOST, expr);
 			break;
 		case OP_GTE:
 			addr->exclude = 0;
-			addr->range_str.from = xzalloc(100);
-			dtype->sprintf(addr->range_str.from, expr);
+			addr->range_str.from = xzalloc(NI_MAXHOST);
+			expr->ops->snprint(addr->range_str.from, NI_MAXHOST, expr);
 			break;
 		default:
 			BUG();
@@ -619,7 +628,6 @@ struct header_parse header_udp_parsers[UDPHDR_CHECKSUM + 1] = {
 	{ .name = "sport",	.parse = rule_parse_udp_sport_expr},
 	{ .name = "dport",	.parse = rule_parse_udp_dport_expr},
 	{ .name = "length",	.parse = NULL},
-	{ .name = "csumcov",	.parse = NULL},
 	{ .name = "checksum",	.parse = NULL},
 };
 
@@ -685,7 +693,6 @@ int rule_parse_expr(struct stmt *stmt, struct rule_create_data *p)
 {
 	struct  expr	*expr;
 	struct  expr	*left;
-	const struct proto_desc  *desc;
 
 	expr = stmt->expr;
 	left = expr->left;

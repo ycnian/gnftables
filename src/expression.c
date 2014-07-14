@@ -74,6 +74,11 @@ void expr_print(const struct expr *expr)
 	expr->ops->print(expr);
 }
 
+int expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	return expr->ops->snprint(str, size, expr);
+}
+
 bool expr_cmp(const struct expr *e1, const struct expr *e2)
 {
 	assert(e1->flags & EXPR_F_SINGLETON);
@@ -251,6 +256,11 @@ static void constant_expr_print(const struct expr *expr)
 	datatype_print(expr);
 }
 
+static int constant_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	return datatype_snprint(str, size, expr);
+}
+
 static bool constant_expr_cmp(const struct expr *e1, const struct expr *e2)
 {
 	return expr_basetype(e1) == expr_basetype(e2) &&
@@ -271,6 +281,7 @@ static const struct expr_ops constant_expr_ops = {
 	.type		= EXPR_VALUE,
 	.name		= "value",
 	.print		= constant_expr_print,
+	.snprint	= constant_expr_snprint,
 	.cmp		= constant_expr_cmp,
 	.clone		= constant_expr_clone,
 	.destroy	= constant_expr_destroy,
@@ -393,6 +404,18 @@ static void prefix_expr_print(const struct expr *expr)
 	expr_print(expr->prefix);
 	printf("/%u", expr->prefix_len);
 }
+static int prefix_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res;
+
+	res = expr_snprint(str, size, expr->prefix);
+	if (res != -1)
+		res += snprintf(str + res, size - res, "/%u", expr->prefix_len);
+	if ((size_t)res >= size)
+		return -1;
+	else
+		return res;
+}
 
 static void prefix_expr_set_type(const struct expr *expr,
 				 const struct datatype *type,
@@ -416,6 +439,7 @@ static const struct expr_ops prefix_expr_ops = {
 	.type		= EXPR_PREFIX,
 	.name		= "prefix",
 	.print		= prefix_expr_print,
+	.snprint	= prefix_expr_snprint,
 	.set_type	= prefix_expr_set_type,
 	.clone		= prefix_expr_clone,
 	.destroy	= prefix_expr_destroy,

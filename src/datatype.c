@@ -84,6 +84,21 @@ void datatype_print(const struct expr *expr)
 	BUG("datatype has no print method or symbol table\n");
 }
 
+int datatype_snprint(char *str, size_t size, const struct expr *expr)
+{
+	const struct datatype *dtype = expr->dtype;
+
+	do {
+		if (dtype->snprint != NULL)
+			return dtype->snprint(str, size, expr);
+//		if (dtype->sym_tbl != NULL)
+//			return symbolic_constant_print(dtype->sym_tbl, expr);
+	} while ((dtype = dtype->basetype));
+
+//	BUG("datatype has no print method or symbol table\n");
+	return -1;
+}
+
 struct error_record *symbol_parse(const struct expr *sym,
 				  struct expr **res)
 {
@@ -363,6 +378,27 @@ static void ipaddr_type_print(const struct expr *expr)
 	printf("%s", buf);
 }
 
+static int ipaddr_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	struct sockaddr_in sin = { .sin_family = AF_INET, };
+	char buf[NI_MAXHOST];
+	int err;
+
+	sin.sin_addr.s_addr = mpz_get_be32(expr->value);
+	err = getnameinfo((struct sockaddr *)&sin, sizeof(sin), buf,
+			  sizeof(buf), NULL, 0,
+			  numeric_output ? NI_NUMERICHOST : 0);
+	if (err != 0) {
+		getnameinfo((struct sockaddr *)&sin, sizeof(sin), buf,
+			    sizeof(buf), NULL, 0, NI_NUMERICHOST);
+	}
+
+	if (size <= strlen(buf))
+		return -1;
+	err = snprintf(str, size, "%s", buf);
+	return err;
+}
+
 static struct error_record *ipaddr_type_parse(const struct expr *sym,
 					      struct expr **res)
 {
@@ -398,6 +434,7 @@ const struct datatype ipaddr_type = {
 	.size		= 4 * BITS_PER_BYTE,
 	.basetype	= &integer_type,
 	.print		= ipaddr_type_print,
+	.snprint	= ipaddr_type_snprint,
 	.parse		= ipaddr_type_parse,
 	.flags		= DTYPE_F_PREFIX,
 };

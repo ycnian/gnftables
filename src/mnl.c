@@ -413,8 +413,8 @@ int mnl_nft_rule_get(struct mnl_socket *nf_sock, struct nft_rule *nlr,
 	char buf[MNL_SOCKET_BUFFER_SIZE];
 	struct nlmsghdr *nlh;
 
-	nlh = nft_rule_nlmsg_build_hdr(buf, NFT_MSG_GETCHAIN,
-			nft_rule_attr_get_u32(nlr, NFT_CHAIN_ATTR_FAMILY),
+	nlh = nft_rule_nlmsg_build_hdr(buf, NFT_MSG_GETRULE,
+			nft_rule_attr_get_u32(nlr, NFT_RULE_ATTR_FAMILY),
 			NLM_F_ACK | flags, seq);
 	nft_rule_nlmsg_build_payload(nlh, nlr);
 

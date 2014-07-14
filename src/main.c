@@ -1557,8 +1557,8 @@ void gnftables_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkW
 
 
 	renderer_details = gtk_cell_renderer_toggle_new();
-//	g_signal_connect(renderer_details, "toggled",
-//			G_CALLBACK(rule_callback_detail), rule_arg) ;
+	g_signal_connect(renderer_details, "toggled",
+			G_CALLBACK(rule_callback_detail), rule_arg) ;
 	column = gtk_tree_view_column_new_with_attributes("Details",
 			renderer_details, "active", RULE_DETAIL, NULL);
 	gtk_tree_view_column_set_min_width(column, 100);
@@ -1646,6 +1646,33 @@ void basechain_selected(GtkWidget *check_button, gpointer data)
 		gtk_widget_hide(GTK_WIDGET(basechain->priority));
 		gtk_widget_hide(GTK_WIDGET(basechain->priority_value));
 	}
+}
+
+void rule_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
+{
+	GtkTreeIter		iter;
+	int			family;
+	gchar			*table;
+	gchar			*chain;
+	gint			handle;
+	GtkTreeModel		*model;
+	GtkTreeView		*treeview;
+	struct rule_list_args	*rule_args = (struct rule_list_args *)data;
+	gint	res;
+
+	treeview = GTK_TREE_VIEW(rule_args->list_rules);
+	table = rule_args->table;
+	chain = rule_args->chain;
+	family = rule_args->family;
+
+	model = gtk_tree_view_get_model(treeview);
+	gtk_tree_model_get_iter_from_string(model, &iter, path_str);
+	gtk_tree_model_get(model, &iter, RULE_HANDLE, &handle, -1);
+
+	gui_get_rule(family, table, chain, handle);
+
+	// goto rule edit page
+	return;
 }
 
 void rule_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)

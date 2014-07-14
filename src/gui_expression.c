@@ -506,3 +506,204 @@ int rule_gen_expressions(struct rule_create_data *data)
 	res = rule_counter_gen_exprs(data);
 	return res;
 }
+
+struct header_parse{
+	const char	*name;
+	int		(*parse)(struct expr *expr, struct header *header);
+};
+
+struct header_parse header_ip_parsers[IPHDR_DADDR + 1] = {
+	{ .name = "invalid",	.parse = NULL},
+	{ .name = "version",	.parse = NULL},
+	{ .name = "hdrlength",	.parse = NULL},
+	{ .name = "tos",	.parse = NULL},
+	{ .name = "length",	.parse = NULL},
+	{ .name = "id",	.parse = NULL},
+	{ .name = "frag-off",	.parse = NULL},
+	{ .name = "ttl",	.parse = NULL},
+	{ .name = "protocol",	.parse = rule_parse_ip_protocol_expr},
+	{ .name = "checksum",	.parse = NULL},
+	{ .name = "saddr",	.parse = rule_parse_ip_saddr_expr},
+	{ .name = "daddr",	.parse = rule_parse_ip_daddr_expr},
+};
+
+int rule_parse_ip_protocol_expr(struct expr *expr, struct header *header)
+{
+
+	return RULE_SUCCESS;
+}
+
+int rule_parse_ip_saddr_expr(struct expr *expr, struct header *header)
+{
+	return RULE_SUCCESS;
+}
+
+int rule_parse_ip_daddr_expr(struct expr *expr, struct header *header)
+{
+	return RULE_SUCCESS;
+}
+
+
+struct header_parse header_tcp_parsers[TCPHDR_URGPTR + 1] = {
+	{ .name = "invalid",	.parse = NULL},
+	{ .name = "sport",	.parse = rule_parse_tcp_sport_expr},
+	{ .name = "dport",	.parse = rule_parse_tcp_dport_expr},
+	{ .name = "sequence",	.parse = NULL},
+	{ .name = "ackseq",	.parse = NULL},
+	{ .name = "doff",	.parse = NULL},
+	{ .name = "reserved",	.parse = NULL},
+	{ .name = "flags",	.parse = NULL},
+	{ .name = "window",	.parse = NULL},
+	{ .name = "checksum",	.parse = NULL},
+	{ .name = "urgptr",	.parse = NULL},
+};
+
+int rule_parse_tcp_sport_expr(struct expr *expr, struct header *header)
+{
+
+	return RULE_SUCCESS;
+}
+
+int rule_parse_tcp_dport_expr(struct expr *expr, struct header *header)
+{
+
+	return RULE_SUCCESS;
+}
+
+struct header_parse header_udp_parsers[UDPHDR_CHECKSUM + 1] = {
+	{ .name = "invalid",	.parse = NULL},
+	{ .name = "sport",	.parse = rule_parse_udp_sport_expr},
+	{ .name = "dport",	.parse = rule_parse_udp_dport_expr},
+	{ .name = "length",	.parse = NULL},
+	{ .name = "csumcov",	.parse = NULL},
+	{ .name = "checksum",	.parse = NULL},
+};
+
+int rule_parse_udp_sport_expr(struct expr *expr, struct header *header)
+{
+
+	return RULE_SUCCESS;
+}
+
+int rule_parse_udp_dport_expr(struct expr *expr, struct header *header)
+{
+
+	return RULE_SUCCESS;
+}
+
+
+int rule_parse_header_expr(struct expr *expr, struct header *header)
+{
+	struct expr  *left;
+	struct expr  *right;
+	struct proto_desc   *desc;
+	struct proto_hdr_template *tmpl;
+	struct header_parse	*parse;
+	int	total = 0;
+	int	i = 0;
+
+	left = expr->left;
+	right = expr->right;
+	desc = left->payload.desc;
+	tmpl = left->payload.tmpl;
+
+	if (!(strcmp(desc->name, "ip"))) {
+		parse = header_ip_parsers;
+		total = array_size(header_ip_parsers);
+	} else if (!(strcmp(desc->name, "tcp"))) {
+		parse = header_tcp_parsers;
+		total = array_size(header_ip_parsers);
+	} else if (!(strcmp(desc->name, "udp"))) {
+		parse = header_udp_parsers;
+		total = array_size(header_ip_parsers);
+	} else
+		BUG();
+
+
+	for (i = 0; i < total; i++) {
+		if (strcmp(tmpl->token, parse[i].name))
+			continue;
+		parse[i].parse(right, header);
+		return RULE_SUCCESS;
+	}
+	return RULE_SUCCESS;
+}
+
+int rule_parse_pktmeta(struct expr *expr, struct pktmeta *pktmeta)
+{
+
+	return RULE_SUCCESS;
+}
+
+int rule_parse_expr(struct stmt *stmt, struct rule_create_data *p)
+{
+	struct  expr	*expr;
+	struct  expr	*left;
+	const struct proto_desc  *desc;
+
+	expr = stmt->expr;
+	left = expr->left;
+	assert(expr->ops->type == EXPR_RELATIONAL);
+
+	switch (left->ops->type) {
+	case EXPR_PAYLOAD:
+		return rule_parse_header_expr(expr, p->header);
+	case EXPR_META:
+		return rule_parse_pktmeta(expr, p->pktmeta);
+	default:
+		return RULE_SUCCESS;
+	}
+}
+
+int rule_parse_verdict_stmt(struct stmt *stmt, struct rule_create_data *p)
+{
+
+	return RULE_SUCCESS;
+}
+
+int rule_parse_counter_stmt(struct stmt *stmt, struct rule_create_data *p)
+{
+
+	return RULE_SUCCESS;
+}
+
+
+int rule_parse_stmt(struct stmt *stmt, struct rule_create_data *p)
+{
+	switch (stmt->ops->type) {
+	case STMT_EXPRESSION:
+		return rule_parse_expr(stmt, p);
+	case STMT_VERDICT:
+		return rule_parse_verdict_stmt(stmt, p);
+	case STMT_COUNTER:
+		return rule_parse_counter_stmt(stmt, p);
+	default:
+		BUG("unknown statement type %s\n", stmt->ops->name);
+	}
+	return RULE_SUCCESS;
+}
+
+int rule_de_expressions(struct rule *rule, struct rule_create_data **data)
+{
+	int	res;
+	struct  stmt	*stmt;
+	struct rule_create_data *p;
+
+	p = xmalloc(sizeof(struct rule_create_data));
+	p->header = xmalloc(sizeof(struct header));
+	p->pktmeta = xmalloc(sizeof(struct pktmeta));
+	init_list_head(&p->exprs);
+	p->header->saddr = xmalloc(sizeof(struct ip_addr_data));
+	p->header->daddr = xmalloc(sizeof(struct ip_addr_data));
+	p->header->transport_data = xmalloc(sizeof(struct transport_data));
+	init_list_head(&p->header->saddr->iplist.ips);
+	init_list_head(&p->header->daddr->iplist.ips);
+	p->loc = xzalloc(sizeof(struct location));
+
+	list_for_each_entry(stmt, &rule->stmts, list) {
+		rule_parse_stmt(stmt, p);
+	}
+
+
+	return RULE_SUCCESS;
+}

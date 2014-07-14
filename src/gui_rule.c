@@ -182,6 +182,45 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 }
 
 
+int gui_get_rule(int family, const char *table, const char *chain, int handle_no)
+{
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	int	res = TABLE_SUCCESS;
+	struct rule	*rule;
+	struct stmt	*stmt;
+	struct rule_create_data  *data;
+
+	LIST_HEAD(msgs);
+	LIST_HEAD(err_list);
+
+//	res = gui_check_chain_exist(family, table, chain);
+//	if (res != TABLE_SUCCESS)
+//		return res;
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+	init_list_head(&ctx.list);
+
+	handle.family = family;
+	handle.table = table;
+	handle.chain = chain;
+	handle.handle = handle_no;
+	handle.position = 0;
+	handle.comment = NULL;
+
+	// get rule.
+	if (netlink_get_rule(&ctx, &handle, &loc) < 0) {
+			res = RULE_KERNEL_ERROR;
+			return;
+	}
+
+	rule = list_first_entry(&ctx.list, struct rule, list);
+	rule_de_expressions(rule, &data);
+
+	return res;
+}
 
 int gui_delete_rule(int family, const char *table, const char *chain, int handle_no)
 {

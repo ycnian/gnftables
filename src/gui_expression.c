@@ -509,7 +509,7 @@ int rule_gen_expressions(struct rule_create_data *data)
 
 struct header_parse{
 	const char	*name;
-	int		(*parse)(struct expr *expr, struct header *header);
+	int		(*parse)(struct expr *expr, struct header *header, enum ops op);
 };
 
 struct header_parse header_ip_parsers[IPHDR_DADDR + 1] = {
@@ -518,7 +518,7 @@ struct header_parse header_ip_parsers[IPHDR_DADDR + 1] = {
 	{ .name = "hdrlength",	.parse = NULL},
 	{ .name = "tos",	.parse = NULL},
 	{ .name = "length",	.parse = NULL},
-	{ .name = "id",	.parse = NULL},
+	{ .name = "id",		.parse = NULL},
 	{ .name = "frag-off",	.parse = NULL},
 	{ .name = "ttl",	.parse = NULL},
 	{ .name = "protocol",	.parse = rule_parse_ip_protocol_expr},
@@ -527,18 +527,62 @@ struct header_parse header_ip_parsers[IPHDR_DADDR + 1] = {
 	{ .name = "daddr",	.parse = rule_parse_ip_daddr_expr},
 };
 
-int rule_parse_ip_protocol_expr(struct expr *expr, struct header *header)
+int rule_parse_ip_protocol_expr(struct expr *expr, struct header *header, enum ops op)
 {
+
 
 	return RULE_SUCCESS;
 }
 
-int rule_parse_ip_saddr_expr(struct expr *expr, struct header *header)
+int rule_parse_ip_saddr_expr(struct expr *expr, struct header *header, enum ops op)
 {
+	struct ip_addr_data	*addr;
+	addr = header->saddr;
+
+	if (expr->ops->type == EXPR_PREFIX) {
+		addr->ip_type = ADDRESS_SUBNET;
+
+
+	} else if (expr->ops->type == EXPR_VALUE) {
+		struct datatype   *dtype;
+
+		addr->ip_type = ADDRESS_RANGE;
+		dtype = expr->dtype;
+		dtype->print(expr);
+		switch (op) {
+		case OP_LT:
+			addr->exclude = 1;
+			addr->range_str.from = xzalloc(100);
+			dtype->sprintf(addr->range_str.from, expr);
+			break;
+		case OP_GT:
+			addr->exclude = 1;
+			addr->range_str.to = xzalloc(100);
+			dtype->sprintf(addr->range_str.to, expr);
+			break;
+		case OP_LTE:
+			addr->exclude = 0;
+			addr->range_str.to = xzalloc(100);
+			dtype->sprintf(addr->range_str.to, expr);
+			break;
+		case OP_GTE:
+			addr->exclude = 0;
+			addr->range_str.from = xzalloc(100);
+			dtype->sprintf(addr->range_str.from, expr);
+			break;
+		default:
+			BUG();
+		}
+	} else if (expr->ops->type == EXPR_SET_REF) {
+		addr->ip_type = ADDRESS_EXACT;
+
+	} else
+		BUG();
+
 	return RULE_SUCCESS;
 }
 
-int rule_parse_ip_daddr_expr(struct expr *expr, struct header *header)
+int rule_parse_ip_daddr_expr(struct expr *expr, struct header *header, enum ops op)
 {
 	return RULE_SUCCESS;
 }
@@ -558,13 +602,13 @@ struct header_parse header_tcp_parsers[TCPHDR_URGPTR + 1] = {
 	{ .name = "urgptr",	.parse = NULL},
 };
 
-int rule_parse_tcp_sport_expr(struct expr *expr, struct header *header)
+int rule_parse_tcp_sport_expr(struct expr *expr, struct header *header, enum ops op)
 {
 
 	return RULE_SUCCESS;
 }
 
-int rule_parse_tcp_dport_expr(struct expr *expr, struct header *header)
+int rule_parse_tcp_dport_expr(struct expr *expr, struct header *header, enum ops op)
 {
 
 	return RULE_SUCCESS;
@@ -579,13 +623,13 @@ struct header_parse header_udp_parsers[UDPHDR_CHECKSUM + 1] = {
 	{ .name = "checksum",	.parse = NULL},
 };
 
-int rule_parse_udp_sport_expr(struct expr *expr, struct header *header)
+int rule_parse_udp_sport_expr(struct expr *expr, struct header *header, enum ops op)
 {
 
 	return RULE_SUCCESS;
 }
 
-int rule_parse_udp_dport_expr(struct expr *expr, struct header *header)
+int rule_parse_udp_dport_expr(struct expr *expr, struct header *header, enum ops op)
 {
 
 	return RULE_SUCCESS;
@@ -599,9 +643,11 @@ int rule_parse_header_expr(struct expr *expr, struct header *header)
 	struct proto_desc   *desc;
 	struct proto_hdr_template *tmpl;
 	struct header_parse	*parse;
+	enum ops	op;
 	int	total = 0;
 	int	i = 0;
 
+	op = expr->op;
 	left = expr->left;
 	right = expr->right;
 	desc = left->payload.desc;
@@ -623,7 +669,7 @@ int rule_parse_header_expr(struct expr *expr, struct header *header)
 	for (i = 0; i < total; i++) {
 		if (strcmp(tmpl->token, parse[i].name))
 			continue;
-		parse[i].parse(right, header);
+		parse[i].parse(right, header, op);
 		return RULE_SUCCESS;
 	}
 	return RULE_SUCCESS;

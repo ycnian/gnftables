@@ -123,6 +123,7 @@ struct datatype {
 	const struct datatype		*basetype;
 	const char			*basefmt;
 	void				(*print)(const struct expr *expr);
+	void				(*sprint)(char *str, const struct expr *expr);
 	struct error_record		*(*parse)(const struct expr *sym,
 						  struct expr **res);
 	const struct symbol_table	*sym_tbl;

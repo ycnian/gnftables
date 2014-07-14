@@ -36,13 +36,24 @@ struct ip_addr_data {
 			struct list_head ips;
 		}iplist;
 		struct {
+			char	*ips;
+		}iplist_str;
+		struct {
 			unsigned char	ip[4];
 			int	mask;
 		}subnet;
 		struct {
+			char	*ip;
+			char	*mask;
+		}subnet_str;
+		struct {
 			unsigned char	from[4];
 			unsigned char	to[4];
 		}range;
+		struct {
+			char	*from;
+			char	*to;
+		}range_str;
 	};
 };
 

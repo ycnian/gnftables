@@ -529,16 +529,24 @@ struct header_parse header_ip_parsers[IPHDR_DADDR + 1] = {
 
 int rule_parse_ip_protocol_expr(struct expr *expr, struct header *header, enum ops op)
 {
+	int	res;
+	char	proto[10];
+	struct transport_data   *trans;
 
+	trans = header->transport_data;
+	expr->ops->snprint(proto, 10, expr);
+	if (!strcmp(proto, "tcp"))
+		trans->trans_type = TRANSPORT_TCP;
+	else if (!strcmp(proto, "udp"))
+		trans->trans_type = TRANSPORT_UDP;
+	else
+		BUG();
 
 	return RULE_SUCCESS;
 }
 
-int rule_parse_ip_saddr_expr(struct expr *expr, struct header *header, enum ops op)
+int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr, enum ops op)
 {
-	struct ip_addr_data	*addr;
-	addr = header->saddr;
-
 	if (expr->ops->type == EXPR_PREFIX) {
 		int   size;
 		char  *buf;
@@ -601,11 +609,15 @@ int rule_parse_ip_saddr_expr(struct expr *expr, struct header *header, enum ops 
 	return RULE_SUCCESS;
 }
 
-int rule_parse_ip_daddr_expr(struct expr *expr, struct header *header, enum ops op)
+int rule_parse_ip_saddr_expr(struct expr *expr, struct header *header, enum ops op)
 {
-	return RULE_SUCCESS;
+	return rule_parse_ip_addr_expr(expr, header->saddr, op);
 }
 
+int rule_parse_ip_daddr_expr(struct expr *expr, struct header *header, enum ops op)
+{
+	return rule_parse_ip_addr_expr(expr, header->daddr, op);
+}
 
 struct header_parse header_tcp_parsers[TCPHDR_URGPTR + 1] = {
 	{ .name = "invalid",	.parse = NULL},

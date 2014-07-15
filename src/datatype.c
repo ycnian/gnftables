@@ -254,6 +254,20 @@ static void integer_type_print(const struct expr *expr)
 	gmp_printf(fmt, expr->value);
 }
 
+static int integer_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res;
+	const char *fmt = "%Zu";
+
+	if (expr->dtype->basefmt != NULL)
+		fmt = expr->dtype->basefmt;
+	res = gmp_snprintf(str, size, fmt, expr->value);
+	if (str && (size_t)res >= size)
+		return -1;
+	else
+		return res;
+}
+
 static struct error_record *integer_type_parse(const struct expr *sym,
 					       struct expr **res)
 {
@@ -513,6 +527,28 @@ static void inet_protocol_type_print(const struct expr *expr)
 	integer_type_print(expr);
 }
 
+static int inet_protocol_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res;
+	struct protoent *p;
+
+	if (numeric_output < NUMERIC_ALL) {
+		p = getprotobynumber(mpz_get_uint8(expr->value));
+		if (p != NULL) {
+			if (!str)
+				return snprintf(NULL, 0, "%s", p->p_name);
+			else {
+				res = snprintf(str, size, "%s", p->p_name);
+				if ((size_t)res >= size)
+					return -1;
+				else
+					return res;
+			}
+		}
+	}
+	return integer_type_snprint(str, size, expr);
+}
+
 static struct error_record *inet_protocol_type_parse(const struct expr *sym,
 						     struct expr **res)
 {
@@ -549,6 +585,7 @@ const struct datatype inet_protocol_type = {
 	.size		= BITS_PER_BYTE,
 	.basetype	= &integer_type,
 	.print		= inet_protocol_type_print,
+	.snprint	= inet_protocol_type_snprint,
 	.parse		= inet_protocol_type_parse,
 };
 

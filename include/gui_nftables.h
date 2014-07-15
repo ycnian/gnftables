@@ -348,5 +348,6 @@ void header_transport_porttype_changed(struct transport_port_info  *port_info);
 
 void gnftables_goto_chain_list(GtkButton *button, gpointer  data);
 void set_update_data(struct set_list_args *args);
+struct rule_create_widget *rule_widget_container_create(struct rule_list_args *rule_arg);
 
 #endif

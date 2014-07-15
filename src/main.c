@@ -902,6 +902,40 @@ void create_new_rule(GtkButton *button, gpointer  data)
 {
 	create_new_rule_begin(data);
 }
+
+struct rule_create_widget *rule_widget_container_create(struct rule_list_args *rule_arg)
+{
+	struct rule_create_widget	*container;
+	container = xzalloc(sizeof(struct rule_create_widget));
+
+	container->header = xzalloc(sizeof(struct match_header));
+	container->header->saddr.value = xzalloc(sizeof(struct ip_address));
+	container->header->daddr.value = xzalloc(sizeof(struct ip_address));
+	container->header->transport.value = xzalloc(sizeof(struct transport_info));
+
+	container->header->transport.value->all = xzalloc(sizeof(struct transport_all));
+	container->header->transport.value->tcp = xzalloc(sizeof(struct transport_tcp));
+	container->header->transport.value->tcp->sport = xzalloc(sizeof(struct transport_port_info));
+	container->header->transport.value->tcp->sport->value = xzalloc(sizeof(struct transport_port_details));
+	container->header->transport.value->tcp->dport = xzalloc(sizeof(struct transport_port_info));
+	container->header->transport.value->tcp->dport->value = xzalloc(sizeof(struct transport_port_details));
+	container->header->transport.value->udp = xzalloc(sizeof(struct transport_udp));
+	container->header->transport.value->udp->sport = xzalloc(sizeof(struct transport_port_info));
+	container->header->transport.value->udp->sport->value = xzalloc(sizeof(struct transport_port_details));
+	container->header->transport.value->udp->dport = xzalloc(sizeof(struct transport_port_info));
+	container->header->transport.value->udp->dport->value = xzalloc(sizeof(struct transport_port_details));
+
+	container->meta = xzalloc(sizeof(struct match_pktmeta));
+	container->track = xzalloc(sizeof(struct match_trackmeta));
+
+	container->notebook = rule_arg->notebook;
+	container->family = rule_arg->family;
+	container->table = xstrdup(rule_arg->table);
+	container->chain = xstrdup(rule_arg->chain);
+
+	return container;
+}
+
 void create_new_rule_begin(gpointer  data)
 {
 	GtkWidget	*title;
@@ -964,31 +998,10 @@ void create_new_rule_begin(gpointer  data)
 
 	// new_rule_malloc();
 	rule_arg = (struct rule_list_args *)data;
+	new_rule = rule_widget_container_create(rule_arg);
 	content = rule_arg->data;
-	new_rule = xmalloc(sizeof(struct rule_create_widget));
-	new_rule->header = xmalloc(sizeof(struct match_header));
-	new_rule->meta = xmalloc(sizeof(struct match_pktmeta));
-	new_rule->track = xmalloc(sizeof(struct match_trackmeta));
-	new_rule->header->saddr.value = xmalloc(sizeof(struct ip_address));
-	new_rule->header->daddr.value = xmalloc(sizeof(struct ip_address));
-	new_rule->header->transport.value = xmalloc(sizeof(struct transport_info));
-	new_rule->header->transport.value->all = xmalloc(sizeof(struct transport_all));
-	new_rule->header->transport.value->tcp = xmalloc(sizeof(struct transport_tcp));
-	new_rule->header->transport.value->tcp->sport = xmalloc(sizeof(struct transport_port_info));
-	new_rule->header->transport.value->tcp->sport->value = xmalloc(sizeof(struct transport_port_details));
-	new_rule->header->transport.value->tcp->dport = xmalloc(sizeof(struct transport_port_info));
-	new_rule->header->transport.value->tcp->dport->value = xmalloc(sizeof(struct transport_port_details));
-	new_rule->header->transport.value->udp = xmalloc(sizeof(struct transport_udp));
-	new_rule->header->transport.value->udp->sport = xmalloc(sizeof(struct transport_port_info));
-	new_rule->header->transport.value->udp->sport->value = xmalloc(sizeof(struct transport_port_details));
-	new_rule->header->transport.value->udp->dport = xmalloc(sizeof(struct transport_port_info));
-	new_rule->header->transport.value->udp->dport->value = xmalloc(sizeof(struct transport_port_details));
-
 	notebook = rule_arg->notebook;
-	new_rule->notebook = notebook;
-	new_rule->family = rule_arg->family;
-	new_rule->table = rule_arg->table;
-	new_rule->chain = rule_arg->chain;
+
 
 	title = gtk_label_new("Create rule");
 	gtk_widget_set_size_request(title, 200, 10);
@@ -1235,7 +1248,6 @@ void create_new_rule_begin(gpointer  data)
 
 	if (!content || !content->header->saddr || content->header->saddr->ip_type == ADDRESS_EXACT) {
 		gtk_combo_box_set_active(GTK_COMBO_BOX(saddr_type), 0);
-		gtk_entry_set_text(GTK_ENTRY(saddr_exact_ip), content->header->saddr->iplist_str.ips);
 		gtk_widget_show(saddr_exact_ip);
 		gtk_widget_hide(saddr_subnet_ip);
 		gtk_widget_hide(saddr_subnet_slash);

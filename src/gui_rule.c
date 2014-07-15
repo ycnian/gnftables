@@ -182,7 +182,7 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 }
 
 
-int gui_get_rule(int family, const char *table, const char *chain, int handle_no)
+int gui_get_rule(int family, const char *table, const char *chain, int handle_no, struct rule_create_data  **content)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
@@ -218,6 +218,7 @@ int gui_get_rule(int family, const char *table, const char *chain, int handle_no
 
 	rule = list_first_entry(&ctx.list, struct rule, list);
 	rule_de_expressions(rule, &data);
+	*content = data;
 
 	return res;
 }

@@ -608,19 +608,20 @@ int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr, enum o
 		expr->ops->snprint(addr->iplist_str.ips, size + 1, expr);
 	} else
 		BUG();
-
 	return RULE_SUCCESS;
 }
 
 int rule_parse_ip_saddr_expr(struct expr *expr, struct header *header, enum ops op)
 {
-	header->saddr = xmalloc(sizeof(struct ip_addr_data));
+	if (!header->saddr)
+		header->saddr = xmalloc(sizeof(struct ip_addr_data));
 	return rule_parse_ip_addr_expr(expr, header->saddr, op);
 }
 
 int rule_parse_ip_daddr_expr(struct expr *expr, struct header *header, enum ops op)
 {
-	header->daddr = xmalloc(sizeof(struct ip_addr_data));
+	if(!header->saddr)
+		header->daddr = xmalloc(sizeof(struct ip_addr_data));
 	return rule_parse_ip_addr_expr(expr, header->daddr, op);
 }
 
@@ -842,7 +843,7 @@ int rule_de_expressions(struct rule *rule, struct rule_create_data **data)
 	list_for_each_entry(stmt, &rule->stmts, list) {
 		rule_parse_stmt(stmt, p);
 	}
-
+	*data = p;
 
 	return RULE_SUCCESS;
 }

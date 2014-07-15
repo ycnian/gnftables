@@ -900,6 +900,10 @@ void header_trans_udp_init(GtkWidget *fixed, struct transport_port_info *sport, 
 
 void create_new_rule(GtkButton *button, gpointer  data)
 {
+	create_new_rule_begin(data);
+}
+void create_new_rule_begin(gpointer  data)
+{
 	GtkWidget	*title;
 	GtkWidget	*fixed_back;
 	GtkWidget	*fixed_content;
@@ -956,9 +960,11 @@ void create_new_rule(GtkButton *button, gpointer  data)
 
 	struct rule_list_args	*rule_arg;
 	struct rule_create_widget	*new_rule;
+	struct rule_create_data		*content;
 
 	// new_rule_malloc();
 	rule_arg = (struct rule_list_args *)data;
+	content = rule_arg->data;
 	new_rule = xmalloc(sizeof(struct rule_create_widget));
 	new_rule->header = xmalloc(sizeof(struct match_header));
 	new_rule->meta = xmalloc(sizeof(struct match_pktmeta));
@@ -1019,7 +1025,7 @@ void create_new_rule(GtkButton *button, gpointer  data)
 			"range", "range");
 //	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(saddr_type),
 //			"sets", "sets");
-	gtk_combo_box_set_active(GTK_COMBO_BOX(saddr_type), 0);
+//	gtk_combo_box_set_active(GTK_COMBO_BOX(saddr_type), 0);
 	g_signal_connect(saddr_type, "changed", G_CALLBACK(header_saddr_callback), new_rule);
 	gtk_fixed_put(GTK_FIXED(fixed_header), saddr_type, 150, 20);
 	new_rule->header->saddr.type = saddr_type;
@@ -1227,12 +1233,40 @@ void create_new_rule(GtkButton *button, gpointer  data)
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
 
-	gtk_widget_hide(saddr_subnet_ip);
-	gtk_widget_hide(saddr_subnet_slash);
-	gtk_widget_hide(saddr_subnet_mask);
-	gtk_widget_hide(saddr_range_from);
-	gtk_widget_hide(saddr_range_dash);
-	gtk_widget_hide(saddr_range_to);
+	if (!content || !content->header->saddr || content->header->saddr->ip_type == ADDRESS_EXACT) {
+		gtk_combo_box_set_active(GTK_COMBO_BOX(saddr_type), 0);
+		gtk_entry_set_text(GTK_ENTRY(saddr_exact_ip), content->header->saddr->iplist_str.ips);
+		gtk_widget_show(saddr_exact_ip);
+		gtk_widget_hide(saddr_subnet_ip);
+		gtk_widget_hide(saddr_subnet_slash);
+		gtk_widget_hide(saddr_subnet_mask);
+		gtk_widget_hide(saddr_range_from);
+		gtk_widget_hide(saddr_range_dash);
+		gtk_widget_hide(saddr_range_to);
+	} else if (content->header->saddr->ip_type == ADDRESS_SUBNET) {
+		gtk_combo_box_set_active(GTK_COMBO_BOX(saddr_type), 1);
+		gtk_widget_hide(saddr_exact_ip);
+		gtk_widget_hide(saddr_range_from);
+		gtk_widget_hide(saddr_range_dash);
+		gtk_widget_hide(saddr_range_to);
+		gtk_entry_set_text(GTK_ENTRY(saddr_subnet_ip), content->header->saddr->subnet_str.ip);
+		gtk_entry_set_text(GTK_ENTRY(saddr_subnet_mask), content->header->saddr->subnet_str.mask);
+		gtk_widget_show(saddr_subnet_ip);
+		gtk_widget_show(saddr_subnet_slash);
+		gtk_widget_show(saddr_subnet_mask);
+	} else if (content->header->saddr->ip_type == ADDRESS_RANGE) {
+		gtk_combo_box_set_active(GTK_COMBO_BOX(saddr_type), 2);
+		gtk_widget_hide(saddr_exact_ip);
+		gtk_widget_hide(saddr_subnet_ip);
+		gtk_widget_hide(saddr_subnet_slash);
+		gtk_widget_hide(saddr_subnet_mask);
+		gtk_entry_set_text(GTK_ENTRY(saddr_range_from), content->header->saddr->range_str.from);
+		gtk_entry_set_text(GTK_ENTRY(saddr_range_to), content->header->saddr->range_str.to);
+		gtk_widget_show(saddr_range_from);
+		gtk_widget_show(saddr_range_dash);
+		gtk_widget_show(saddr_range_to);
+	}
+
 	gtk_widget_hide(daddr_subnet_ip);
 	gtk_widget_hide(daddr_subnet_slash);
 	gtk_widget_hide(daddr_subnet_mask);
@@ -1500,6 +1534,7 @@ void gnftables_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkW
 	rule_arg->family = family;
 	rule_arg->table = table_name;
 	rule_arg->chain = chain_name;
+	rule_arg->data = NULL;
 
 	store = gtk_tree_store_new(RULE_TOTAL, G_TYPE_INT, G_TYPE_INT,
 			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
@@ -1669,10 +1704,10 @@ void rule_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer
 	gtk_tree_model_get_iter_from_string(model, &iter, path_str);
 	gtk_tree_model_get(model, &iter, RULE_HANDLE, &handle, -1);
 
-	gui_get_rule(family, table, chain, handle);
+	gui_get_rule(family, table, chain, handle, &rule_args->data);
 
 	// goto rule edit page
-	return;
+	create_new_rule_begin(data);	// zzzz
 }
 
 void rule_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)

@@ -111,6 +111,7 @@ struct rule_list_args {
 	gchar		*table;
 	gchar		*chain;
 	gint		handle;
+	struct rule_create_data	*data;
 };
 
 enum transport_type {
@@ -310,7 +311,7 @@ int gui_check_table_exist(int family, char *name);
 
 
 void create_new_rule(GtkButton *button, gpointer  data);
-
+void create_new_rule_begin(gpointer  data);
 void transport_callback(GtkComboBoxText *widget, gpointer data);
 void back_to_rule_list(GtkButton *button, gpointer  info);
 void begin_create_new_rule(GtkButton *button, gpointer  info);

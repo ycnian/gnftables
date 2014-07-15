@@ -1,0 +1,10 @@
+core.*
+Makefile
+Makefile.defs
+Makefile.rules
+config.h
+config.h.in
+config.log
+config.status
+configure
+*.swp

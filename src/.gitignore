@@ -3,3 +3,7 @@ parser.h
 scanner.c
 scanner.h
 nft
+Makefile
+*.o
+*.d
+*.swp

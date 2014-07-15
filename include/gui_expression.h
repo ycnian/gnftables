@@ -28,6 +28,7 @@ int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr, enum o
 int rule_parse_ip_protocol_expr(struct expr *expr, struct header *header, enum ops op);
 int rule_parse_ip_saddr_expr(struct expr *expr, struct header *header, enum ops op);
 int rule_parse_ip_daddr_expr(struct expr *expr, struct header *header, enum ops op);
+int rule_parse_port_expr(struct expr *expr,  struct trans_port_data *port, enum ops op);
 int rule_parse_tcp_sport_expr(struct expr *expr, struct header *header, enum ops op);
 int rule_parse_tcp_dport_expr(struct expr *expr, struct header *header, enum ops op);
 int rule_parse_udp_sport_expr(struct expr *expr, struct header *header, enum ops op);

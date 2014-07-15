@@ -606,6 +606,30 @@ static void inet_service_type_print(const struct expr *expr)
 	printf("%s", buf);
 }
 
+static int inet_service_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	struct sockaddr_in sin = { .sin_family = AF_INET };
+	char buf[NI_MAXSERV];
+	int err;
+
+	sin.sin_port = mpz_get_be16(expr->value);
+	err = getnameinfo((struct sockaddr *)&sin, sizeof(sin), NULL, 0,
+			  buf, sizeof(buf),
+			  numeric_output < NUMERIC_PORT ? 0 : NI_NUMERICSERV);
+	if (err != 0) {
+		getnameinfo((struct sockaddr *)&sin, sizeof(sin), NULL,
+			    0, buf, sizeof(buf), NI_NUMERICSERV);
+	}
+
+	if (!str)
+		return snprintf(NULL, 0, "%s", buf);
+	err = snprintf(str, size, "%s", buf);
+	if ((size_t)err >= size)
+		return -1;
+	else
+		return err;
+}
+
 static struct error_record *inet_service_type_parse(const struct expr *sym,
 						    struct expr **res)
 {
@@ -646,6 +670,7 @@ const struct datatype inet_service_type = {
 	.size		= 2 * BITS_PER_BYTE,
 	.basetype	= &integer_type,
 	.print		= inet_service_type_print,
+	.snprint	= inet_service_type_snprint,
 	.parse		= inet_service_type_parse,
 };
 

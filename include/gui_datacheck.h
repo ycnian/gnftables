@@ -65,9 +65,16 @@ struct trans_port_data {
 			struct list_head ports;
 		}portlist;
 		struct {
+			char	*ports;
+		}portlist_str;
+		struct {
 			unsigned short	from;
 			unsigned short	to;
 		}range;
+		struct {
+			char	*from;
+			char	*to;
+		}range_str;
 	};
 };
 

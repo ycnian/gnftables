@@ -533,13 +533,16 @@ int rule_parse_ip_protocol_expr(struct expr *expr, struct header *header, enum o
 	char	proto[10];
 	struct transport_data   *trans;
 
+	header->transport_data = xmalloc(sizeof(struct transport_data));
 	trans = header->transport_data;
 	expr->ops->snprint(proto, 10, expr);
-	if (!strcmp(proto, "tcp"))
+	if (!strcmp(proto, "tcp")) {
+		trans->tcp = xmalloc(sizeof(struct trans_tcp_data));
 		trans->trans_type = TRANSPORT_TCP;
-	else if (!strcmp(proto, "udp"))
+	} else if (!strcmp(proto, "udp")) {
+		trans->udp = xmalloc(sizeof(struct trans_udp_data));
 		trans->trans_type = TRANSPORT_UDP;
-	else
+	} else
 		BUG();
 
 	return RULE_SUCCESS;
@@ -611,11 +614,13 @@ int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr, enum o
 
 int rule_parse_ip_saddr_expr(struct expr *expr, struct header *header, enum ops op)
 {
+	header->saddr = xmalloc(sizeof(struct ip_addr_data));
 	return rule_parse_ip_addr_expr(expr, header->saddr, op);
 }
 
 int rule_parse_ip_daddr_expr(struct expr *expr, struct header *header, enum ops op)
 {
+	header->daddr = xmalloc(sizeof(struct ip_addr_data));
 	return rule_parse_ip_addr_expr(expr, header->daddr, op);
 }
 
@@ -633,16 +638,71 @@ struct header_parse header_tcp_parsers[TCPHDR_URGPTR + 1] = {
 	{ .name = "urgptr",	.parse = NULL},
 };
 
-int rule_parse_tcp_sport_expr(struct expr *expr, struct header *header, enum ops op)
+int rule_parse_port_expr(struct expr *expr,  struct trans_port_data *port, enum ops op)
 {
+	if (expr->ops->type == EXPR_VALUE) {
+		int	size;
+		port->port_type = PORT_RANGE;
+		switch (op) {
+		case OP_LT:
+			port->exclude = 1;
+			size = expr->ops->snprint(NULL, 0, expr);
+			port->range_str.from = xzalloc(size + 1);
+			expr->ops->snprint(port->range_str.from, size + 1, expr);
+			break;
+		case OP_GT:
+			port->exclude = 1;
+			size = expr->ops->snprint(NULL, 0, expr);
+			port->range_str.to = xzalloc(size + 1);
+			expr->ops->snprint(port->range_str.to, size + 1, expr);
+			break;
+		case OP_LTE:
+			port->exclude = 0;
+			size = expr->ops->snprint(NULL, 0, expr);
+			port->range_str.to = xzalloc(size + 1);
+			expr->ops->snprint(port->range_str.to, size + 1, expr);
+			break;
+		case OP_GTE:
+			port->exclude = 0;
+			size = expr->ops->snprint(NULL, 0, expr);
+			port->range_str.from = xzalloc(size + 1);
+			expr->ops->snprint(port->range_str.from, size + 1, expr);
+			break;
+		default:
+			BUG();
+		}
+	} else if (expr->ops->type == EXPR_SET_REF) {
+		int	size;
+		port->port_type = PORT_EXACT;
+		size = expr->ops->snprint(NULL, 0, expr);
+		port->portlist_str.ports = xzalloc(size + 1);
+		expr->ops->snprint(port->portlist_str.ports, size + 1, expr);
+	} else
+		BUG();
 
 	return RULE_SUCCESS;
 }
 
+int rule_parse_tcp_sport_expr(struct expr *expr, struct header *header, enum ops op)
+{
+	if (!header->transport_data)
+		header->transport_data = xzalloc(sizeof(struct transport_data));
+	if (!header->transport_data->tcp)
+		header->transport_data->tcp = xzalloc(sizeof(struct trans_tcp_data));
+	header->transport_data->tcp->sport = xzalloc(sizeof(struct trans_port_data));
+	header->transport_data->trans_type = TRANSPORT_TCP;
+	return rule_parse_port_expr(expr, header->transport_data->tcp->sport, op);
+}
+
 int rule_parse_tcp_dport_expr(struct expr *expr, struct header *header, enum ops op)
 {
-
-	return RULE_SUCCESS;
+	if (!header->transport_data)
+		header->transport_data = xzalloc(sizeof(struct transport_data));
+	if (!header->transport_data->tcp)
+		header->transport_data->tcp = xzalloc(sizeof(struct trans_tcp_data));
+	header->transport_data->tcp->dport = xzalloc(sizeof(struct trans_port_data));
+	header->transport_data->trans_type = TRANSPORT_TCP;
+	return rule_parse_port_expr(expr, header->transport_data->tcp->dport, op);
 }
 
 struct header_parse header_udp_parsers[UDPHDR_CHECKSUM + 1] = {
@@ -655,14 +715,24 @@ struct header_parse header_udp_parsers[UDPHDR_CHECKSUM + 1] = {
 
 int rule_parse_udp_sport_expr(struct expr *expr, struct header *header, enum ops op)
 {
-
-	return RULE_SUCCESS;
+	if (!header->transport_data)
+		header->transport_data = xzalloc(sizeof(struct transport_data));
+	if (!header->transport_data->udp)
+		header->transport_data->udp = xzalloc(sizeof(struct trans_udp_data));
+	header->transport_data->udp->sport = xzalloc(sizeof(struct trans_port_data));
+	header->transport_data->trans_type = TRANSPORT_UDP;
+	return rule_parse_port_expr(expr, header->transport_data->udp->sport, op);
 }
 
 int rule_parse_udp_dport_expr(struct expr *expr, struct header *header, enum ops op)
 {
-
-	return RULE_SUCCESS;
+	if (!header->transport_data)
+		header->transport_data = xzalloc(sizeof(struct transport_data));
+	if (!header->transport_data->udp)
+		header->transport_data->udp = xzalloc(sizeof(struct trans_udp_data));
+	header->transport_data->udp->dport = xzalloc(sizeof(struct trans_port_data));
+	header->transport_data->trans_type = TRANSPORT_UDP;
+	return rule_parse_port_expr(expr, header->transport_data->udp->dport, op);
 }
 
 
@@ -767,12 +837,6 @@ int rule_de_expressions(struct rule *rule, struct rule_create_data **data)
 	p = xmalloc(sizeof(struct rule_create_data));
 	p->header = xmalloc(sizeof(struct header));
 	p->pktmeta = xmalloc(sizeof(struct pktmeta));
-	init_list_head(&p->exprs);
-	p->header->saddr = xmalloc(sizeof(struct ip_addr_data));
-	p->header->daddr = xmalloc(sizeof(struct ip_addr_data));
-	p->header->transport_data = xmalloc(sizeof(struct transport_data));
-	init_list_head(&p->header->saddr->iplist.ips);
-	init_list_head(&p->header->daddr->iplist.ips);
 	p->loc = xzalloc(sizeof(struct location));
 
 	list_for_each_entry(stmt, &rule->stmts, list) {

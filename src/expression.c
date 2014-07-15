@@ -708,7 +708,7 @@ static void compound_expr_print(const struct expr *expr, const char *delim)
 static int compound_expr_snprint(char *str, size_t size, const struct expr *expr, const char *delim)
 {
 	int	res;
-	int	len = 0;;
+	int	len = 0;
 	const struct expr *i;
 	const char *d = "";
 

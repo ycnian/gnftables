@@ -409,12 +409,18 @@ static int prefix_expr_snprint(char *str, size_t size, const struct expr *expr)
 	int	res;
 
 	res = expr_snprint(str, size, expr->prefix);
-	if (res != -1)
-		res += snprintf(str + res, size - res, "/%u", expr->prefix_len);
-	if ((size_t)res >= size)
+	if (res == -1)
 		return -1;
-	else
+	if (!str) {
+		res += snprintf(NULL, 0, "/%u", expr->prefix_len);
 		return res;
+	} else {
+		res += snprintf(str + res, size - res, "/%u", expr->prefix_len);
+		if ((size_t)res >= size)
+			return -1;
+		else
+			return res;
+	}
 }
 
 static void prefix_expr_set_type(const struct expr *expr,
@@ -699,6 +705,41 @@ static void compound_expr_print(const struct expr *expr, const char *delim)
 		d = delim;
 	}
 }
+static int compound_expr_snprint(char *str, size_t size, const struct expr *expr, const char *delim)
+{
+	int	res;
+	int	len = 0;;
+	const struct expr *i;
+	const char *d = "";
+
+	if (!str) {
+		list_for_each_entry(i, &expr->expressions, list) {
+			res = snprintf(NULL, 0, "%s", d);
+			len += res;
+			res = expr_snprint(NULL, 0, i);
+			if (res == -1)
+				return -1;
+			len += res;
+			d = delim;
+		}
+		return len;
+	}
+
+	list_for_each_entry(i, &expr->expressions, list) {
+		res = snprintf(str + len, size - len, "%s", d);
+		len += res;
+		if ((size_t)len >= size)
+			return -1;
+		res = expr_snprint(str + len, size - len, i);
+		if (res == -1)
+			return -1;
+		len += res;
+		if ((size_t)len >= size)
+			return -1;
+		d = delim;
+	}
+	return len;
+}
 
 void compound_expr_add(struct expr *compound, struct expr *expr)
 {
@@ -761,6 +802,32 @@ static void set_expr_print(const struct expr *expr)
 	printf("}");
 }
 
+static int set_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res;
+	int	len = 0;
+
+	if (!str)
+		return compound_expr_snprint(NULL, 0, expr, ", ") + 3;
+
+	res = snprintf(str, size, "{ ");
+	len += res;
+	if ((size_t)len >= size)
+		return -1;
+	res = compound_expr_snprint(str + len, size - len, expr, ", ");
+	if (res == -1)
+		return -1;
+	len += res;
+	if ((size_t)len >= size)
+		return -1;
+	res = snprintf(str + len, size - len, "}");
+	len += res;
+	if ((size_t)len >= size)
+		return -1;
+	else
+		return len;
+}
+
 static void set_expr_set_type(const struct expr *expr,
 			      const struct datatype *dtype,
 			      enum byteorder byteorder)
@@ -775,6 +842,7 @@ static const struct expr_ops set_expr_ops = {
 	.type		= EXPR_SET,
 	.name		= "set",
 	.print		= set_expr_print,
+	.snprint	= set_expr_snprint,
 	.set_type	= set_expr_set_type,
 	.clone		= compound_expr_clone,
 	.destroy	= compound_expr_destroy,
@@ -882,6 +950,24 @@ static void set_ref_expr_print(const struct expr *expr)
 		printf("@%s", expr->set->handle.set);
 }
 
+static int set_ref_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	if (expr->set->flags & SET_F_ANONYMOUS)
+		return expr_snprint(str, size, expr->set->init);
+	else {
+		if (!str)
+			return snprintf(NULL, 0, "@%s", expr->set->handle.set);
+		else {
+			int	res;
+			res = snprintf(str, size, "@%s", expr->set->handle.set);
+			if ((size_t)res >= size)
+				return -1;
+			else
+				return res;
+		}
+	}
+}
+
 static void set_ref_expr_destroy(struct expr *expr)
 {
 	set_free(expr->set);
@@ -891,6 +977,7 @@ static const struct expr_ops set_ref_expr_ops = {
 	.type		= EXPR_SET_REF,
 	.name		= "set reference",
 	.print		= set_ref_expr_print,
+	.snprint	= set_ref_expr_snprint,
 	.destroy	= set_ref_expr_destroy,
 };
 

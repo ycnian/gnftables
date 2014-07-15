@@ -393,6 +393,8 @@ static int ipaddr_type_snprint(char *str, size_t size, const struct expr *expr)
 			    sizeof(buf), NULL, 0, NI_NUMERICHOST);
 	}
 
+	if (!str)
+		return snprintf(NULL, 0, buf);
 	if (size <= strlen(buf))
 		return -1;
 	err = snprintf(str, size, "%s", buf);

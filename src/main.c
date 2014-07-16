@@ -1082,14 +1082,14 @@ static void rule_add_content_header_trans(struct match_header *header, struct pk
 			"tcp", "tcp");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(transport_value),
 			"udp", "udp");
-//	gtk_combo_box_set_active(GTK_COMBO_BOX(transport_value), 0);
 //	g_signal_connect(transport_value, "changed", G_CALLBACK(transport_callback), new_rule);
 	gtk_fixed_put(GTK_FIXED(fixed), transport_value, 150, 80);
 	header->transport.type = transport_value;
-	gtk_combo_box_set_active(GTK_COMBO_BOX(transport_value), 0);
-	header->transport.type = TRANSPORT_ALL;
+	gtk_combo_box_set_active(GTK_COMBO_BOX(transport_value), TRANSPORT_ALL);
+	header->transport.value->type = TRANSPORT_ALL;
 
 	if (trans) {
+		header->expanded = 1;
 		switch (trans->trans_type) {
 		case TRANSPORT_ALL:
 			break;

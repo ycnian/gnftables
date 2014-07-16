@@ -455,7 +455,7 @@ int rule_trans_gen_exprs(struct rule_create_data *data, struct transport_data *t
 }
 
 
-int rule_header_gen_exprs(struct rule_create_data *data, struct header *header)
+int rule_header_gen_exprs(struct rule_create_data *data, struct pktheader *header)
 {
 	int	res = RULE_SUCCESS;
 
@@ -509,7 +509,7 @@ int rule_gen_expressions(struct rule_create_data *data)
 
 struct header_parse{
 	const char	*name;
-	int		(*parse)(struct expr *expr, struct header *header, enum ops op);
+	int		(*parse)(struct expr *expr, struct pktheader *header, enum ops op);
 };
 
 struct header_parse header_ip_parsers[IPHDR_DADDR + 1] = {
@@ -527,7 +527,7 @@ struct header_parse header_ip_parsers[IPHDR_DADDR + 1] = {
 	{ .name = "daddr",	.parse = rule_parse_ip_daddr_expr},
 };
 
-int rule_parse_ip_protocol_expr(struct expr *expr, struct header *header, enum ops op)
+int rule_parse_ip_protocol_expr(struct expr *expr, struct pktheader *header, enum ops op)
 {
 	int	res;
 	char	proto[10];
@@ -611,16 +611,16 @@ int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr, enum o
 	return RULE_SUCCESS;
 }
 
-int rule_parse_ip_saddr_expr(struct expr *expr, struct header *header, enum ops op)
+int rule_parse_ip_saddr_expr(struct expr *expr, struct pktheader *header, enum ops op)
 {
 	if (!header->saddr)
 		header->saddr = xmalloc(sizeof(struct ip_addr_data));
 	return rule_parse_ip_addr_expr(expr, header->saddr, op);
 }
 
-int rule_parse_ip_daddr_expr(struct expr *expr, struct header *header, enum ops op)
+int rule_parse_ip_daddr_expr(struct expr *expr, struct pktheader *header, enum ops op)
 {
-	if(!header->saddr)
+	if(!header->daddr)
 		header->daddr = xmalloc(sizeof(struct ip_addr_data));
 	return rule_parse_ip_addr_expr(expr, header->daddr, op);
 }
@@ -684,7 +684,7 @@ int rule_parse_port_expr(struct expr *expr,  struct trans_port_data *port, enum 
 	return RULE_SUCCESS;
 }
 
-int rule_parse_tcp_sport_expr(struct expr *expr, struct header *header, enum ops op)
+int rule_parse_tcp_sport_expr(struct expr *expr, struct pktheader *header, enum ops op)
 {
 	if (!header->transport_data)
 		header->transport_data = xzalloc(sizeof(struct transport_data));
@@ -695,7 +695,7 @@ int rule_parse_tcp_sport_expr(struct expr *expr, struct header *header, enum ops
 	return rule_parse_port_expr(expr, header->transport_data->tcp->sport, op);
 }
 
-int rule_parse_tcp_dport_expr(struct expr *expr, struct header *header, enum ops op)
+int rule_parse_tcp_dport_expr(struct expr *expr, struct pktheader *header, enum ops op)
 {
 	if (!header->transport_data)
 		header->transport_data = xzalloc(sizeof(struct transport_data));
@@ -714,7 +714,7 @@ struct header_parse header_udp_parsers[UDPHDR_CHECKSUM + 1] = {
 	{ .name = "checksum",	.parse = NULL},
 };
 
-int rule_parse_udp_sport_expr(struct expr *expr, struct header *header, enum ops op)
+int rule_parse_udp_sport_expr(struct expr *expr, struct pktheader *header, enum ops op)
 {
 	if (!header->transport_data)
 		header->transport_data = xzalloc(sizeof(struct transport_data));
@@ -725,7 +725,7 @@ int rule_parse_udp_sport_expr(struct expr *expr, struct header *header, enum ops
 	return rule_parse_port_expr(expr, header->transport_data->udp->sport, op);
 }
 
-int rule_parse_udp_dport_expr(struct expr *expr, struct header *header, enum ops op)
+int rule_parse_udp_dport_expr(struct expr *expr, struct pktheader *header, enum ops op)
 {
 	if (!header->transport_data)
 		header->transport_data = xzalloc(sizeof(struct transport_data));
@@ -737,7 +737,7 @@ int rule_parse_udp_dport_expr(struct expr *expr, struct header *header, enum ops
 }
 
 
-int rule_parse_header_expr(struct expr *expr, struct header *header)
+int rule_parse_header_expr(struct expr *expr, struct pktheader *header)
 {
 	struct expr  *left;
 	struct expr  *right;
@@ -836,7 +836,7 @@ int rule_de_expressions(struct rule *rule, struct rule_create_data **data)
 	struct rule_create_data *p;
 
 	p = xmalloc(sizeof(struct rule_create_data));
-	p->header = xmalloc(sizeof(struct header));
+	p->header = xmalloc(sizeof(struct pktheader));
 	p->pktmeta = xmalloc(sizeof(struct pktmeta));
 	p->loc = xzalloc(sizeof(struct location));
 

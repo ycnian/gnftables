@@ -103,7 +103,7 @@ struct transport_data {
 	};
 };
 
-struct header {
+struct pktheader {
 	struct ip_addr_data	*saddr;
 	struct ip_addr_data	*daddr;
 	struct transport_data	*transport_data;
@@ -122,7 +122,7 @@ struct rule_create_data {
 	int		family;
 	char		*table;
 	char		*chain;
-	struct header	*header;
+	struct pktheader	*header;
 	struct pktmeta	*pktmeta;
 	struct list_head exprs;
 	struct list_head sets;
@@ -148,7 +148,7 @@ int rule_create_getdata(struct rule_create_widget  *widget,
 int get_header_addr_from_page(struct ip_address  *widget,
                 struct ip_addr_data *data);
 int get_header_data_from_page(struct match_header  *widget,
-                struct header *data);
+                struct pktheader *data);
 int get_pktmeta_data_from_page(struct match_pktmeta  *widget,
                 struct pktmeta *data);
 int get_data_from_page(struct rule_create_widget  *widget,

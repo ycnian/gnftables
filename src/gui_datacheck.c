@@ -768,7 +768,7 @@ int get_header_trans_from_page(struct transport_info *widget,
  * networking layer and transport layer.
  *
  */
-int get_header_data_from_page(struct match_header *widget, struct header *data)
+int get_header_data_from_page(struct match_header *widget, struct pktheader *data)
 {
 	int	res;
 
@@ -831,7 +831,7 @@ int rule_create_getdata(struct rule_create_widget  *widget,
 	int	res;
 	struct rule_create_data	*p;
 	p = xmalloc(sizeof(struct rule_create_data));
-	p->header = xmalloc(sizeof(struct header));
+	p->header = xmalloc(sizeof(struct pktheader));
 	p->pktmeta = xmalloc(sizeof(struct pktmeta));
 	init_list_head(&p->exprs);
 	p->header->saddr = xmalloc(sizeof(struct ip_addr_data));

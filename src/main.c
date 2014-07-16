@@ -555,22 +555,22 @@ void header_transport_porttype_changed(struct transport_port_info  *port_info)
 
 void header_transport_show_all(GtkWidget *fixed, struct transport_info *transport)
 {
-	gtk_widget_hide(transport->tcp->fixed);
-	gtk_widget_hide(transport->udp->fixed);
+	gtk_widget_hide(transport->fixed);
+	gtk_widget_hide(transport->fixed);
 }
 
 void header_transport_show_tcp(GtkWidget *fixed, struct transport_info *transport)
 {
-	gtk_widget_hide(transport->udp->fixed);
-	gtk_widget_show(transport->tcp->fixed);
+	gtk_widget_hide(transport->fixed);
+	gtk_widget_show(transport->fixed);
 	header_transport_porttype_changed(transport->tcp->sport);
 	header_transport_porttype_changed(transport->tcp->dport);
 }
 
 void header_transport_show_udp(GtkWidget *fixed, struct transport_info *transport)
 {
-	gtk_widget_hide(transport->tcp->fixed);
-	gtk_widget_show(transport->udp->fixed);
+	gtk_widget_hide(transport->fixed);
+	gtk_widget_show(transport->fixed);
 	header_transport_porttype_changed(transport->udp->sport);
 	header_transport_porttype_changed(transport->udp->dport);
 }
@@ -649,18 +649,18 @@ void transport_callback_do(struct rule_create_widget  *widget)
 	update_cancel_ok_position(widget);
 }
 
-void header_addr_exactip_show(struct ip_address *addr)
+static void header_addr_exactip_show(struct ip_address *addr)
 {
 	gtk_entry_set_text(GTK_ENTRY(addr->exact_ip.ip), "");
 	gtk_widget_show(addr->exact_ip.ip);
 }
 
-void header_addr_exactip_hide(struct ip_address *addr)
+static void header_addr_exactip_hide(struct ip_address *addr)
 {
 	gtk_widget_hide(addr->exact_ip.ip);
 }
 
-void header_addr_subnet_show(struct ip_address *addr)
+static void header_addr_subnet_show(struct ip_address *addr)
 {
 	gtk_entry_set_text(GTK_ENTRY(addr->subnet.ip), "");
 	gtk_entry_set_text(GTK_ENTRY(addr->subnet.mask), "");
@@ -669,14 +669,14 @@ void header_addr_subnet_show(struct ip_address *addr)
 	gtk_widget_show(addr->subnet.mask);
 }
 
-void header_addr_subnet_hide(struct ip_address *addr)
+static void header_addr_subnet_hide(struct ip_address *addr)
 {
 	gtk_widget_hide(addr->subnet.ip);
 	gtk_widget_hide(addr->subnet.slash);
 	gtk_widget_hide(addr->subnet.mask);
 }
 
-void header_addr_range_show(struct ip_address *addr)
+static void header_addr_range_show(struct ip_address *addr)
 {
 	gtk_entry_set_text(GTK_ENTRY(addr->range.from), "");
 	gtk_entry_set_text(GTK_ENTRY(addr->range.to), "");
@@ -685,82 +685,45 @@ void header_addr_range_show(struct ip_address *addr)
 	gtk_widget_show(addr->range.to);
 }
 
-void header_addr_range_hide(struct ip_address *addr)
+static void header_addr_range_hide(struct ip_address *addr)
 {
 	gtk_widget_hide(addr->range.from);
 	gtk_widget_hide(addr->range.dash);
 	gtk_widget_hide(addr->range.to);
 }
 
-void header_saddr_callback(GtkComboBoxText *widget, gpointer data)
+static void header_addr_callback(GtkComboBoxText *widget, gpointer data)
 {
-	struct ip_address	*saddr;
-	struct rule_create_widget  *args;
-	args = (struct rule_create_widget *)data;
-	saddr = args->header->saddr.value;
+	struct ip_address	*addr;
+	struct match_header	*args;
+	args = (struct match_header *)data;
 
-	char	*type = gtk_combo_box_text_get_active_text(widget);
-	if (!(strcmp(type, "exact ip"))) {
-		args->header->saddr.value->type = ADDRESS_EXACT,
-		header_addr_subnet_hide(saddr);
-		header_addr_range_hide(saddr);
-		header_addr_exactip_show(saddr);
-	} else if (!(strcmp(type, "subnet"))) {
-		args->header->saddr.value->type = ADDRESS_SUBNET,
-		header_addr_exactip_hide(saddr);
-		header_addr_range_hide(saddr);
-		header_addr_subnet_show(saddr);
-	} else if (!(strcmp(type, "range"))) {
-		args->header->saddr.value->type = ADDRESS_RANGE,
-		header_addr_exactip_hide(saddr);
-		header_addr_subnet_hide(saddr);
-		header_addr_range_show(saddr);
-	}
-	// else
-	// 	bug();
-}
-
-
-void header_daddr_callback(GtkComboBoxText *widget, gpointer data)
-{
-	struct ip_address	*daddr;
-	struct rule_create_widget  *args;
-	args = (struct rule_create_widget *)data;
-	daddr = args->header->daddr.value;
-
-	char	*type = gtk_combo_box_text_get_active_text(widget);
-	if (!(strcmp(type, "exact ip"))) {
-		args->header->daddr.value->type = ADDRESS_EXACT,
-		header_addr_subnet_hide(daddr);
-		header_addr_range_hide(daddr);
-		header_addr_exactip_show(daddr);
-	} else if (!(strcmp(type, "subnet"))) {
-		args->header->daddr.value->type = ADDRESS_SUBNET,
-		header_addr_exactip_hide(daddr);
-		header_addr_range_hide(daddr);
-		header_addr_subnet_show(daddr);
-	} else if (!(strcmp(type, "range"))) {
-		args->header->daddr.value->type = ADDRESS_RANGE,
-		header_addr_exactip_hide(daddr);
-		header_addr_subnet_hide(daddr);
-		header_addr_range_show(daddr);
-	}
-	// else
-	// 	bug();
-}
-
-void header_saddr_exclude(GtkWidget *check_button, gpointer data) 
-{
-	struct ip_address	*saddr;
-	struct rule_create_widget  *args;
-	args = (struct rule_create_widget *)data;
-	saddr = args->header->saddr.value;
-
-	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(check_button)))
-		saddr->exclude = 1;
+	if (widget == args->saddr.type)
+		addr = args->saddr.value;
 	else
-		saddr->exclude = 0;
+		addr = args->daddr.value;
+
+	char	*type = gtk_combo_box_text_get_active_text(widget);
+	if (!(strcmp(type, "exact ip"))) {
+		addr->type = ADDRESS_EXACT,
+		header_addr_subnet_hide(addr);
+		header_addr_range_hide(addr);
+		header_addr_exactip_show(addr);
+	} else if (!(strcmp(type, "subnet"))) {
+		addr->type = ADDRESS_SUBNET,
+		header_addr_exactip_hide(addr);
+		header_addr_range_hide(addr);
+		header_addr_subnet_show(addr);
+	} else if (!(strcmp(type, "range"))) {
+		addr->type = ADDRESS_RANGE,
+		header_addr_exactip_hide(addr);
+		header_addr_subnet_hide(addr);
+		header_addr_range_show(addr);
+	}
+	// else
+	// 	bug();
 }
+
 
 void header_daddr_exclude(GtkWidget *check_button, gpointer data) 
 {
@@ -881,7 +844,7 @@ void transport_port_exclude(GtkWidget *check_button, gpointer data)
 		port_info->value->exclude = 0;
 }
 
-
+// zzzzz
 void header_trans_tcp_init(GtkWidget *fixed, struct transport_port_info *sport, struct transport_port_info *dport)
 {
 	header_trans_port_init("source port:", fixed, 0, sport,
@@ -934,6 +897,273 @@ struct rule_create_widget *rule_widget_container_create(struct rule_list_args *r
 	container->chain = xstrdup(rule_arg->chain);
 
 	return container;
+}
+
+static void rule_add_content_header_addr(struct match_header *header, struct ip_addr_data *addr, int source)
+{
+	GtkWidget	*addr_label;
+	GtkWidget	*fixed;
+	GtkWidget	*addr_type;
+	GtkWidget	*addr_not;
+	GtkWidget	*addr_exact_ip;
+	GtkWidget	*addr_subnet_ip;
+	GtkWidget	*addr_subnet_slash;
+	GtkWidget	*addr_subnet_mask;
+	GtkWidget	*addr_range_from;
+	GtkWidget	*addr_range_dash;
+	GtkWidget	*addr_range_to;
+	int		offset;
+	char		*label;
+	struct ip_address	*ipaddr;
+
+	fixed = header->fixed;
+	header->len += 40;
+	if (source) {
+		ipaddr = header->saddr.value;
+		offset = 0;
+		label = "source addr:";
+	} else {
+		ipaddr = header->daddr.value;
+		offset = 40;
+		label = "dest addr:";
+	}
+	addr_label = gtk_label_new(label);
+	gtk_fixed_put(GTK_FIXED(fixed), addr_label, 40, offset);
+	addr_type = gtk_combo_box_text_new();
+	gtk_widget_set_size_request(addr_type, 100, 10);
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(addr_type),
+			"exact ip", "exact ip");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(addr_type),
+			"subnet", "subnet");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(addr_type),
+			"range", "range");
+//	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(addr_type),
+//			"sets", "sets");
+	gtk_fixed_put(GTK_FIXED(fixed), addr_type, 150, offset);
+	if (source)
+		header->saddr.type = addr_type;
+	else
+		header->daddr.type = addr_type;
+	g_signal_connect(addr_type, "changed", G_CALLBACK(header_addr_callback), header);
+	
+	addr_not = gtk_check_button_new_with_label("Exclude");
+	gtk_fixed_put(GTK_FIXED(fixed), addr_not, 700, offset);
+
+	addr_exact_ip = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(addr_exact_ip), 47);
+	gtk_fixed_put(GTK_FIXED(fixed), addr_exact_ip, 280, offset);
+	ipaddr->exact_ip.ip = addr_exact_ip;
+
+	addr_subnet_ip = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(addr_subnet_ip), 20);
+	gtk_fixed_put(GTK_FIXED(fixed), addr_subnet_ip, 280, offset);
+	ipaddr->subnet.ip = addr_subnet_ip;
+	addr_subnet_slash = gtk_label_new("/");
+	gtk_fixed_put(GTK_FIXED(fixed), addr_subnet_slash, 470, offset);
+	ipaddr->subnet.slash = addr_subnet_slash;
+	addr_subnet_mask = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(addr_subnet_mask), 20);
+	gtk_fixed_put(GTK_FIXED(fixed), addr_subnet_mask, 500, offset);
+	ipaddr->subnet.mask = addr_subnet_mask;
+
+	addr_range_from = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(addr_range_from), 20);
+	gtk_fixed_put(GTK_FIXED(fixed), addr_range_from, 280, offset);
+	ipaddr->range.from = addr_range_from;
+	addr_range_dash = gtk_label_new("-");
+	gtk_fixed_put(GTK_FIXED(fixed), addr_range_dash, 470, offset);
+	ipaddr->range.dash = addr_range_dash;
+	addr_range_to = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(addr_range_to), 20);
+	gtk_fixed_put(GTK_FIXED(fixed), addr_range_to, 500, offset);
+	ipaddr->range.to = addr_range_to;
+
+	if (!addr) {
+		gtk_combo_box_set_active(GTK_COMBO_BOX(addr_type), 0);
+		gtk_widget_show(GTK_WIDGET(addr_exact_ip));
+	} else {
+		gtk_combo_box_set_active(GTK_COMBO_BOX(addr_type), addr->ip_type);
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(addr_not), addr->exclude);
+		header->expanded = 1;
+		switch (addr->ip_type) {
+		case ADDRESS_EXACT:
+			gtk_entry_set_text(GTK_ENTRY(addr_exact_ip), addr->iplist_str.ips);
+			gtk_widget_show(GTK_WIDGET(addr_exact_ip));
+			break;
+		case ADDRESS_SUBNET:
+			gtk_entry_set_text(GTK_ENTRY(addr_subnet_ip), addr->subnet_str.ip);
+			gtk_entry_set_text(GTK_ENTRY(addr_subnet_mask), addr->subnet_str.mask);
+			gtk_widget_show(GTK_WIDGET(addr_subnet_ip));
+			gtk_widget_show(GTK_WIDGET(addr_subnet_slash));
+			gtk_widget_show(GTK_WIDGET(addr_subnet_mask));
+			break;
+		case ADDRESS_RANGE:
+			gtk_entry_set_text(GTK_ENTRY(addr_range_from), addr->range_str.from);
+			gtk_entry_set_text(GTK_ENTRY(addr_range_to), addr->range_str.to);
+			gtk_widget_show(GTK_WIDGET(addr_range_from));
+			gtk_widget_show(GTK_WIDGET(addr_range_dash));
+			gtk_widget_show(GTK_WIDGET(addr_range_to));
+			break;
+		}
+	}
+	gtk_widget_show(GTK_WIDGET(addr_label));
+	gtk_widget_show(GTK_WIDGET(addr_type));
+	gtk_widget_show(GTK_WIDGET(addr_not));
+}
+
+static void rule_add_content_header_saddr(struct match_header *header, struct pktheader *header_data)
+{
+	struct ip_addr_data *addr = NULL;
+	if (header_data)
+		addr = header_data->saddr;
+	rule_add_content_header_addr(header, addr, 1);
+}
+
+static void rule_add_content_header_daddr(struct match_header *header, struct pktheader *header_data)
+{
+	struct ip_addr_data *addr = NULL;
+	if (header_data)
+		addr = header_data->daddr;
+	rule_add_content_header_addr(header, addr, 0);
+}
+
+static void rule_add_content_header_port(GtkWidget *fixed,
+		struct transport_port_info *port, struct trans_port_data *data, int source)
+{
+	printf("aaaaaaaaaaaaaaaaaaaaaaaaaa\n");
+}
+
+static void rule_add_content_header_tcp(struct match_header *header, struct trans_tcp_data *data)
+{
+	GtkWidget	*fixed;
+	struct transport_info	*widget;
+
+	widget = header->transport.value;
+	if (widget->type == TRANSPORT_UDP)
+		gtk_widget_destroy(widget->fixed);
+	else if (widget->type == TRANSPORT_ALL)
+		header->len += 80;
+	widget->type = TRANSPORT_TCP;
+	gtk_combo_box_set_active(GTK_COMBO_BOX(header->transport.type), TRANSPORT_TCP);
+	fixed = gtk_fixed_new();
+	gtk_fixed_put(GTK_FIXED(header->fixed), fixed, 40, 120);
+	gtk_widget_show(GTK_WIDGET(fixed));
+	widget->fixed = fixed;
+	rule_add_content_header_port(fixed, widget->tcp->sport, data ? data->sport : NULL, 1);
+	rule_add_content_header_port(fixed, widget->tcp->dport, data ? data->dport : NULL, 0);
+
+}
+
+static void rule_add_content_header_udp(struct match_header *header, struct trans_udp_data *data)
+{
+
+}
+
+static void rule_add_content_header_trans(struct match_header *header, struct pktheader *header_data)
+{
+	GtkWidget	*fixed;
+	GtkWidget	*transport;
+	GtkWidget	*transport_value;
+	struct transport_data	*trans = NULL;
+
+	if (header_data)
+		trans = header_data->transport_data;
+	fixed = header->fixed;
+	header->len += 40;
+
+	transport = gtk_label_new("transport:");
+	gtk_fixed_put(GTK_FIXED(fixed), transport, 40, 80);
+
+	transport_value = gtk_combo_box_text_new();
+	gtk_widget_set_size_request(transport_value, 100, 10);
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(transport_value),
+			"all", "all");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(transport_value),
+			"tcp", "tcp");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(transport_value),
+			"udp", "udp");
+//	gtk_combo_box_set_active(GTK_COMBO_BOX(transport_value), 0);
+//	g_signal_connect(transport_value, "changed", G_CALLBACK(transport_callback), new_rule);
+	gtk_fixed_put(GTK_FIXED(fixed), transport_value, 150, 80);
+	header->transport.type = transport_value;
+	gtk_combo_box_set_active(GTK_COMBO_BOX(transport_value), 0);
+	header->transport.type = TRANSPORT_ALL;
+
+	if (trans) {
+		switch (trans->trans_type) {
+		case TRANSPORT_ALL:
+			break;
+		case TRANSPORT_TCP:
+			rule_add_content_header_tcp(header, trans->tcp);
+			break;
+		case TRANSPORT_UDP:
+			rule_add_content_header_udp(header, trans->udp);
+			break;
+		default:
+			break;
+		}
+	}
+
+//	header_trans_tcp_init(fixed_trans_tcp,
+
+	gtk_widget_show(GTK_WIDGET(transport));
+	gtk_widget_show(GTK_WIDGET(transport_value));
+}
+static void rule_add_content_header_data(struct match_header *header, struct pktheader *header_data)
+{
+	rule_add_content_header_saddr(header, header_data);
+	rule_add_content_header_daddr(header, header_data);
+	rule_add_content_header_trans(header, header_data);
+}
+
+
+void rule_add_content_header(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg)
+{
+	GtkWidget	*fixed;
+	GtkWidget	*fixed_header;
+	GtkWidget	*expander_header;
+	struct match_header	*header;
+	struct rule_create_data	*data = rule_arg->data;
+	struct pktheader	*header_data = NULL;
+
+	fixed = new_rule->fixed;
+	header = new_rule->header;
+	if (data)
+		header_data = data->header;
+
+	fixed_header = gtk_fixed_new();
+	expander_header = gtk_expander_new("Matching packet header fields");
+	gtk_fixed_put(GTK_FIXED(fixed), expander_header, 0, 0);
+	gtk_container_add(GTK_CONTAINER(expander_header), fixed_header);
+//	g_signal_connect(expander_header, "notify::expanded", G_CALLBACK(expander_callback), new_rule);
+	new_rule->header->expander = expander_header;
+	new_rule->header->fixed = fixed_header;
+	new_rule->header->expanded = 0;
+	new_rule->header->len = 180;
+
+	rule_add_content_header_data(header, header_data);
+
+	gtk_expander_set_expanded(GTK_EXPANDER(header->expander), header->expanded);
+	gtk_widget_show(GTK_WIDGET(fixed_header));
+	gtk_widget_show(GTK_WIDGET(expander_header));
+}
+
+void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg)
+{
+
+}
+
+void rule_add_content_submit(struct rule_create_widget *new_rule)
+{
+
+}
+
+void rule_add_content(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg)
+{
+	GtkWidget	*fixed = new_rule->fixed;
+	rule_add_content_header(new_rule, rule_arg);
+	rule_add_content_pktmeta(new_rule, rule_arg);
+	rule_add_content_submit(new_rule);
 }
 
 void create_new_rule_begin(gpointer  data)
@@ -994,143 +1224,21 @@ void create_new_rule_begin(gpointer  data)
 
 	struct rule_list_args	*rule_arg;
 	struct rule_create_widget	*new_rule;
-	struct rule_create_data		*content;
 
 	// new_rule_malloc();
 	rule_arg = (struct rule_list_args *)data;
 	new_rule = rule_widget_container_create(rule_arg);
-	content = rule_arg->data;
 	notebook = rule_arg->notebook;
-
 
 	title = gtk_label_new("Create rule");
 	gtk_widget_set_size_request(title, 200, 10);
 	fixed_back = gtk_fixed_new();
-	fixed_header = gtk_fixed_new();
-	fixed_trans_all = gtk_fixed_new();
-	fixed_trans_tcp = gtk_fixed_new();
-	fixed_trans_udp = gtk_fixed_new();
-	fixed_pktmeta = gtk_fixed_new();
 	fixed_content = gtk_fixed_new();
 	new_rule->fixed = fixed_content;
-	new_rule->header->transport.value->all->fixed = fixed_trans_all;
-	new_rule->header->transport.value->tcp->fixed = fixed_trans_tcp;
-	new_rule->header->transport.value->udp->fixed = fixed_trans_udp;
-	
-	expander_header = gtk_expander_new("Matching packet header fields");
-	gtk_fixed_put(GTK_FIXED(fixed_content), expander_header, 0, 0);
-	gtk_container_add(GTK_CONTAINER(expander_header), fixed_header);
-	g_signal_connect(expander_header, "notify::expanded", G_CALLBACK(expander_callback), new_rule);
-	new_rule->header->expander = expander_header;
-	new_rule->header->fixed = fixed_header;
-	new_rule->header->expanded = 0;
-	new_rule->header->len = 180;
 
-	saddr = gtk_label_new("source addres:");
-	gtk_fixed_put(GTK_FIXED(fixed_header), saddr, 40, 20);
-	saddr_type = gtk_combo_box_text_new();
-	gtk_widget_set_size_request(saddr_type, 100, 10);
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(saddr_type),
-			"exact ip", "exact ip");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(saddr_type),
-			"subnet", "subnet");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(saddr_type),
-			"range", "range");
-//	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(saddr_type),
-//			"sets", "sets");
-//	gtk_combo_box_set_active(GTK_COMBO_BOX(saddr_type), 0);
-	g_signal_connect(saddr_type, "changed", G_CALLBACK(header_saddr_callback), new_rule);
-	gtk_fixed_put(GTK_FIXED(fixed_header), saddr_type, 150, 20);
-	new_rule->header->saddr.type = saddr_type;
-	new_rule->header->saddr.value->type = ADDRESS_EXACT;
+	rule_add_content(new_rule, rule_arg);
 
-	saddr_not = gtk_check_button_new_with_label("Exclude");
-	g_signal_connect(saddr_not, "toggled", G_CALLBACK(header_saddr_exclude), new_rule);
-	gtk_fixed_put(GTK_FIXED(fixed_header), saddr_not, 700, 20);
-	new_rule->header->saddr.value->exclude = 0;
-
-	saddr_exact_ip = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(saddr_exact_ip), 47);
-	gtk_fixed_put(GTK_FIXED(fixed_header), saddr_exact_ip, 280, 20);
-	new_rule->header->saddr.value->exact_ip.ip = saddr_exact_ip;
-
-	saddr_subnet_ip = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(saddr_subnet_ip), 20);
-	gtk_fixed_put(GTK_FIXED(fixed_header), saddr_subnet_ip, 280, 20);
-	new_rule->header->saddr.value->subnet.ip = saddr_subnet_ip;
-	saddr_subnet_slash = gtk_label_new("/");
-	gtk_fixed_put(GTK_FIXED(fixed_header), saddr_subnet_slash, 470, 20);
-	new_rule->header->saddr.value->subnet.slash = saddr_subnet_slash;
-	saddr_subnet_mask = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(saddr_subnet_mask), 20);
-	gtk_fixed_put(GTK_FIXED(fixed_header), saddr_subnet_mask, 500, 20);
-	new_rule->header->saddr.value->subnet.mask = saddr_subnet_mask;
-
-	saddr_range_from = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(saddr_range_from), 20);
-	gtk_fixed_put(GTK_FIXED(fixed_header), saddr_range_from, 280, 20);
-	new_rule->header->saddr.value->range.from = saddr_range_from;
-	saddr_range_dash = gtk_label_new("-");
-	gtk_fixed_put(GTK_FIXED(fixed_header), saddr_range_dash, 470, 20);
-	new_rule->header->saddr.value->range.dash = saddr_range_dash;
-	saddr_range_to = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(saddr_range_to), 20);
-	gtk_fixed_put(GTK_FIXED(fixed_header), saddr_range_to, 500, 20);
-	new_rule->header->saddr.value->range.to = saddr_range_to;
-
-
-	daddr = gtk_label_new("dest addres:");
-	gtk_fixed_put(GTK_FIXED(fixed_header), daddr, 40, 60);
-	daddr_type = gtk_combo_box_text_new();
-	gtk_widget_set_size_request(daddr_type, 100, 10);
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(daddr_type),
-			"exact ip", "exact ip");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(daddr_type),
-			"subnet", "subnet");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(daddr_type),
-			"range", "range");
-//	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(daddr_type),
-//			"sets", "sets");
-	gtk_combo_box_set_active(GTK_COMBO_BOX(daddr_type), 0);
-	g_signal_connect(daddr_type, "changed", G_CALLBACK(header_daddr_callback), new_rule);
-	gtk_fixed_put(GTK_FIXED(fixed_header), daddr_type, 150, 60);
-	new_rule->header->daddr.type = daddr_type;
-	new_rule->header->daddr.value->type = ADDRESS_EXACT;
-
-	daddr_not = gtk_check_button_new_with_label("Exclude");
-	g_signal_connect(daddr_not, "toggled", G_CALLBACK(header_daddr_exclude), new_rule);
-	gtk_fixed_put(GTK_FIXED(fixed_header), daddr_not, 700, 60);
-	new_rule->header->daddr.value->exclude = 0;
-
-	daddr_exact_ip = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(daddr_exact_ip), 47);
-	gtk_fixed_put(GTK_FIXED(fixed_header), daddr_exact_ip, 280, 60);
-	new_rule->header->daddr.value->exact_ip.ip = daddr_exact_ip;
-
-	daddr_subnet_ip = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(daddr_subnet_ip), 20);
-	gtk_fixed_put(GTK_FIXED(fixed_header), daddr_subnet_ip, 280, 60);
-	new_rule->header->daddr.value->subnet.ip = daddr_subnet_ip;
-	daddr_subnet_slash = gtk_label_new("/");
-	gtk_fixed_put(GTK_FIXED(fixed_header), daddr_subnet_slash, 470, 60);
-	new_rule->header->daddr.value->subnet.slash = daddr_subnet_slash;
-	daddr_subnet_mask = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(daddr_subnet_mask), 20);
-	gtk_fixed_put(GTK_FIXED(fixed_header), daddr_subnet_mask, 500, 60);
-	new_rule->header->daddr.value->subnet.mask = daddr_subnet_mask;
-
-	daddr_range_from = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(daddr_range_from), 20);
-	gtk_fixed_put(GTK_FIXED(fixed_header), daddr_range_from, 280, 60);
-	new_rule->header->daddr.value->range.from = daddr_range_from;
-	daddr_range_dash = gtk_label_new("-");
-	gtk_fixed_put(GTK_FIXED(fixed_header), daddr_range_dash, 470, 60);
-	new_rule->header->daddr.value->range.dash = daddr_range_dash;
-	daddr_range_to = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(daddr_range_to), 20);
-	gtk_fixed_put(GTK_FIXED(fixed_header), daddr_range_to, 500, 60);
-	new_rule->header->daddr.value->range.to = daddr_range_to;
-
+/*	
 	transport = gtk_label_new("transport:");
 	gtk_fixed_put(GTK_FIXED(fixed_header), transport, 40, 100);
 
@@ -1152,6 +1260,9 @@ void create_new_rule_begin(gpointer  data)
 	gtk_fixed_put(GTK_FIXED(fixed_header), fixed_trans_udp, 0, 140);
 
 	header_trans_all_init();
+
+
+
 	new_rule->header->transport.value->all->len = 0;
 	new_rule->header->transport.value->type = TRANSPORT_ALL;
 	header_trans_tcp_init(fixed_trans_tcp,
@@ -1230,64 +1341,26 @@ void create_new_rule_begin(gpointer  data)
 	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_rule), new_rule);
 	gtk_fixed_put(GTK_FIXED(fixed_content), ok, 660, 360);
 	new_rule->ok = ok;
+*/
+
 
         scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
 	gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(scrolledwindow), 856);
-	gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(scrolledwindow), 400);
+	gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(scrolledwindow), 430);
 	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolledwindow), GTK_SHADOW_ETCHED_IN);
         gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledwindow),
                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_container_add(GTK_CONTAINER(scrolledwindow), fixed_content);
 
-	gtk_fixed_put(GTK_FIXED(fixed_back), scrolledwindow, 10, 40);
+	gtk_fixed_put(GTK_FIXED(fixed_back), scrolledwindow, 10, 20);
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 2);
 	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), fixed_back, title, 2);
-	gtk_widget_show_all(GTK_WIDGET(notebook));
+	gtk_widget_show(GTK_WIDGET(fixed_content));
+	gtk_widget_show(GTK_WIDGET(scrolledwindow));
+	gtk_widget_show(GTK_WIDGET(fixed_back));
+	gtk_widget_show(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
-
-	if (!content || !content->header->saddr || content->header->saddr->ip_type == ADDRESS_EXACT) {
-		gtk_combo_box_set_active(GTK_COMBO_BOX(saddr_type), 0);
-		gtk_widget_show(saddr_exact_ip);
-		gtk_widget_hide(saddr_subnet_ip);
-		gtk_widget_hide(saddr_subnet_slash);
-		gtk_widget_hide(saddr_subnet_mask);
-		gtk_widget_hide(saddr_range_from);
-		gtk_widget_hide(saddr_range_dash);
-		gtk_widget_hide(saddr_range_to);
-	} else if (content->header->saddr->ip_type == ADDRESS_SUBNET) {
-		gtk_combo_box_set_active(GTK_COMBO_BOX(saddr_type), 1);
-		gtk_widget_hide(saddr_exact_ip);
-		gtk_widget_hide(saddr_range_from);
-		gtk_widget_hide(saddr_range_dash);
-		gtk_widget_hide(saddr_range_to);
-		gtk_entry_set_text(GTK_ENTRY(saddr_subnet_ip), content->header->saddr->subnet_str.ip);
-		gtk_entry_set_text(GTK_ENTRY(saddr_subnet_mask), content->header->saddr->subnet_str.mask);
-		gtk_widget_show(saddr_subnet_ip);
-		gtk_widget_show(saddr_subnet_slash);
-		gtk_widget_show(saddr_subnet_mask);
-	} else if (content->header->saddr->ip_type == ADDRESS_RANGE) {
-		gtk_combo_box_set_active(GTK_COMBO_BOX(saddr_type), 2);
-		gtk_widget_hide(saddr_exact_ip);
-		gtk_widget_hide(saddr_subnet_ip);
-		gtk_widget_hide(saddr_subnet_slash);
-		gtk_widget_hide(saddr_subnet_mask);
-		gtk_entry_set_text(GTK_ENTRY(saddr_range_from), content->header->saddr->range_str.from);
-		gtk_entry_set_text(GTK_ENTRY(saddr_range_to), content->header->saddr->range_str.to);
-		gtk_widget_show(saddr_range_from);
-		gtk_widget_show(saddr_range_dash);
-		gtk_widget_show(saddr_range_to);
-	}
-
-	gtk_widget_hide(daddr_subnet_ip);
-	gtk_widget_hide(daddr_subnet_slash);
-	gtk_widget_hide(daddr_subnet_mask);
-	gtk_widget_hide(daddr_range_from);
-	gtk_widget_hide(daddr_range_dash);
-	gtk_widget_hide(daddr_range_to);
-
-	gtk_widget_hide(new_rule->header->transport.value->tcp->fixed);
-	gtk_widget_hide(new_rule->header->transport.value->udp->fixed);
 }
 
 

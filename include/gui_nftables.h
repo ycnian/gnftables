@@ -161,14 +161,12 @@ struct transport_port_info {
 
 struct transport_tcp {
 	int		len;
-	GtkWidget	*fixed;
 	struct transport_port_info	*sport;
 	struct transport_port_info	*dport;
 };
 
 struct transport_udp {
 	int		len;
-	GtkWidget	*fixed;
 	struct transport_port_info	*sport;
 	struct transport_port_info	*dport;
 };
@@ -179,6 +177,7 @@ struct transport_all {
 };
 
 struct transport_info {
+	GtkWidget	*fixed;
 	enum transport_type	type;
 	struct	transport_all	*all;
 	struct	transport_tcp	*tcp;
@@ -325,14 +324,6 @@ void update_header_transport_widgets(GtkWidget *fixed, struct transport_info *tr
 void header_transport_show_all(GtkWidget *fixed, struct transport_info *transport);
 void header_transport_show_tcp(GtkWidget *fixed, struct transport_info *transport);
 void header_transport_show_udp(GtkWidget *fixed, struct transport_info *transport);
-void header_addr_exactip_show(struct ip_address *addr);
-void header_addr_exactip_hide(struct ip_address *addr);
-void header_addr_subnet_show(struct ip_address *addr);
-void header_addr_subnet_hide(struct ip_address *addr);
-void header_addr_range_show(struct ip_address *addr);
-void header_addr_range_hide(struct ip_address *addr);
-void header_saddr_callback(GtkComboBoxText *widget, gpointer data);
-void header_daddr_callback(GtkComboBoxText *widget, gpointer data);
 void header_saddr_exclude(GtkWidget *check_button, gpointer data);
 void header_daddr_exclude(GtkWidget *check_button, gpointer data);
 void header_trans_port_init(const char *string, GtkWidget *fixed, int vertical,
@@ -349,5 +340,10 @@ void header_transport_porttype_changed(struct transport_port_info  *port_info);
 void gnftables_goto_chain_list(GtkButton *button, gpointer  data);
 void set_update_data(struct set_list_args *args);
 struct rule_create_widget *rule_widget_container_create(struct rule_list_args *rule_arg);
+void rule_add_content_header(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg);
+void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg);
+void rule_add_content_submit(struct rule_create_widget *new_rule);
+void rule_add_content(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg);
+//void rule_add_content_header_data(struct match_header *header, struct pktheader *header_data);
 
 #endif

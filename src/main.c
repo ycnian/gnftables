@@ -1030,7 +1030,82 @@ static void rule_add_content_header_daddr(struct match_header *header, struct pk
 static void rule_add_content_header_port(GtkWidget *fixed,
 		struct transport_port_info *port, struct trans_port_data *data, int source)
 {
-	printf("aaaaaaaaaaaaaaaaaaaaaaaaaa\n");
+	GtkWidget	*port_label;
+	GtkWidget	*port_type;
+	GtkWidget	*port_not;
+	GtkWidget	*port_list;
+	GtkWidget	*port_range_from;
+	GtkWidget	*port_range_dash;
+	GtkWidget	*port_range_to;
+	int		offset;
+	char		*label;
+
+	if (source) {
+		offset = 0;
+		label = "source port:";
+	} else {
+		offset = 40;
+		label = "dest port:";
+	}
+	port_label = gtk_label_new(label);
+	gtk_fixed_put(GTK_FIXED(fixed), port_label, 40, offset);
+	port->label = port_label;
+	port_type = gtk_combo_box_text_new();
+	gtk_widget_set_size_request(port_type, 100, 10);
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(port_type),
+			"port list", "port list");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(port_type),
+			"range", "range");
+//	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(port_type),
+//			"sets", "sets");
+	gtk_fixed_put(GTK_FIXED(fixed), port_type, 150, offset);
+	port->type = port_type;
+//	g_signal_connect(addr_type, "changed", G_CALLBACK(header_addr_callback), header);
+	
+	port_not = gtk_check_button_new_with_label("Exclude");
+	gtk_fixed_put(GTK_FIXED(fixed), port_not, 700, offset);
+	port->exclude = port_not;
+
+	port_list = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(port_list), 47);
+	gtk_fixed_put(GTK_FIXED(fixed), port_list, 280, offset);
+	port->value->portlist.port = port_list;
+
+	port_range_from = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(port_range_from), 20);
+	gtk_fixed_put(GTK_FIXED(fixed), port_range_from, 280, offset);
+	port->value->range.from = port_range_from;
+	port_range_dash = gtk_label_new("-");
+	gtk_fixed_put(GTK_FIXED(fixed), port_range_dash, 470, offset);
+	port->value->range.dash = port_range_dash;
+	port_range_to = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(port_range_to), 20);
+	gtk_fixed_put(GTK_FIXED(fixed), port_range_to, 500, offset);
+	port->value->range.to = port_range_to;
+
+	if (!data) {
+		gtk_combo_box_set_active(GTK_COMBO_BOX(port_type), 0);
+		gtk_widget_show(GTK_WIDGET(port_list));
+	} else {
+		gtk_combo_box_set_active(GTK_COMBO_BOX(port_type), data->port_type);
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(port_not), data->exclude);
+		switch (data->port_type) {
+		case PORT_EXACT:
+			gtk_entry_set_text(GTK_ENTRY(port_list), data->portlist_str.ports);
+			gtk_widget_show(GTK_WIDGET(port_list));
+			break;
+		case PORT_RANGE:
+			gtk_entry_set_text(GTK_ENTRY(port_range_from), data->range_str.from);
+			gtk_entry_set_text(GTK_ENTRY(port_range_to), data->range_str.to);
+			gtk_widget_show(GTK_WIDGET(port_range_from));
+			gtk_widget_show(GTK_WIDGET(port_range_dash));
+			gtk_widget_show(GTK_WIDGET(port_range_to));
+			break;
+		}
+	}
+	gtk_widget_show(GTK_WIDGET(port_label));
+	gtk_widget_show(GTK_WIDGET(port_type));
+	gtk_widget_show(GTK_WIDGET(port_not));
 }
 
 static void rule_add_content_header_tcp(struct match_header *header, struct trans_tcp_data *data)
@@ -1046,7 +1121,7 @@ static void rule_add_content_header_tcp(struct match_header *header, struct tran
 	widget->type = TRANSPORT_TCP;
 	gtk_combo_box_set_active(GTK_COMBO_BOX(header->transport.type), TRANSPORT_TCP);
 	fixed = gtk_fixed_new();
-	gtk_fixed_put(GTK_FIXED(header->fixed), fixed, 40, 120);
+	gtk_fixed_put(GTK_FIXED(header->fixed), fixed, 0, 120);
 	gtk_widget_show(GTK_WIDGET(fixed));
 	widget->fixed = fixed;
 	rule_add_content_header_port(fixed, widget->tcp->sport, data ? data->sport : NULL, 1);

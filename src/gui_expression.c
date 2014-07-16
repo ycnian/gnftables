@@ -690,7 +690,8 @@ int rule_parse_tcp_sport_expr(struct expr *expr, struct pktheader *header, enum 
 		header->transport_data = xzalloc(sizeof(struct transport_data));
 	if (!header->transport_data->tcp)
 		header->transport_data->tcp = xzalloc(sizeof(struct trans_tcp_data));
-	header->transport_data->tcp->sport = xzalloc(sizeof(struct trans_port_data));
+	if (!header->transport_data->tcp->sport)
+		header->transport_data->tcp->sport = xzalloc(sizeof(struct trans_port_data));
 	header->transport_data->trans_type = TRANSPORT_TCP;
 	return rule_parse_port_expr(expr, header->transport_data->tcp->sport, op);
 }
@@ -701,7 +702,8 @@ int rule_parse_tcp_dport_expr(struct expr *expr, struct pktheader *header, enum 
 		header->transport_data = xzalloc(sizeof(struct transport_data));
 	if (!header->transport_data->tcp)
 		header->transport_data->tcp = xzalloc(sizeof(struct trans_tcp_data));
-	header->transport_data->tcp->dport = xzalloc(sizeof(struct trans_port_data));
+	if (!header->transport_data->tcp->dport)
+		header->transport_data->tcp->dport = xzalloc(sizeof(struct trans_port_data));
 	header->transport_data->trans_type = TRANSPORT_TCP;
 	return rule_parse_port_expr(expr, header->transport_data->tcp->dport, op);
 }
@@ -720,7 +722,8 @@ int rule_parse_udp_sport_expr(struct expr *expr, struct pktheader *header, enum 
 		header->transport_data = xzalloc(sizeof(struct transport_data));
 	if (!header->transport_data->udp)
 		header->transport_data->udp = xzalloc(sizeof(struct trans_udp_data));
-	header->transport_data->udp->sport = xzalloc(sizeof(struct trans_port_data));
+	if (!header->transport_data->udp->sport)
+		header->transport_data->udp->sport = xzalloc(sizeof(struct trans_port_data));
 	header->transport_data->trans_type = TRANSPORT_UDP;
 	return rule_parse_port_expr(expr, header->transport_data->udp->sport, op);
 }
@@ -731,7 +734,8 @@ int rule_parse_udp_dport_expr(struct expr *expr, struct pktheader *header, enum 
 		header->transport_data = xzalloc(sizeof(struct transport_data));
 	if (!header->transport_data->udp)
 		header->transport_data->udp = xzalloc(sizeof(struct trans_udp_data));
-	header->transport_data->udp->dport = xzalloc(sizeof(struct trans_port_data));
+	if (!header->transport_data->udp->dport)
+		header->transport_data->udp->dport = xzalloc(sizeof(struct trans_port_data));
 	header->transport_data->trans_type = TRANSPORT_UDP;
 	return rule_parse_port_expr(expr, header->transport_data->udp->dport, op);
 }
@@ -844,6 +848,5 @@ int rule_de_expressions(struct rule *rule, struct rule_create_data **data)
 		rule_parse_stmt(stmt, p);
 	}
 	*data = p;
-
 	return RULE_SUCCESS;
 }

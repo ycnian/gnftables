@@ -724,7 +724,6 @@ static void header_addr_callback(GtkComboBoxText *widget, gpointer data)
 	// 	bug();
 }
 
-
 void header_daddr_exclude(GtkWidget *check_button, gpointer data) 
 {
 	struct ip_address	*daddr;
@@ -737,25 +736,6 @@ void header_daddr_exclude(GtkWidget *check_button, gpointer data)
 	else
 		daddr->exclude = 0;
 }
-
-void transport_callback(GtkComboBoxText *widget, gpointer data)
-{
-	struct rule_create_widget  *args;
-	args = (struct rule_create_widget *)data;
-	
-	char	*type = gtk_combo_box_text_get_active_text(widget);
-	if (!(strcmp(type, "all")))
-		args->header->transport.value->type = TRANSPORT_ALL;
-	else if (!(strcmp(type, "tcp")))
-		args->header->transport.value->type = TRANSPORT_TCP;
-	else if (!(strcmp(type, "udp")))
-		args->header->transport.value->type = TRANSPORT_UDP;
-	// else
-	// 	bug();
-
-	transport_callback_do(args);
-}
-
 
 void header_trans_port_init(const char *string, GtkWidget *fixed, int vertical,
 		struct transport_port_info *port,
@@ -1066,17 +1046,16 @@ static void header_port_callback(GtkComboBoxText *widget, gpointer data)
 		header_port_list_show(port);
 	} else if (!(strcmp(type, "range"))) {
 		port->value->type = PORT_RANGE;
-		header_port_list_hide(port);
 		header_port_range_show(port);
+		header_port_list_hide(port);
 	}
 	// else
 	// 	bug();
 }
 
-
 static void rule_add_content_header_port(GtkWidget *fixed,
 		struct transport_port_info *port, struct trans_port_data *data, 
-		void (*callback)(GtkComboBox *widget, gpointer dat), int source)
+		void (*callback)(GtkComboBoxText *widget, gpointer data), int source)
 {
 	GtkWidget	*port_label;
 	GtkWidget	*port_type;
@@ -1151,9 +1130,28 @@ static void rule_add_content_header_port(GtkWidget *fixed,
 			break;
 		}
 	}
+
 	gtk_widget_show(GTK_WIDGET(port_label));
 	gtk_widget_show(GTK_WIDGET(port_type));
 	gtk_widget_show(GTK_WIDGET(port_not));
+}
+
+static void rule_add_content_header_all(struct match_header *header)
+{
+	GtkWidget	*fixed;
+	struct transport_info	*widget;
+
+	widget = header->transport.value;
+	if (widget->type != TRANSPORT_ALL)
+		header->len -= 80;
+	widget->type = TRANSPORT_ALL;
+	gtk_combo_box_set_active(GTK_COMBO_BOX(header->transport.type), TRANSPORT_ALL);
+	gtk_widget_destroy(widget->fixed);
+	fixed = gtk_fixed_new();
+	gtk_fixed_put(GTK_FIXED(header->fixed), fixed, 0, 120);
+	gtk_widget_show(GTK_WIDGET(fixed));
+	widget->fixed = fixed;
+
 }
 
 static void rule_add_content_header_tcp(struct match_header *header, struct trans_tcp_data *data)
@@ -1162,10 +1160,9 @@ static void rule_add_content_header_tcp(struct match_header *header, struct tran
 	struct transport_info	*widget;
 
 	widget = header->transport.value;
-	if (widget->type == TRANSPORT_UDP)
-		gtk_widget_destroy(widget->fixed);
-	else if (widget->type == TRANSPORT_ALL)
+	if (widget->type == TRANSPORT_ALL)
 		header->len += 80;
+	gtk_widget_destroy(widget->fixed);
 	widget->type = TRANSPORT_TCP;
 	gtk_combo_box_set_active(GTK_COMBO_BOX(header->transport.type), TRANSPORT_TCP);
 	fixed = gtk_fixed_new();
@@ -1178,7 +1175,38 @@ static void rule_add_content_header_tcp(struct match_header *header, struct tran
 
 static void rule_add_content_header_udp(struct match_header *header, struct trans_udp_data *data)
 {
+	GtkWidget	*fixed;
+	struct transport_info	*widget;
 
+	widget = header->transport.value;
+	if (widget->type == TRANSPORT_ALL)
+		header->len += 80;
+	gtk_widget_destroy(widget->fixed);
+	widget->type = TRANSPORT_UDP;
+	gtk_combo_box_set_active(GTK_COMBO_BOX(header->transport.type), TRANSPORT_UDP);
+	fixed = gtk_fixed_new();
+	gtk_fixed_put(GTK_FIXED(header->fixed), fixed, 0, 120);
+	gtk_widget_show(GTK_WIDGET(fixed));
+	widget->fixed = fixed;
+	rule_add_content_header_port(fixed, widget->udp->sport, data ? data->sport : NULL, header_port_callback, 1);
+	rule_add_content_header_port(fixed, widget->udp->dport, data ? data->dport : NULL, header_port_callback, 0);
+}
+
+static void header_transport_callback(GtkComboBoxText *widget, gpointer data)
+{
+	char	*type;
+	struct match_header *header;
+	
+	header = (struct match_header *)data;
+	type = gtk_combo_box_text_get_active_text(widget);
+	if (!(strcmp(type, "all")))
+		rule_add_content_header_all(header);
+	else if (!(strcmp(type, "tcp")))
+		rule_add_content_header_tcp(header, NULL);
+	else if (!(strcmp(type, "udp")))
+		rule_add_content_header_udp(header, NULL);
+	// else
+	// 	bug();
 }
 
 static void rule_add_content_header_trans(struct match_header *header, struct pktheader *header_data)
@@ -1204,7 +1232,6 @@ static void rule_add_content_header_trans(struct match_header *header, struct pk
 			"tcp", "tcp");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(transport_value),
 			"udp", "udp");
-//	g_signal_connect(transport_value, "changed", G_CALLBACK(transport_callback), new_rule);
 	gtk_fixed_put(GTK_FIXED(fixed), transport_value, 150, 80);
 	header->transport.type = transport_value;
 	gtk_combo_box_set_active(GTK_COMBO_BOX(transport_value), TRANSPORT_ALL);
@@ -1226,6 +1253,7 @@ static void rule_add_content_header_trans(struct match_header *header, struct pk
 			break;
 		}
 	}
+	g_signal_connect(transport_value, "changed", G_CALLBACK(header_transport_callback), header);
 
 	gtk_widget_show(GTK_WIDGET(transport));
 	gtk_widget_show(GTK_WIDGET(transport_value));

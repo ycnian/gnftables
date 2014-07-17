@@ -705,17 +705,17 @@ static void header_addr_callback(GtkComboBoxText *widget, gpointer data)
 
 	char	*type = gtk_combo_box_text_get_active_text(widget);
 	if (!(strcmp(type, "exact ip"))) {
-		addr->type = ADDRESS_EXACT,
+		addr->type = ADDRESS_EXACT;
 		header_addr_subnet_hide(addr);
 		header_addr_range_hide(addr);
 		header_addr_exactip_show(addr);
 	} else if (!(strcmp(type, "subnet"))) {
-		addr->type = ADDRESS_SUBNET,
+		addr->type = ADDRESS_SUBNET;
 		header_addr_exactip_hide(addr);
 		header_addr_range_hide(addr);
 		header_addr_subnet_show(addr);
 	} else if (!(strcmp(type, "range"))) {
-		addr->type = ADDRESS_RANGE,
+		addr->type = ADDRESS_RANGE;
 		header_addr_exactip_hide(addr);
 		header_addr_subnet_hide(addr);
 		header_addr_range_show(addr);
@@ -1027,8 +1027,56 @@ static void rule_add_content_header_daddr(struct match_header *header, struct pk
 	rule_add_content_header_addr(header, addr, 0);
 }
 
+static void header_port_list_show(struct transport_port_info *port)
+{
+	gtk_entry_set_text(GTK_ENTRY(port->value->portlist.port), "");
+	gtk_widget_show(port->value->portlist.port);
+}
+
+static void header_port_list_hide(struct transport_port_info *port)
+{
+	gtk_widget_hide(port->value->portlist.port);
+}
+
+static void header_port_range_show(struct transport_port_info *port)
+{
+	gtk_entry_set_text(GTK_ENTRY(port->value->range.from), "");
+	gtk_entry_set_text(GTK_ENTRY(port->value->range.to), "");
+	gtk_widget_show(port->value->range.from);
+	gtk_widget_show(port->value->range.dash);
+	gtk_widget_show(port->value->range.to);
+}
+
+static void header_port_range_hide(struct transport_port_info *port)
+{
+	gtk_widget_hide(port->value->range.from);
+	gtk_widget_hide(port->value->range.dash);
+	gtk_widget_hide(port->value->range.to);
+}
+
+static void header_port_callback(GtkComboBoxText *widget, gpointer data)
+{
+	struct transport_port_info *port;
+	port = (struct transport_port_info *)data;
+	char	*type = gtk_combo_box_text_get_active_text(widget);
+
+	if (!(strcmp(type, "port list"))) {
+		port->value->type = PORT_EXACT;
+		header_port_range_hide(port);
+		header_port_list_show(port);
+	} else if (!(strcmp(type, "range"))) {
+		port->value->type = PORT_RANGE;
+		header_port_list_hide(port);
+		header_port_range_show(port);
+	}
+	// else
+	// 	bug();
+}
+
+
 static void rule_add_content_header_port(GtkWidget *fixed,
-		struct transport_port_info *port, struct trans_port_data *data, int source)
+		struct transport_port_info *port, struct trans_port_data *data, 
+		void (*callback)(GtkComboBox *widget, gpointer dat), int source)
 {
 	GtkWidget	*port_label;
 	GtkWidget	*port_type;
@@ -1060,7 +1108,7 @@ static void rule_add_content_header_port(GtkWidget *fixed,
 //			"sets", "sets");
 	gtk_fixed_put(GTK_FIXED(fixed), port_type, 150, offset);
 	port->type = port_type;
-//	g_signal_connect(addr_type, "changed", G_CALLBACK(header_addr_callback), header);
+	g_signal_connect(port_type, "changed", G_CALLBACK(callback), port);
 	
 	port_not = gtk_check_button_new_with_label("Exclude");
 	gtk_fixed_put(GTK_FIXED(fixed), port_not, 700, offset);
@@ -1124,9 +1172,8 @@ static void rule_add_content_header_tcp(struct match_header *header, struct tran
 	gtk_fixed_put(GTK_FIXED(header->fixed), fixed, 0, 120);
 	gtk_widget_show(GTK_WIDGET(fixed));
 	widget->fixed = fixed;
-	rule_add_content_header_port(fixed, widget->tcp->sport, data ? data->sport : NULL, 1);
-	rule_add_content_header_port(fixed, widget->tcp->dport, data ? data->dport : NULL, 0);
-
+	rule_add_content_header_port(fixed, widget->tcp->sport, data ? data->sport : NULL, header_port_callback, 1);
+	rule_add_content_header_port(fixed, widget->tcp->dport, data ? data->dport : NULL, header_port_callback, 0);
 }
 
 static void rule_add_content_header_udp(struct match_header *header, struct trans_udp_data *data)
@@ -1164,14 +1211,15 @@ static void rule_add_content_header_trans(struct match_header *header, struct pk
 	header->transport.value->type = TRANSPORT_ALL;
 
 	if (trans) {
-		header->expanded = 1;
 		switch (trans->trans_type) {
 		case TRANSPORT_ALL:
 			break;
 		case TRANSPORT_TCP:
+			header->expanded = 1;
 			rule_add_content_header_tcp(header, trans->tcp);
 			break;
 		case TRANSPORT_UDP:
+			header->expanded = 1;
 			rule_add_content_header_udp(header, trans->udp);
 			break;
 		default:
@@ -1179,11 +1227,10 @@ static void rule_add_content_header_trans(struct match_header *header, struct pk
 		}
 	}
 
-//	header_trans_tcp_init(fixed_trans_tcp,
-
 	gtk_widget_show(GTK_WIDGET(transport));
 	gtk_widget_show(GTK_WIDGET(transport_value));
 }
+
 static void rule_add_content_header_data(struct match_header *header, struct pktheader *header_data)
 {
 	rule_add_content_header_saddr(header, header_data);

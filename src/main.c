@@ -1289,7 +1289,7 @@ void rule_add_content_header(struct rule_create_widget *new_rule, struct rule_li
 	new_rule->header->expander = expander_header;
 	new_rule->header->fixed = fixed_header;
 	new_rule->header->expanded = 0;
-	new_rule->header->len = 180;
+	new_rule->header->len = 0;
 
 	rule_add_content_header_data(header, header_data);
 
@@ -1300,7 +1300,79 @@ void rule_add_content_header(struct rule_create_widget *new_rule, struct rule_li
 
 void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg)
 {
+	GtkWidget	*fixed_pktmeta;
+	GtkWidget	*expander_pktmeta;
+	GtkWidget	*iifname;
+	GtkWidget	*iifname_value;
+	GtkWidget	*oifname;
+	GtkWidget	*oifname_value;
+	GtkWidget	*iiftype;
+	GtkWidget	*iiftype_value;
+	GtkWidget	*oiftype;
+	GtkWidget	*oiftype_value;
+	GtkWidget	*skuid;
+	GtkWidget	*skuid_value;
+	GtkWidget	*skgid;
+	GtkWidget	*skgid_value;
+	GtkWidget	*fixed;
+	struct match_pktmeta	*pktmeta;
 
+	fixed = new_rule->fixed;
+	pktmeta = new_rule->meta;
+
+	fixed_pktmeta = gtk_fixed_new();
+	expander_pktmeta = gtk_expander_new("Matching packet metainformation");
+	gtk_fixed_put(GTK_FIXED(fixed), expander_pktmeta, 0, new_rule->header->expanded ? new_rule->header->len + 40: 40);
+	gtk_container_add(GTK_CONTAINER(expander_pktmeta), fixed_pktmeta);
+//	g_signal_connect(expander_header, "notify::expanded", G_CALLBACK(expander_callback), new_rule);
+	new_rule->meta->expander = expander_pktmeta;
+	new_rule->meta->fixed = fixed_pktmeta;
+	new_rule->meta->expanded = 0;
+	new_rule->meta->len = 240;
+
+	iifname = gtk_label_new("input interface:");
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), iifname, 40, 0);
+	iifname_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(iifname_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), iifname_value, 150, 0);
+	new_rule->meta->iifname = iifname_value;
+
+	oifname = gtk_label_new("output interface:");
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), oifname, 40, 40);
+	oifname_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(oifname_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), oifname_value, 150, 40);
+	new_rule->meta->oifname = oifname_value;
+
+	iiftype = gtk_label_new("input type:");
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), iiftype, 40, 80);
+	iiftype_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(iiftype_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), iiftype_value, 150, 80);
+	new_rule->meta->iiftype = iiftype_value;
+
+	oiftype = gtk_label_new("output type:");
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), oiftype, 40, 120);
+	oiftype_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(oiftype_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), oiftype_value, 150, 120);
+	new_rule->meta->oiftype = oiftype_value;
+
+	skuid = gtk_label_new("user:");
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), skuid, 40, 160);
+	skuid_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(skuid_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), skuid_value, 150, 160);
+	new_rule->meta->skuid = skuid_value;
+
+	skgid = gtk_label_new("group:");
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), skgid, 40, 200);
+	skgid_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(skgid_value), 35);
+	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), skgid_value, 150, 200);
+	new_rule->meta->skgid = skgid_value;
+
+	gtk_widget_show_all(GTK_WIDGET(expander_pktmeta));
 }
 
 void rule_add_content_submit(struct rule_create_widget *new_rule)

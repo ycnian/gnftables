@@ -232,6 +232,7 @@ struct match_pktmeta {
 	int		offset;
 	int		len;
 	GtkWidget	*expander;
+	GtkWidget	*fixed;
 	int		expanded;
 	GtkWidget	*iifname;
 	GtkWidget	*oifname;

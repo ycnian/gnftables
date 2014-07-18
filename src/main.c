@@ -1128,6 +1128,8 @@ static void rule_add_content_header_port(GtkWidget *fixed,
 			gtk_widget_show(GTK_WIDGET(port_range_dash));
 			gtk_widget_show(GTK_WIDGET(port_range_to));
 			break;
+		case PORT_SET:
+			break;
 		}
 	}
 
@@ -1315,10 +1317,8 @@ void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_l
 	GtkWidget	*skgid;
 	GtkWidget	*skgid_value;
 	GtkWidget	*fixed;
-	struct match_pktmeta	*pktmeta;
 
 	fixed = new_rule->fixed;
-	pktmeta = new_rule->meta;
 
 	fixed_pktmeta = gtk_fixed_new();
 	expander_pktmeta = gtk_expander_new("Matching packet metainformation");
@@ -1377,7 +1377,40 @@ void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_l
 
 void rule_add_content_submit(struct rule_create_widget *new_rule)
 {
+	GtkWidget	*fixed;
+	GtkWidget	*msg;
+	GtkWidget	*ok;
+	GtkWidget	*cancel;
+	int		offset;
+	int		header_expanded;
+	int		pktmeta_expanded;
 
+	fixed = new_rule->fixed;
+	header_expanded = new_rule->header->expanded;
+	pktmeta_expanded = new_rule->meta->expanded;
+	offset = new_rule->header->len * header_expanded + new_rule->meta->len * pktmeta_expanded;
+	if (offset < 360)
+		offset = 360;
+
+	msg = gtk_label_new("");
+	gtk_fixed_put(GTK_FIXED(fixed), msg, 40, offset);
+	new_rule->msg = msg;
+
+    	cancel = gtk_button_new_with_label("Cancel");
+	gtk_widget_set_size_request(cancel, 100, 10);
+	g_signal_connect(G_OBJECT(cancel), "clicked", G_CALLBACK(back_to_rule_list), new_rule);
+	gtk_fixed_put(GTK_FIXED(fixed), cancel, 540, offset);
+	new_rule->cancel = cancel;
+
+    	ok = gtk_button_new_with_label("OK");
+	gtk_widget_set_size_request(ok, 100, 10);
+	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_rule), new_rule);
+	gtk_fixed_put(GTK_FIXED(fixed), ok, 660, offset);
+	new_rule->ok = ok;
+
+	gtk_widget_show(GTK_WIDGET(msg));
+	gtk_widget_show(GTK_WIDGET(ok));
+	gtk_widget_show(GTK_WIDGET(cancel));
 }
 
 void rule_add_content(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg)

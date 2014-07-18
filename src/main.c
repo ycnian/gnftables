@@ -600,24 +600,11 @@ void update_pktmeta_position(struct rule_create_widget  *widget)
 	GtkWidget  *expander = widget->meta->expander;
 	int	len = 0;
 	if (widget->header->expanded) {
-		enum transport_type type;
-		len += widget->header->len;
-		type = widget->header->transport.value->type;
-		switch (type) {
-		case  TRANSPORT_ALL:
-			len += widget->header->transport.value->all->len;
-			break;
-		case  TRANSPORT_TCP:
-			len += widget->header->transport.value->tcp->len;
-			break;
-		case  TRANSPORT_UDP:
-			len += widget->header->transport.value->udp->len;
-			break;
-		}
-	} else
-		len += 40;
+		if (widget->header->expanded)
+			len += widget->header->len;
+	}
+	len += 40;
 
-	widget->meta->offset = len;
 	gtk_fixed_move(GTK_FIXED(fixed), expander, 0, len);
 }
 
@@ -627,10 +614,12 @@ void update_cancel_ok_position(struct rule_create_widget  *widget)
 	GtkWidget  *msg = widget->msg;
 	GtkWidget  *cancel = widget->cancel;
 	GtkWidget  *ok = widget->ok;
-	int	len = widget->meta->offset;
+	int	len = 0;
+	if (widget->header->expanded)
+		len +=  widget->header->len;
 	if (widget->meta->expanded)
 		len +=  widget->meta->len;
-	len += 40;
+	len += 80;
 	if (len < 360)
 		len = 360;
 	gtk_fixed_move(GTK_FIXED(fixed), msg, 40, len);
@@ -645,7 +634,6 @@ void transport_callback_do(struct rule_create_widget  *widget)
 	struct transport_info *transport = widget->header->transport.value;
 	update_header_transport_widgets(fixed_header, transport);
 	update_pktmeta_position(widget);
-	// update_trackmeta_position();
 	update_cancel_ok_position(widget);
 }
 
@@ -1148,7 +1136,8 @@ static void rule_add_content_header_all(struct match_header *header)
 		header->len -= 80;
 	widget->type = TRANSPORT_ALL;
 	gtk_combo_box_set_active(GTK_COMBO_BOX(header->transport.type), TRANSPORT_ALL);
-	gtk_widget_destroy(widget->fixed);
+	if (widget->fixed)
+		gtk_widget_destroy(widget->fixed);
 	fixed = gtk_fixed_new();
 	gtk_fixed_put(GTK_FIXED(header->fixed), fixed, 0, 120);
 	gtk_widget_show(GTK_WIDGET(fixed));
@@ -1164,7 +1153,8 @@ static void rule_add_content_header_tcp(struct match_header *header, struct tran
 	widget = header->transport.value;
 	if (widget->type == TRANSPORT_ALL)
 		header->len += 80;
-	gtk_widget_destroy(widget->fixed);
+	if (widget->fixed)
+		gtk_widget_destroy(widget->fixed);
 	widget->type = TRANSPORT_TCP;
 	gtk_combo_box_set_active(GTK_COMBO_BOX(header->transport.type), TRANSPORT_TCP);
 	fixed = gtk_fixed_new();
@@ -1183,7 +1173,8 @@ static void rule_add_content_header_udp(struct match_header *header, struct tran
 	widget = header->transport.value;
 	if (widget->type == TRANSPORT_ALL)
 		header->len += 80;
-	gtk_widget_destroy(widget->fixed);
+	if (widget->fixed)
+		gtk_widget_destroy(widget->fixed);
 	widget->type = TRANSPORT_UDP;
 	gtk_combo_box_set_active(GTK_COMBO_BOX(header->transport.type), TRANSPORT_UDP);
 	fixed = gtk_fixed_new();
@@ -1197,27 +1188,32 @@ static void rule_add_content_header_udp(struct match_header *header, struct tran
 static void header_transport_callback(GtkComboBoxText *widget, gpointer data)
 {
 	char	*type;
-	struct match_header *header;
+	struct rule_create_widget *rule;
 	
-	header = (struct match_header *)data;
+	rule = (struct match_header *)data;
 	type = gtk_combo_box_text_get_active_text(widget);
 	if (!(strcmp(type, "all")))
-		rule_add_content_header_all(header);
+		rule_add_content_header_all(rule->header);
 	else if (!(strcmp(type, "tcp")))
-		rule_add_content_header_tcp(header, NULL);
+		rule_add_content_header_tcp(rule->header, NULL);
 	else if (!(strcmp(type, "udp")))
-		rule_add_content_header_udp(header, NULL);
+		rule_add_content_header_udp(rule->header, NULL);
 	// else
 	// 	bug();
+
+	update_pktmeta_position(rule);
+	update_cancel_ok_position(rule);
 }
 
-static void rule_add_content_header_trans(struct match_header *header, struct pktheader *header_data)
+static void rule_add_content_header_trans(struct rule_create_widget *new_rule, struct pktheader *header_data)
 {
 	GtkWidget	*fixed;
 	GtkWidget	*transport;
 	GtkWidget	*transport_value;
+	struct match_header	*header;
 	struct transport_data	*trans = NULL;
 
+	header = new_rule->header;
 	if (header_data)
 		trans = header_data->transport_data;
 	fixed = header->fixed;
@@ -1255,17 +1251,17 @@ static void rule_add_content_header_trans(struct match_header *header, struct pk
 			break;
 		}
 	}
-	g_signal_connect(transport_value, "changed", G_CALLBACK(header_transport_callback), header);
+	g_signal_connect(transport_value, "changed", G_CALLBACK(header_transport_callback), new_rule);
 
 	gtk_widget_show(GTK_WIDGET(transport));
 	gtk_widget_show(GTK_WIDGET(transport_value));
 }
 
-static void rule_add_content_header_data(struct match_header *header, struct pktheader *header_data)
+static void rule_add_content_header_data(struct rule_create_widget *new_rule, struct pktheader *header_data)
 {
-	rule_add_content_header_saddr(header, header_data);
-	rule_add_content_header_daddr(header, header_data);
-	rule_add_content_header_trans(header, header_data);
+	rule_add_content_header_saddr(new_rule->header, header_data);
+	rule_add_content_header_daddr(new_rule->header, header_data);
+	rule_add_content_header_trans(new_rule, header_data);
 }
 
 
@@ -1287,13 +1283,13 @@ void rule_add_content_header(struct rule_create_widget *new_rule, struct rule_li
 	expander_header = gtk_expander_new("Matching packet header fields");
 	gtk_fixed_put(GTK_FIXED(fixed), expander_header, 0, 0);
 	gtk_container_add(GTK_CONTAINER(expander_header), fixed_header);
-//	g_signal_connect(expander_header, "notify::expanded", G_CALLBACK(expander_callback), new_rule);
+	g_signal_connect(expander_header, "notify::expanded", G_CALLBACK(expander_callback), new_rule);
 	new_rule->header->expander = expander_header;
 	new_rule->header->fixed = fixed_header;
 	new_rule->header->expanded = 0;
 	new_rule->header->len = 0;
 
-	rule_add_content_header_data(header, header_data);
+	rule_add_content_header_data(new_rule, header_data);
 
 	gtk_expander_set_expanded(GTK_EXPANDER(header->expander), header->expanded);
 	gtk_widget_show(GTK_WIDGET(fixed_header));
@@ -1324,7 +1320,7 @@ void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_l
 	expander_pktmeta = gtk_expander_new("Matching packet metainformation");
 	gtk_fixed_put(GTK_FIXED(fixed), expander_pktmeta, 0, new_rule->header->expanded ? new_rule->header->len + 40: 40);
 	gtk_container_add(GTK_CONTAINER(expander_pktmeta), fixed_pktmeta);
-//	g_signal_connect(expander_header, "notify::expanded", G_CALLBACK(expander_callback), new_rule);
+	g_signal_connect(expander_pktmeta, "notify::expanded", G_CALLBACK(expander_callback), new_rule);
 	new_rule->meta->expander = expander_pktmeta;
 	new_rule->meta->fixed = fixed_pktmeta;
 	new_rule->meta->expanded = 0;

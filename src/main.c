@@ -684,7 +684,7 @@ static void header_addr_callback(GtkComboBoxText *widget, gpointer data)
 	struct match_header	*args;
 	args = (struct match_header *)data;
 
-	if (widget == args->saddr.type)
+	if ((void *)widget == (void *)args->saddr.type)
 		addr = args->saddr.value;
 	else
 		addr = args->daddr.value;

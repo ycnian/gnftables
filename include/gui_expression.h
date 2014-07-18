@@ -18,6 +18,10 @@ int rule_transtcp_gen_exprs(struct rule_create_data *data, struct trans_tcp_data
 int rule_transudp_gen_exprs(struct rule_create_data *data, struct trans_udp_data *udp, enum transport_type type);
 int rule_trans_gen_exprs(struct rule_create_data *data, struct transport_data *trans);
 int rule_header_gen_exprs(struct rule_create_data *data, struct pktheader *header);
+
+int rule_ifname_gen_exprs(struct rule_create_data *data, struct list_head name, int source);
+int rule_iftype_gen_exprs(struct rule_create_data *data, struct list_head type, int source);
+int rule_skid_gen_exprs(struct rule_create_data *data, struct list_head skid, int uid);
 int rule_pktmeta_gen_exprs(struct rule_create_data *data, struct pktmeta *pktmeta);
 
 int rule_counter_gen_exprs(struct rule_create_data *data);

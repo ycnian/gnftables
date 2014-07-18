@@ -90,5 +90,6 @@ extern char *xstrndup(const char *s, size_t n);
 extern uint32_t str2hooknum(uint32_t family, const char *hook);
 extern int str2unshort(char *str, unsigned short *num);
 extern int strtoint(char *str, int *num);
+extern int strtouint(char *str, unsigned int *num);
 
 #endif /* NFTABLES_UTILS_H */

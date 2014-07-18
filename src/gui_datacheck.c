@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <net/if_arp.h>
 
 #include <utils.h>
 #include <gui_rule.h>
@@ -10,6 +11,24 @@
 #include <gui_datacheck.h>
 #include <gui_nftables.h>
 #include <gui_expression.h>
+
+
+char *string_skip_space(char *str)
+{
+	int	start = 0;
+	char	*p;
+	int	end;
+
+	if (string_is_null(str))
+		return NULL;
+	end = strlen(str) - 1;
+	while (isblank(str[start]))
+		start++;
+	while (isblank(str[end]))
+		end--;
+	p = xstrndup(str + start, end - start + 1);
+	return p;
+}
 
 /*
  * Get data from gtk page. Skipe spaces at begin or end of data.
@@ -21,11 +40,10 @@ char *get_data_from_entry(GtkEntry *entry)
 	int	end;
 	char	*p;
         char	*data = (char *)gtk_entry_get_text(entry);
-	int	len = strlen(data) - 1;
 
-	end = len;
 	if (string_is_null(data))
 		return NULL;
+	end = strlen(data) - 1;
 	while (isblank(data[start]))
 		start++;
 	while (isblank(data[end]))
@@ -578,7 +596,7 @@ int get_header_portlist_from_page(struct transport_port_details *widget,
 	unsigned short pt;
 	char	*port;
 	char	*portlist;
-	struct port_convert  *portnet;
+	struct unsigned_short_elem  *portnet;
 
 	init_list_head(&data->portlist.ports);
 	portlist = get_data_from_entry(GTK_ENTRY(widget->portlist.port));
@@ -592,8 +610,8 @@ int get_header_portlist_from_page(struct transport_port_details *widget,
 			xfree(portlist);
 			return RULE_HEADER_PORT_OVERFLOW;
 		}
-		portnet = xmalloc(sizeof(struct port_convert));
-		portnet->port = pt;
+		portnet = xmalloc(sizeof(struct unsigned_short_elem));
+		portnet->value = pt;
 		list_add_tail(&portnet->list, &data->portlist.ports);
 		port = strtok(NULL, " ");
 	}
@@ -782,6 +800,173 @@ int get_header_data_from_page(struct match_header *widget, struct pktheader *dat
 	return res;
 }
 
+int get_pktmeta_ifname_from_page(GtkWidget *ifname, struct  list_head list)
+{
+	char	*names;
+	char	*name;
+	struct  string_elem  *elem;
+
+	names = get_data_from_entry(GTK_ENTRY(ifname));
+	name = string_skip_space(strtok(names, ","));
+	while (name) {
+		elem  = xzalloc(sizeof(struct string_elem));
+		elem->value = name;
+		list_add_tail(&elem->list, &list);
+		name = string_skip_space(strtok(NULL, ","));
+	}
+	xfree(names);
+	return RULE_SUCCESS;
+}
+
+int pktmeta_iftype_check(char *type, unsigned short *value)
+{
+	if (!(strcmp(type, "ether"))) {
+		*value = ARPHRD_ETHER;
+		return RULE_SUCCESS;
+	} else if (!(strcmp(type, "ppp"))) {
+		*value = ARPHRD_PPP;
+		return RULE_SUCCESS;
+	} else if (!(strcmp(type, "ipip"))) {
+		*value = ARPHRD_TUNNEL;
+		return RULE_SUCCESS;
+	} else if (!(strcmp(type, "ipip6"))) {
+		*value = ARPHRD_TUNNEL;
+		return RULE_SUCCESS;
+	} else if (!(strcmp(type, "lookback"))) {
+		*value = ARPHRD_LOOPBACK;
+		return RULE_SUCCESS;
+	} else if (!(strcmp(type, "sit"))) {
+		*value = ARPHRD_SIT;
+		return RULE_SUCCESS;
+	} else if (!(strcmp(type, "ipgre"))) {
+		*value = ARPHRD_IPGRE;
+		return RULE_SUCCESS;
+	} else
+		return RULE_PKTMETA_IFTYPE_INVALID;
+}
+
+int get_pktmeta_iftype_from_page(GtkWidget *iftype, struct  list_head list)
+{
+	int	res = RULE_SUCCESS;
+	char	*types;
+	char	*type;
+	unsigned short type_value;
+	struct  unsigned_short_elem  *elem;
+
+	types = get_data_from_entry(GTK_ENTRY(iftype));
+	type = string_skip_space(strtok(types, ","));
+	while (type) {
+		res = pktmeta_iftype_check(type, &type_value);
+		if (res != RULE_SUCCESS) {
+			xfree(type);
+			goto error;
+		}
+		xfree(type);
+		elem  = xzalloc(sizeof(struct unsigned_short_elem));
+		elem->value = type_value;
+		list_add_tail(&elem->list, &list);
+		type = string_skip_space(strtok(NULL, ","));
+	}
+error:
+	xfree(types);
+	return res;
+}
+
+int get_pktmeta_skid_from_page(GtkWidget *skid, struct  list_head list)
+{
+	int	res = RULE_SUCCESS;
+	char	*ids;
+	char	*id;
+	unsigned int id_value;
+	struct  unsigned_int_elem  *elem;
+
+	ids = get_data_from_entry(GTK_ENTRY(skid));
+	id = string_skip_space(strtok(ids, ","));
+	while (id) {
+		res = strtouint(id, &id_value);
+		if (res != RULE_SUCCESS) {
+			res = RULE_PKTMETA_SKID_INVALID;
+			xfree(id);
+			goto error;
+		}
+		xfree(id);
+		elem  = xzalloc(sizeof(struct unsigned_int_elem));
+		elem->value = id_value;
+		list_add_tail(&elem->list, &list);
+		id = string_skip_space(strtok(NULL, ","));
+	}
+error:
+	xfree(ids);
+	return res;
+}
+
+int get_pktmeta_iifname_from_page(GtkWidget *iifname, struct pktmeta *data)
+{
+	int	res;
+
+	data->iifname = xzalloc(sizeof(union ifname));
+	init_list_head(&data->iifname->name);
+	res = get_pktmeta_ifname_from_page(iifname, data->iifname->name);
+	return res;
+}
+
+int get_pktmeta_oifname_from_page(GtkWidget *oifname, struct pktmeta *data)
+{
+	int	res;
+
+	data->oifname = xzalloc(sizeof(union ifname));
+	init_list_head(&data->oifname->name);
+	res = get_pktmeta_ifname_from_page(oifname, data->oifname->name);
+	return res;
+}
+
+int get_pktmeta_iiftype_from_page(GtkWidget *iiftype, struct pktmeta *data)
+{
+	int	res;
+
+	data->iiftype = xzalloc(sizeof(union iftype));
+	init_list_head(&data->iiftype->type);
+	res = get_pktmeta_iftype_from_page(iiftype, data->iiftype->type);
+	if (res == RULE_PKTMETA_IFTYPE_INVALID)
+		res = RULE_PKTMETA_IIFTYPE_INVALID;
+	return res;
+}
+
+int get_pktmeta_oiftype_from_page(GtkWidget *oiftype, struct pktmeta *data)
+{
+	int	res;
+
+	data->oiftype = xzalloc(sizeof(union iftype));
+	init_list_head(&data->oiftype->type);
+	res = get_pktmeta_iftype_from_page(oiftype, data->oiftype->type);
+	if (res == RULE_PKTMETA_IFTYPE_INVALID)
+		res = RULE_PKTMETA_OIFTYPE_INVALID;
+	return res;
+}
+
+int get_pktmeta_skuid_from_page(GtkWidget *skuid, struct pktmeta *data)
+{
+	int	res;
+
+	data->skuid = xzalloc(sizeof(union skid));
+	init_list_head(&data->skuid->id);
+	res = get_pktmeta_skid_from_page(skuid, data->skuid->id);
+	if (res == RULE_PKTMETA_SKID_INVALID)
+		res = RULE_PKTMETA_SKUID_INVALID;
+	return res;
+}
+
+int get_pktmeta_skgid_from_page(GtkWidget *skgid, struct pktmeta *data)
+{
+	int	res;
+
+	data->skgid = xzalloc(sizeof(union skid));
+	init_list_head(&data->skgid->id);
+	res = get_pktmeta_skid_from_page(skgid, data->skgid->id);
+	if (res == RULE_PKTMETA_SKID_INVALID)
+		res = RULE_PKTMETA_SKGID_INVALID;
+	return res;
+}
 
 /*
  * Get packet metainformations from rule creating page.
@@ -789,8 +974,25 @@ int get_header_data_from_page(struct match_header *widget, struct pktheader *dat
 int get_pktmeta_data_from_page(struct match_pktmeta  *widget,
 		struct pktmeta *data)
 {
+	int	res;
 
-	return RULE_SUCCESS;
+	res = get_pktmeta_iifname_from_page(widget->iifname, data);
+	if (res != RULE_SUCCESS)
+		return res;
+	res = get_pktmeta_oifname_from_page(widget->oifname, data);
+	if (res != RULE_SUCCESS)
+		return res;
+	res = get_pktmeta_iiftype_from_page(widget->iiftype, data);
+	if (res != RULE_SUCCESS)
+		return res;
+	res = get_pktmeta_oiftype_from_page(widget->oiftype, data);
+	if (res != RULE_SUCCESS)
+		return res;
+	res = get_pktmeta_skuid_from_page(widget->skuid, data);
+	if (res != RULE_SUCCESS)
+		return res;
+	res = get_pktmeta_skgid_from_page(widget->skgid, data);
+	return res;
 }
 
 
@@ -831,8 +1033,8 @@ int rule_create_getdata(struct rule_create_widget  *widget,
 	int	res;
 	struct rule_create_data	*p;
 	p = xmalloc(sizeof(struct rule_create_data));
-	p->header = xmalloc(sizeof(struct pktheader));
-	p->pktmeta = xmalloc(sizeof(struct pktmeta));
+	p->header = xzalloc(sizeof(struct pktheader));
+	p->pktmeta = xzalloc(sizeof(struct pktmeta));
 	init_list_head(&p->exprs);
 	p->header->saddr = xmalloc(sizeof(struct ip_addr_data));
 	p->header->daddr = xmalloc(sizeof(struct ip_addr_data));
@@ -848,12 +1050,6 @@ int rule_create_getdata(struct rule_create_widget  *widget,
 	res = get_data_from_page(widget, p);
 	if (res != RULE_SUCCESS)
 		goto error;
-
-//	struct ip_convert   *convert;
-//	list_for_each_entry(convert, &p->header->saddr->iplist.ips, list)
-//		printf("%d  %d  %d  %d\n", convert->ip[0]&0xff, convert->ip[1]&0xff, convert->ip[2]&0xff, convert->ip[3]&0xff);
-//	list_for_each_entry(convert, &p->header->daddr->iplist.ips, list)
-//		printf("%d  %d  %d  %d\n", convert->ip[0]&0xff, convert->ip[1]&0xff, convert->ip[2]&0xff, convert->ip[3]&0xff);
 
 	res = rule_gen_expressions(p);
 	if (res != RULE_SUCCESS)

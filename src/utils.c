@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <limits.h>
+#include <ctype.h>
 
 #include <nftables.h>
 #include <utils.h>
@@ -149,6 +150,29 @@ int strtoint(char *str, int *num)
 	for (i = 0; i < len; i ++) {
 		res = res * 10 + str[i] - '0';
 		if (res > INT_MAX || res < INT_MIN)
+			return -1;
+	}
+	*num = res;
+	return 0;
+}
+
+int strtouint(char *str, unsigned int *num)
+{
+	unsigned long long int    res = 0;
+	int     len;
+	int     i;
+
+	if (!str) {
+		*num = 0;
+		return 0;
+	}
+
+	len = strlen(str);
+	for (i = 0; i < len; i ++) {
+		if(!(isdigit(str[i])))
+			return -1;
+		res = res * 10 + str[i] - '0';
+		if (res > UINT_MAX)
 			return -1;
 	}
 	*num = res;

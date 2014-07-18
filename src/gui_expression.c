@@ -6,6 +6,7 @@
 #include <proto.h>
 #include <netlink.h>
 #include <string.h>
+#include <net/if.h>
 
 
 int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
@@ -202,7 +203,7 @@ int rule_portlist_gen_exprs(struct rule_create_data *data,
 	unsigned int	sport;
 	const struct proto_desc *desc;
 	enum ops	op;
-	struct port_convert	*convert;
+	struct unsigned_short_elem	*convert;
 	unsigned short	port_value;
 
 	if (list_empty(&(port->portlist.ports)))
@@ -226,7 +227,8 @@ int rule_portlist_gen_exprs(struct rule_create_data *data,
 	elem = set_expr_alloc(data->loc);
 
 	list_for_each_entry(convert, &(port->portlist.ports), list) {
-		port_value = ((convert->port & 0xff) << 8) + ((convert->port >> 8) & 0xff);
+		// bug: this works on in little-endian order.
+		port_value = ((convert->value & 0xff) << 8) + ((convert->value >> 8) & 0xff);
 		constant = constant_expr_alloc(data->loc, &inet_service_type, BYTEORDER_BIG_ENDIAN,
 				2 * 8, &port_value);
 		compound_expr_add(elem, constant);
@@ -470,10 +472,113 @@ int rule_header_gen_exprs(struct rule_create_data *data, struct pktheader *heade
 	return res;
 }
 
-int rule_pktmeta_gen_exprs(struct rule_create_data *data, struct pktmeta *pktmeta)
+int rule_ifname_gen_exprs(struct rule_create_data *data, struct list_head name, int source)
+{
+/*
+	struct expr  *meta;
+	struct expr  *constant;
+	struct expr  *rela;
+	struct expr  *elem;
+	struct expr  *se;
+	struct stmt  *stmt;
+	struct set   *set;
+	unsigned int	type;
+	enum ops	op;
+	struct string_elem	*s_elem;
+	enum nft_meta_keys key;
+
+	if (list_empty(&(name)))
+		return RULE_SUCCESS;
+	if (source)
+		key = NFT_META_IIFNAME;
+	else
+		key = NFT_META_OIFNAME;
+//	op = (addr->exclude) ? OP_NEQ: OP_EQ;
+	op = OP_LOOKUP;
+	meta = meta_expr_alloc(data->loc, key);
+	elem = set_expr_alloc(data->loc);
+
+	list_for_each_entry(s_elem, &name, list) {
+		constant = constant_expr_alloc(data->loc, &string_type, BYTEORDER_HOST_ENDIAN,
+			IFNAMSIZ * 8, s_elem->value);
+		compound_expr_add(elem, constant);
+	}
+
+	set = set_alloc(data->loc);
+        set->flags	= SET_F_CONSTANT | SET_F_ANONYMOUS;
+        set->handle.set = xstrdup("set%d");
+        set->keytype    = &string_type;
+        set->keylen     = IFNAMSIZ * 8;
+        set->init       = elem;
+	set->handle.family = data->family;
+	set->handle.table = xstrdup(data->table);
+
+	struct netlink_ctx      ctx;
+	struct table		*table;
+	struct set		*clone;
+	LIST_HEAD(msgs);
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+//	ctx.seqnum  = mnl_seqnum_alloc();
+	netlink_add_set(&ctx, &set->handle, set);
+	netlink_add_setelems(&ctx, &set->handle, set->init);
+
+	table = table_lookup(&set->handle);
+	if (table == NULL) {
+		table = table_alloc();
+		init_list_head(&table->sets);
+		handle_merge(&table->handle, &set->handle);
+		table_add_hash(table);
+	}
+	if (!set_lookup(table, set->handle.set)) {
+		clone = set_clone(set);
+		set_add_hash(clone, table);
+	}
+
+	se = set_ref_expr_alloc(data->loc, set);
+
+	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, meta, se);
+	rela->op = op;
+	stmt = expr_stmt_alloc(data->loc, rela);
+	list_add_tail(&stmt->list, &data->exprs);
+*/
+
+	return RULE_SUCCESS;
+}
+
+int rule_iftype_gen_exprs(struct rule_create_data *data, struct list_head type, int source)
 {
 
 	return RULE_SUCCESS;
+}
+
+int rule_skid_gen_exprs(struct rule_create_data *data, struct list_head skid, int uid)
+{
+
+	return RULE_SUCCESS;
+}
+
+int rule_pktmeta_gen_exprs(struct rule_create_data *data, struct pktmeta *pktmeta)
+{
+	int	res = RULE_SUCCESS;
+
+	res = rule_ifname_gen_exprs(data, pktmeta->iifname->name, 1);
+	if (res != RULE_SUCCESS)
+		return res;
+	res = rule_ifname_gen_exprs(data, pktmeta->oifname->name, 0);
+	if (res != RULE_SUCCESS)
+		return res;
+	res = rule_iftype_gen_exprs(data, pktmeta->iiftype->type, 1);
+	if (res != RULE_SUCCESS)
+		return res;
+	res = rule_iftype_gen_exprs(data, pktmeta->oiftype->type, 0);
+	if (res != RULE_SUCCESS)
+		return res;
+	res = rule_skid_gen_exprs(data, pktmeta->skuid->id, 1);
+	if (res != RULE_SUCCESS)
+		return res;
+	res = rule_skid_gen_exprs(data, pktmeta->skgid->id, 0);
+	return res;
 }
 
 int rule_counter_gen_exprs(struct rule_create_data *data)

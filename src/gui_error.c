@@ -36,6 +36,12 @@ const char *rule_error[RULE_ERROR_NUM] = {
 	[RULE_HEADER_PORT_INVALID]	= "Port is invalid.",
 	[RULE_HEADER_PORT_OVERFLOW]	= "Port is out of range, the upper value is 65535.",
 	[RULE_HEADER_PORT_RANGE_INVALID]= "Port range has zero or negative size",
+	[RULE_PKTMETA_IFTYPE_INVALID]	= "Interface type invalid.",
+	[RULE_PKTMETA_IIFTYPE_INVALID]	= "Input interface type invalid.",
+	[RULE_PKTMETA_OIFTYPE_INVALID]	= "Output interface type invalid.",
+	[RULE_PKTMETA_SKID_INVALID]	= "Id invalid.",
+	[RULE_PKTMETA_SKUID_INVALID]	= "Userd id invalid.",
+	[RULE_PKTMETA_SKGID_INVALID]	= "Group id invalid.",
 };
 
 

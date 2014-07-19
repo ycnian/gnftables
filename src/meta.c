@@ -210,6 +210,37 @@ static void uid_type_print(const struct expr *expr)
 	expr_basetype(expr)->print(expr);
 }
 
+static int uid_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res;
+	struct passwd *pw;
+
+	if (numeric_output < NUMERIC_ALL) {
+		uint32_t uid = mpz_get_uint32(expr->value);
+
+		pw = getpwuid(uid);
+		if (pw != NULL) {
+			if (!str)
+				return snprintf(NULL, 0, "%s", pw->pw_name);
+			res = snprintf(str, size, "%s", pw->pw_name);
+			if ((size_t)res >= size)
+				return -1;
+			else
+				return res;
+		} else {
+			if (!str)
+				return snprintf(NULL, 0, "%d", uid);
+			res = snprintf(str, size, "%d", uid);
+			if ((size_t)res >= size)
+				return -1;
+			else
+				return res;
+
+		}
+	}
+	return expr_basetype(expr)->snprint(str, size, expr);
+}
+
 static struct error_record *uid_type_parse(const struct expr *sym,
 					   struct expr **res)
 {
@@ -242,6 +273,7 @@ const struct datatype uid_type = {
 	.size		= sizeof(uid_t) * BITS_PER_BYTE,
 	.basetype	= &integer_type,
 	.print		= uid_type_print,
+	.snprint	= uid_type_snprint,
 	.parse		= uid_type_parse,
 };
 
@@ -260,6 +292,36 @@ static void gid_type_print(const struct expr *expr)
 		return;
 	}
 	expr_basetype(expr)->print(expr);
+}
+
+static int gid_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res;
+	struct group *gr;
+
+	if (numeric_output < NUMERIC_ALL) {
+		uint32_t gid = mpz_get_uint32(expr->value);
+
+		gr = getgrgid(gid);
+		if (gr != NULL) {
+			if (!str)
+				return snprintf(NULL, 0, "%s", gr->gr_name);
+			res = snprintf(NULL, 0, "%s", gr->gr_name);
+			if ((size_t)res >= size)
+				return -1;
+			else
+				return res;
+		} else {
+			if (!str)
+				return snprintf(NULL, 0, "%d", gid);
+			res = snprintf(str, size, "%d", gid);
+			if ((size_t)res >= size)
+				return -1;
+			else
+				return res;
+		}
+	}
+	return expr_basetype(expr)->snprint(str, size, expr);
 }
 
 static struct error_record *gid_type_parse(const struct expr *sym,
@@ -294,6 +356,7 @@ const struct datatype gid_type = {
 	.size		= sizeof(gid_t) * BITS_PER_BYTE,
 	.basetype	= &integer_type,
 	.print		= gid_type_print,
+	.snprint	= gid_type_snprint,
 	.parse		= gid_type_parse,
 };
 

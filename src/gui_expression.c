@@ -981,8 +981,76 @@ int rule_parse_header_expr(struct expr *expr, struct pktheader *header)
 	return RULE_SUCCESS;
 }
 
+static int rule_parse_ifname_expr(struct expr *expr, union ifname *ifname)
+{
+	int	len = expr->ops->snprint(NULL, 0, expr);
+	char	p[len + 1];
+
+	ifname->name_str = xzalloc(len - 1);
+	expr->ops->snprint(p, len + 1, expr);
+	strncpy(ifname->name_str, p + 1, len - 2);
+	return RULE_SUCCESS;
+}
+
+static int rule_parse_iftype_expr(struct expr *expr, union iftype *iftype)
+{
+	int	len = expr->ops->snprint(NULL, 0, expr);
+	char	p[len + 1];
+
+	iftype->type_str = xzalloc(len - 2);
+	expr->ops->snprint(p, len + 1, expr);
+	strncpy(iftype->type_str, p + 2, len - 3);
+	return RULE_SUCCESS;
+}
+
+static int rule_parse_skuid_expr(struct expr *expr, union skid *uid)
+{
+	int	len = expr->ops->snprint(NULL, 0, expr);
+	char	p[len + 1];
+
+	uid->id_str = xzalloc(len - 2);
+	expr->ops->snprint(p, len + 1, expr);
+	strncpy(uid->id_str, p + 2, len - 3);
+
+	return RULE_SUCCESS;
+}
+
+static int rule_parse_skgid_expr(struct expr *expr, union skid *gid)
+{
+	int	len = expr->ops->snprint(NULL, 0, expr);
+	char	p[len + 1];
+
+	gid->id_str = xzalloc(len - 2);
+	expr->ops->snprint(p, len + 1, expr);
+	strncpy(gid->id_str, p + 2, len - 3);
+
+	return RULE_SUCCESS;
+}
+
 int rule_parse_pktmeta(struct expr *expr, struct pktmeta *pktmeta)
 {
+	switch (expr->left->meta.key) {
+	case NFT_META_IIFNAME:
+		pktmeta->iifname = xzalloc(sizeof(union ifname));
+		return rule_parse_ifname_expr(expr->right, pktmeta->iifname);
+	case NFT_META_OIFNAME:
+		pktmeta->oifname = xzalloc(sizeof(union ifname));
+		return rule_parse_ifname_expr(expr->right, pktmeta->oifname);
+	case NFT_META_IIFTYPE:
+		pktmeta->iiftype = xzalloc(sizeof(union iftype));
+		return rule_parse_iftype_expr(expr->right, pktmeta->iiftype);
+	case NFT_META_OIFTYPE:
+		pktmeta->oiftype = xzalloc(sizeof(union iftype));
+		return rule_parse_iftype_expr(expr->right, pktmeta->oiftype);
+	case NFT_META_SKUID:
+		pktmeta->skuid = xzalloc(sizeof(union skid));
+		return rule_parse_skuid_expr(expr->right, pktmeta->skuid);
+	case NFT_META_SKGID:
+		pktmeta->skgid = xzalloc(sizeof(union skid));
+		return rule_parse_skgid_expr(expr->right, pktmeta->skgid);
+	default:
+		BUG();
+	}
 
 	return RULE_SUCCESS;
 }

@@ -91,8 +91,8 @@ int datatype_snprint(char *str, size_t size, const struct expr *expr)
 	do {
 		if (dtype->snprint != NULL)
 			return dtype->snprint(str, size, expr);
-//		if (dtype->sym_tbl != NULL)
-//			return symbolic_constant_print(dtype->sym_tbl, expr);
+		if (dtype->sym_tbl != NULL)
+			return symbolic_constant_snprint(str, size, dtype->sym_tbl, expr);
 	} while ((dtype = dtype->basetype));
 
 //	BUG("datatype has no print method or symbol table\n");
@@ -157,6 +157,29 @@ void symbolic_constant_print(const struct symbol_table *tbl,
 		return expr_basetype(expr)->print(expr);
 
 	printf("%s", s->identifier);
+}
+
+int symbolic_constant_snprint(char *str, size_t size, 
+		const struct symbol_table *tbl, const struct expr *expr)
+{
+	int	res;
+	const struct symbolic_constant *s;
+
+	for (s = tbl->symbols; s->identifier != NULL; s++) {
+		if (!mpz_cmp_ui(expr->value, s->value))
+			break;
+	}
+
+	if (s->identifier == NULL)
+		return expr_basetype(expr)->snprint(str, size, expr);
+
+	if (!str)
+		return strlen(s->identifier);
+	res = snprintf(str, size, "%s", s->identifier);
+	if ((size_t)res >= size)
+		return -1;
+	else
+		return res;
 }
 
 void symbol_table_print(const struct symbol_table *tbl,
@@ -309,6 +332,23 @@ static void string_type_print(const struct expr *expr)
 	printf("\"%s\"", data);
 }
 
+static int string_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res;
+	unsigned int len = div_round_up(expr->len, BITS_PER_BYTE);
+	char data[len+1];
+
+	mpz_export_data(data, expr->value, BYTEORDER_HOST_ENDIAN, len);
+	data[len] = '\0';
+	if (!str)
+		return snprintf(NULL, 0, "\"%s\"", data);
+	res = snprintf(str, size, "\"%s\"", data);
+	if ((size_t)res >= size)
+		return -1;
+	else
+		return res;
+}
+
 static struct error_record *string_type_parse(const struct expr *sym,
 	      				      struct expr **res)
 {
@@ -324,6 +364,7 @@ const struct datatype string_type = {
 	.name		= "string",
 	.desc		= "string",
 	.print		= string_type_print,
+	.snprint	= string_type_snprint,
 	.parse		= string_type_parse,
 };
 

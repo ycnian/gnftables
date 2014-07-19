@@ -1289,7 +1289,7 @@ void rule_add_content_header(struct rule_create_widget *new_rule, struct rule_li
 
 	rule_add_content_header_data(new_rule, header_data);
 
-	gtk_expander_set_expanded(GTK_EXPANDER(header->expander), header->expanded);
+//	gtk_expander_set_expanded(GTK_EXPANDER(header->expander), header->expanded);
 	gtk_widget_show(GTK_WIDGET(fixed_header));
 	gtk_widget_show(GTK_WIDGET(expander_header));
 }
@@ -1311,8 +1311,11 @@ void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_l
 	GtkWidget	*skgid;
 	GtkWidget	*skgid_value;
 	GtkWidget	*fixed;
+	struct pktmeta	*pktmeta = NULL;
 
 	fixed = new_rule->fixed;
+	if (rule_arg && rule_arg->data)
+		pktmeta = rule_arg->data->pktmeta;
 
 	fixed_pktmeta = gtk_fixed_new();
 	expander_pktmeta = gtk_expander_new("Matching packet metainformation");
@@ -1330,6 +1333,10 @@ void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_l
 	gtk_entry_set_width_chars(GTK_ENTRY(iifname_value), 35);
 	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), iifname_value, 150, 0);
 	new_rule->meta->iifname = iifname_value;
+	if (pktmeta && pktmeta->iifname) {
+		gtk_entry_set_text(GTK_ENTRY(iifname_value), pktmeta->iifname->name_str);
+		new_rule->meta->expanded = 1;
+	}
 
 	oifname = gtk_label_new("output interface:");
 	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), oifname, 40, 40);
@@ -1337,6 +1344,10 @@ void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_l
 	gtk_entry_set_width_chars(GTK_ENTRY(oifname_value), 35);
 	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), oifname_value, 150, 40);
 	new_rule->meta->oifname = oifname_value;
+	if (pktmeta && pktmeta->oifname) {
+		gtk_entry_set_text(GTK_ENTRY(oifname_value), pktmeta->oifname->name_str);
+		new_rule->meta->expanded = 1;
+	}
 
 	iiftype = gtk_label_new("input type:");
 	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), iiftype, 40, 80);
@@ -1344,6 +1355,10 @@ void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_l
 	gtk_entry_set_width_chars(GTK_ENTRY(iiftype_value), 35);
 	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), iiftype_value, 150, 80);
 	new_rule->meta->iiftype = iiftype_value;
+	if (pktmeta && pktmeta->iiftype) {
+		gtk_entry_set_text(GTK_ENTRY(iiftype_value), pktmeta->iiftype->type_str);
+		new_rule->meta->expanded = 1;
+	}
 
 	oiftype = gtk_label_new("output type:");
 	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), oiftype, 40, 120);
@@ -1351,6 +1366,10 @@ void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_l
 	gtk_entry_set_width_chars(GTK_ENTRY(oiftype_value), 35);
 	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), oiftype_value, 150, 120);
 	new_rule->meta->oiftype = oiftype_value;
+	if (pktmeta && pktmeta->oiftype) {
+		gtk_entry_set_text(GTK_ENTRY(oiftype_value), pktmeta->oiftype->type_str);
+		new_rule->meta->expanded = 1;
+	}
 
 	skuid = gtk_label_new("user:");
 	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), skuid, 40, 160);
@@ -1358,6 +1377,10 @@ void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_l
 	gtk_entry_set_width_chars(GTK_ENTRY(skuid_value), 35);
 	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), skuid_value, 150, 160);
 	new_rule->meta->skuid = skuid_value;
+	if (pktmeta && pktmeta->skuid) {
+		gtk_entry_set_text(GTK_ENTRY(skuid_value), pktmeta->skuid->id_str);
+		new_rule->meta->expanded = 1;
+	}
 
 	skgid = gtk_label_new("group:");
 	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), skgid, 40, 200);
@@ -1365,7 +1388,12 @@ void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_l
 	gtk_entry_set_width_chars(GTK_ENTRY(skgid_value), 35);
 	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), skgid_value, 150, 200);
 	new_rule->meta->skgid = skgid_value;
+	if (pktmeta && pktmeta->skgid) {
+		gtk_entry_set_text(GTK_ENTRY(skgid_value), pktmeta->skgid->id_str);
+		new_rule->meta->expanded = 1;
+	}
 
+//	gtk_expander_set_expanded(GTK_EXPANDER(new_rule->meta->expander), new_rule->meta->expanded);
 	gtk_widget_show_all(GTK_WIDGET(expander_pktmeta));
 }
 
@@ -1412,6 +1440,8 @@ void rule_add_content(struct rule_create_widget *new_rule, struct rule_list_args
 	rule_add_content_header(new_rule, rule_arg);
 	rule_add_content_pktmeta(new_rule, rule_arg);
 	rule_add_content_submit(new_rule);
+	gtk_expander_set_expanded(GTK_EXPANDER(new_rule->header->expander), new_rule->header->expanded);
+	gtk_expander_set_expanded(GTK_EXPANDER(new_rule->meta->expander), new_rule->meta->expanded);
 }
 
 void create_new_rule_begin(gpointer  data)

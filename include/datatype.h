@@ -173,6 +173,8 @@ extern struct error_record *symbolic_constant_parse(const struct expr *sym,
 						    struct expr **res);
 extern void symbolic_constant_print(const struct symbol_table *tbl,
 				    const struct expr *expr);
+extern int symbolic_constant_snprint(char *str, size_t size,
+                const struct symbol_table *tbl, const struct expr *expr);
 extern void symbol_table_print(const struct symbol_table *tbl,
 			       const struct datatype *dtype);
 

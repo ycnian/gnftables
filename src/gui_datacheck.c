@@ -800,7 +800,7 @@ int get_header_data_from_page(struct match_header *widget, struct pktheader *dat
 	return res;
 }
 
-int get_pktmeta_ifname_from_page(GtkWidget *ifname, struct  list_head list)
+int get_pktmeta_ifname_from_page(GtkWidget *ifname, struct  list_head *list)
 {
 	char	*names;
 	char	*name;
@@ -811,7 +811,7 @@ int get_pktmeta_ifname_from_page(GtkWidget *ifname, struct  list_head list)
 	while (name) {
 		elem  = xzalloc(sizeof(struct string_elem));
 		elem->value = name;
-		list_add_tail(&elem->list, &list);
+		list_add_tail(&elem->list, list);
 		name = string_skip_space(strtok(NULL, ","));
 	}
 	xfree(names);
@@ -845,7 +845,7 @@ int pktmeta_iftype_check(char *type, unsigned short *value)
 		return RULE_PKTMETA_IFTYPE_INVALID;
 }
 
-int get_pktmeta_iftype_from_page(GtkWidget *iftype, struct  list_head list)
+int get_pktmeta_iftype_from_page(GtkWidget *iftype, struct  list_head *list)
 {
 	int	res = RULE_SUCCESS;
 	char	*types;
@@ -864,7 +864,7 @@ int get_pktmeta_iftype_from_page(GtkWidget *iftype, struct  list_head list)
 		xfree(type);
 		elem  = xzalloc(sizeof(struct unsigned_short_elem));
 		elem->value = type_value;
-		list_add_tail(&elem->list, &list);
+		list_add_tail(&elem->list, list);
 		type = string_skip_space(strtok(NULL, ","));
 	}
 error:
@@ -872,7 +872,7 @@ error:
 	return res;
 }
 
-int get_pktmeta_skid_from_page(GtkWidget *skid, struct  list_head list)
+int get_pktmeta_skid_from_page(GtkWidget *skid, struct  list_head *list)
 {
 	int	res = RULE_SUCCESS;
 	char	*ids;
@@ -892,7 +892,7 @@ int get_pktmeta_skid_from_page(GtkWidget *skid, struct  list_head list)
 		xfree(id);
 		elem  = xzalloc(sizeof(struct unsigned_int_elem));
 		elem->value = id_value;
-		list_add_tail(&elem->list, &list);
+		list_add_tail(&elem->list, list);
 		id = string_skip_space(strtok(NULL, ","));
 	}
 error:
@@ -906,7 +906,7 @@ int get_pktmeta_iifname_from_page(GtkWidget *iifname, struct pktmeta *data)
 
 	data->iifname = xzalloc(sizeof(union ifname));
 	init_list_head(&data->iifname->name);
-	res = get_pktmeta_ifname_from_page(iifname, data->iifname->name);
+	res = get_pktmeta_ifname_from_page(iifname, &data->iifname->name);
 	return res;
 }
 
@@ -916,7 +916,7 @@ int get_pktmeta_oifname_from_page(GtkWidget *oifname, struct pktmeta *data)
 
 	data->oifname = xzalloc(sizeof(union ifname));
 	init_list_head(&data->oifname->name);
-	res = get_pktmeta_ifname_from_page(oifname, data->oifname->name);
+	res = get_pktmeta_ifname_from_page(oifname, &data->oifname->name);
 	return res;
 }
 
@@ -926,7 +926,7 @@ int get_pktmeta_iiftype_from_page(GtkWidget *iiftype, struct pktmeta *data)
 
 	data->iiftype = xzalloc(sizeof(union iftype));
 	init_list_head(&data->iiftype->type);
-	res = get_pktmeta_iftype_from_page(iiftype, data->iiftype->type);
+	res = get_pktmeta_iftype_from_page(iiftype, &data->iiftype->type);
 	if (res == RULE_PKTMETA_IFTYPE_INVALID)
 		res = RULE_PKTMETA_IIFTYPE_INVALID;
 	return res;
@@ -938,7 +938,7 @@ int get_pktmeta_oiftype_from_page(GtkWidget *oiftype, struct pktmeta *data)
 
 	data->oiftype = xzalloc(sizeof(union iftype));
 	init_list_head(&data->oiftype->type);
-	res = get_pktmeta_iftype_from_page(oiftype, data->oiftype->type);
+	res = get_pktmeta_iftype_from_page(oiftype, &data->oiftype->type);
 	if (res == RULE_PKTMETA_IFTYPE_INVALID)
 		res = RULE_PKTMETA_OIFTYPE_INVALID;
 	return res;
@@ -950,7 +950,7 @@ int get_pktmeta_skuid_from_page(GtkWidget *skuid, struct pktmeta *data)
 
 	data->skuid = xzalloc(sizeof(union skid));
 	init_list_head(&data->skuid->id);
-	res = get_pktmeta_skid_from_page(skuid, data->skuid->id);
+	res = get_pktmeta_skid_from_page(skuid, &data->skuid->id);
 	if (res == RULE_PKTMETA_SKID_INVALID)
 		res = RULE_PKTMETA_SKUID_INVALID;
 	return res;
@@ -962,7 +962,7 @@ int get_pktmeta_skgid_from_page(GtkWidget *skgid, struct pktmeta *data)
 
 	data->skgid = xzalloc(sizeof(union skid));
 	init_list_head(&data->skgid->id);
-	res = get_pktmeta_skid_from_page(skgid, data->skgid->id);
+	res = get_pktmeta_skid_from_page(skgid, &data->skgid->id);
 	if (res == RULE_PKTMETA_SKID_INVALID)
 		res = RULE_PKTMETA_SKGID_INVALID;
 	return res;

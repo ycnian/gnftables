@@ -472,9 +472,41 @@ int rule_header_gen_exprs(struct rule_create_data *data, struct pktheader *heade
 	return res;
 }
 
-int rule_ifname_gen_exprs(struct rule_create_data *data, struct list_head name, int source)
-{
 /*
+ * meta iftype doesn't support anonymous now.
+ */
+int rule_ifname_gen_exprs(struct rule_create_data *data, struct list_head *head, int source)
+{
+	struct expr  *meta;
+	struct expr  *constant;
+	struct expr  *rela;
+	struct stmt  *stmt;
+	enum ops	op;
+	struct string_elem	*s_elem;
+	enum nft_meta_keys key;
+
+	if (list_empty(head))
+		return RULE_SUCCESS;
+	if (source)
+		key = NFT_META_IIFNAME;
+	else
+		key = NFT_META_OIFNAME;
+	op = OP_EQ;
+	meta = meta_expr_alloc(data->loc, key);
+
+	s_elem = list_first_entry(head, struct string_elem, list);
+	constant = constant_expr_alloc(data->loc, &string_type, BYTEORDER_HOST_ENDIAN,
+			(strlen(s_elem->value) + 1) * 8, s_elem->value);
+	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, meta, constant);
+	rela->op = op;
+	stmt = expr_stmt_alloc(data->loc, rela);
+	list_add_tail(&stmt->list, &data->exprs);
+
+	return RULE_SUCCESS;
+}
+
+int rule_iftype_gen_exprs(struct rule_create_data *data, struct list_head *head, int source)
+{
 	struct expr  *meta;
 	struct expr  *constant;
 	struct expr  *rela;
@@ -482,33 +514,33 @@ int rule_ifname_gen_exprs(struct rule_create_data *data, struct list_head name, 
 	struct expr  *se;
 	struct stmt  *stmt;
 	struct set   *set;
-	unsigned int	type;
 	enum ops	op;
-	struct string_elem	*s_elem;
+	struct unsigned_short_elem	*s_elem;
 	enum nft_meta_keys key;
+	unsigned short	type;
 
-	if (list_empty(&(name)))
+	if (list_empty(head))
 		return RULE_SUCCESS;
 	if (source)
-		key = NFT_META_IIFNAME;
+		key = NFT_META_IIFTYPE;
 	else
-		key = NFT_META_OIFNAME;
-//	op = (addr->exclude) ? OP_NEQ: OP_EQ;
+		key = NFT_META_OIFTYPE;
 	op = OP_LOOKUP;
 	meta = meta_expr_alloc(data->loc, key);
 	elem = set_expr_alloc(data->loc);
 
-	list_for_each_entry(s_elem, &name, list) {
-		constant = constant_expr_alloc(data->loc, &string_type, BYTEORDER_HOST_ENDIAN,
-			IFNAMSIZ * 8, s_elem->value);
+	list_for_each_entry(s_elem, head, list) {
+		type = s_elem->value;
+		constant = constant_expr_alloc(data->loc, &arphrd_type, BYTEORDER_HOST_ENDIAN,
+			2 * 8, &type);
 		compound_expr_add(elem, constant);
 	}
 
 	set = set_alloc(data->loc);
         set->flags	= SET_F_CONSTANT | SET_F_ANONYMOUS;
         set->handle.set = xstrdup("set%d");
-        set->keytype    = &string_type;
-        set->keylen     = IFNAMSIZ * 8;
+        set->keytype    = &arphrd_type;
+        set->keylen     = 2 * 8;
         set->init       = elem;
 	set->handle.family = data->family;
 	set->handle.table = xstrdup(data->table);
@@ -534,26 +566,89 @@ int rule_ifname_gen_exprs(struct rule_create_data *data, struct list_head name, 
 		clone = set_clone(set);
 		set_add_hash(clone, table);
 	}
-
 	se = set_ref_expr_alloc(data->loc, set);
 
 	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, meta, se);
 	rela->op = op;
 	stmt = expr_stmt_alloc(data->loc, rela);
 	list_add_tail(&stmt->list, &data->exprs);
-*/
-
 	return RULE_SUCCESS;
 }
 
-int rule_iftype_gen_exprs(struct rule_create_data *data, struct list_head type, int source)
+int rule_skid_gen_exprs(struct rule_create_data *data, struct list_head *head, int uid)
 {
+	struct expr  *meta;
+	struct expr  *constant;
+	struct expr  *rela;
+	struct expr  *elem;
+	struct expr  *se;
+	struct stmt  *stmt;
+	struct set   *set;
+	enum ops	op;
+	struct unsigned_int_elem	*i_elem;
+	enum nft_meta_keys key;
+	unsigned int	id;
+	int	keylen;
+	const struct datatype  *keytype;
 
-	return RULE_SUCCESS;
-}
+	if (list_empty(head))
+		return RULE_SUCCESS;
+	if (uid) {
+		key = NFT_META_SKUID;
+		keylen = sizeof(uid_t) * 8;
+		keytype = &uid_type;
+	} else {
+		key = NFT_META_SKGID;
+		keylen = sizeof(gid_t) * 8;
+		keytype = &gid_type;
+	}
+	op = OP_LOOKUP;
+	meta = meta_expr_alloc(data->loc, key);
+	elem = set_expr_alloc(data->loc);
 
-int rule_skid_gen_exprs(struct rule_create_data *data, struct list_head skid, int uid)
-{
+	list_for_each_entry(i_elem, head, list) {
+		id = i_elem->value;
+		constant = constant_expr_alloc(data->loc, keytype, BYTEORDER_HOST_ENDIAN,
+			keylen, &id);
+		compound_expr_add(elem, constant);
+	}
+
+	set = set_alloc(data->loc);
+        set->flags	= SET_F_CONSTANT | SET_F_ANONYMOUS;
+        set->handle.set = xstrdup("set%d");
+        set->keytype    = keytype;
+        set->keylen     = keylen;
+        set->init       = elem;
+	set->handle.family = data->family;
+	set->handle.table = xstrdup(data->table);
+
+	struct netlink_ctx      ctx;
+	struct table		*table;
+	struct set		*clone;
+	LIST_HEAD(msgs);
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+//	ctx.seqnum  = mnl_seqnum_alloc();
+	netlink_add_set(&ctx, &set->handle, set);
+	netlink_add_setelems(&ctx, &set->handle, set->init);
+
+	table = table_lookup(&set->handle);
+	if (table == NULL) {
+		table = table_alloc();
+		init_list_head(&table->sets);
+		handle_merge(&table->handle, &set->handle);
+		table_add_hash(table);
+	}
+	if (!set_lookup(table, set->handle.set)) {
+		clone = set_clone(set);
+		set_add_hash(clone, table);
+	}
+	se = set_ref_expr_alloc(data->loc, set);
+
+	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, meta, se);
+	rela->op = op;
+	stmt = expr_stmt_alloc(data->loc, rela);
+	list_add_tail(&stmt->list, &data->exprs);
 
 	return RULE_SUCCESS;
 }
@@ -562,22 +657,23 @@ int rule_pktmeta_gen_exprs(struct rule_create_data *data, struct pktmeta *pktmet
 {
 	int	res = RULE_SUCCESS;
 
-	res = rule_ifname_gen_exprs(data, pktmeta->iifname->name, 1);
+	res = rule_ifname_gen_exprs(data, &pktmeta->iifname->name, 1);
 	if (res != RULE_SUCCESS)
 		return res;
-	res = rule_ifname_gen_exprs(data, pktmeta->oifname->name, 0);
+	res = rule_ifname_gen_exprs(data, &pktmeta->oifname->name, 0);
 	if (res != RULE_SUCCESS)
 		return res;
-	res = rule_iftype_gen_exprs(data, pktmeta->iiftype->type, 1);
+
+	res = rule_iftype_gen_exprs(data, &pktmeta->iiftype->type, 1);
 	if (res != RULE_SUCCESS)
 		return res;
-	res = rule_iftype_gen_exprs(data, pktmeta->oiftype->type, 0);
+	res = rule_iftype_gen_exprs(data, &pktmeta->oiftype->type, 0);
 	if (res != RULE_SUCCESS)
 		return res;
-	res = rule_skid_gen_exprs(data, pktmeta->skuid->id, 1);
+	res = rule_skid_gen_exprs(data, &pktmeta->skuid->id, 1);
 	if (res != RULE_SUCCESS)
 		return res;
-	res = rule_skid_gen_exprs(data, pktmeta->skgid->id, 0);
+	res = rule_skid_gen_exprs(data, &pktmeta->skgid->id, 0);
 	return res;
 }
 

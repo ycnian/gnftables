@@ -191,6 +191,8 @@ extern const struct datatype ip6addr_type;
 extern const struct datatype etheraddr_type;
 extern const struct datatype ethertype_type;
 extern const struct datatype arphrd_type;
+extern const struct datatype uid_type;
+extern const struct datatype gid_type;
 extern const struct datatype inet_protocol_type;
 extern const struct datatype inet_service_type;
 extern const struct datatype mark_type;

@@ -234,7 +234,7 @@ static struct error_record *uid_type_parse(const struct expr *sym,
 	return NULL;
 }
 
-static const struct datatype uid_type = {
+const struct datatype uid_type = {
 	.type		= TYPE_UID,
 	.name		= "uid",
 	.desc		= "user ID",
@@ -286,7 +286,7 @@ static struct error_record *gid_type_parse(const struct expr *sym,
 	return NULL;
 }
 
-static const struct datatype gid_type = {
+const struct datatype gid_type = {
 	.type		= TYPE_GID,
 	.name		= "gid",
 	.desc		= "group ID",

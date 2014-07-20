@@ -497,7 +497,6 @@ int rule_ifname_gen_exprs(struct rule_create_data *data, struct list_head *head,
 	s_elem = list_first_entry(head, struct string_elem, list);
 	constant = constant_expr_alloc(data->loc, &string_type, BYTEORDER_HOST_ENDIAN,
 			(strlen(s_elem->value) + 1) * 8, s_elem->value);
-	printf("bbbbbbbbbbbbbbbbbbbbbb  %s\n", s_elem->value);
 	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, meta, constant);
 	rela->op = op;
 	stmt = expr_stmt_alloc(data->loc, rela);

@@ -242,6 +242,36 @@ struct match_pktmeta {
 	GtkWidget	*skgid;
 };
 
+enum action_type {
+	ACTION_ACCEPT,
+	ACTION_DROP,
+	ACTION_GOTO,
+	ACTION_COUNTER,
+};
+
+struct action_elem {
+	struct list_head	list;
+	enum action_type	type;
+	struct rule_create_widget	*rule;
+	GtkWidget	*label;
+	GtkWidget	*widget1;
+	GtkWidget	*widget2;
+	GtkWidget	*widget3;
+	GtkWidget	*widget4;
+	GtkWidget	*remove;
+};
+
+struct actions {
+	int		offset;
+	int		len;
+	GtkWidget	*expander;
+	GtkWidget	*fixed;
+	int		expanded;
+	GtkWidget	*action_list;
+	GtkWidget	*action;
+	struct list_head	list;
+};
+
 struct match_trackmeta {
 
 };
@@ -256,6 +286,7 @@ struct rule_create_widget {
 	struct match_header	*header;
 	struct match_pktmeta	*meta;
 	struct match_trackmeta	*track;
+	struct actions		*actions;
 	GtkWidget	*cancel;
 	GtkWidget	*ok;
 	GtkWidget	*msg;
@@ -321,6 +352,7 @@ void chain_create_type_changed(GtkComboBoxText *widget, gpointer data);
 
 void transport_callback_do(struct rule_create_widget  *widget);
 void update_pktmeta_position(struct rule_create_widget  *widget);
+void update_actions_position(struct rule_create_widget  *widget);
 void update_cancel_ok_position(struct rule_create_widget  *widget);
 void update_header_transport_widgets(GtkWidget *fixed, struct transport_info *transport);
 void header_transport_show_all(GtkWidget *fixed, struct transport_info *transport);
@@ -347,5 +379,7 @@ void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_l
 void rule_add_content_submit(struct rule_create_widget *new_rule);
 void rule_add_content(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg);
 //void rule_add_content_header_data(struct match_header *header, struct pktheader *header_data);
+void rule_add_content_actions(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg);
+void rule_actions_add(GtkButton *button, gpointer data);
 
 #endif

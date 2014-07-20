@@ -37,7 +37,7 @@
 #include <gui_rule.h>
 #include <gui_error.h>
 #include <gui_datacheck.h>
-
+#include <gui_expression.h>
 
 void gui_rule_free(struct gui_rule *rule)
 {
@@ -213,11 +213,15 @@ int gui_get_rule(int family, const char *table, const char *chain, int handle_no
 	// get rule.
 	if (netlink_get_rule(&ctx, &handle, &loc) < 0) {
 			res = RULE_KERNEL_ERROR;
-			return;
+			return res;
 	}
 
 	rule = list_first_entry(&ctx.list, struct rule, list);
 	rule_de_expressions(rule, &data);
+	data->family = rule->handle.family;
+	data->table = xstrdup(rule->handle.table);
+	data->chain = xstrdup(rule->handle.chain);
+	data->handle = rule->handle.handle;
 	*content = data;
 
 	return res;
@@ -273,6 +277,7 @@ int gui_add_rule(struct rule_create_data *data)
 	int	res = TABLE_SUCCESS;
 	bool batch_supported;
 	struct  rule	rule;
+	uint32_t flags = NLM_F_APPEND | NLM_F_EXCL;
 
 	LIST_HEAD(msgs);
 	LIST_HEAD(err_list);
@@ -290,15 +295,18 @@ int gui_add_rule(struct rule_create_data *data)
 	handle.family = data->family;
 	handle.table = xstrdup(data->table);
 	handle.chain = xstrdup(data->chain);
-	handle.handle = 0;
+	handle.handle = data->handle;
 	handle.position = 0;
 	handle.comment = NULL;
 	rule.handle = handle;
+	if (handle.handle) {
+		flags = NLM_F_REPLACE;
+	}
 
 	list_splice_tail(&data->exprs, &rule.stmts);
 
 	mnl_batch_begin();
-	if (netlink_add_rule_batch(&ctx, &handle, &rule, NLM_F_APPEND) < 0) {
+	if (netlink_add_rule_batch(&ctx, &handle, &rule, flags) < 0) {
 			res = TABLE_KERNEL_ERROR;
 	}
 	mnl_batch_end();

@@ -324,7 +324,9 @@ int get_header_iplist_from_page(struct ip_address  *widget,
 	char	*iplist;
 	struct ip_convert  *ipnet;
 	iplist = get_data_from_entry(GTK_ENTRY(widget->exact_ip.ip));
-	ip = strtok(iplist, " ");
+	if (!iplist)
+		return RULE_SUCCESS;
+	ip = string_skip_space(strtok(iplist, ","));
 	while (ip) {
 		ipnet = xmalloc(sizeof(struct ip_convert));
 		if (!inet_pton(AF_INET, ip, ipnet->ip)) {
@@ -333,7 +335,7 @@ int get_header_iplist_from_page(struct ip_address  *widget,
 			return RULE_HEADER_IP_INVALID;
 		}
 		list_add_tail(&ipnet->list, &data->iplist.ips);
-		ip = strtok(NULL, " ");
+		ip = string_skip_space(strtok(NULL, ","));
 	}
 	xfree(iplist);
 	return RULE_SUCCESS;
@@ -600,7 +602,9 @@ int get_header_portlist_from_page(struct transport_port_details *widget,
 
 	init_list_head(&data->portlist.ports);
 	portlist = get_data_from_entry(GTK_ENTRY(widget->portlist.port));
-	port = strtok(portlist, " ");
+	if(!portlist)
+		return RULE_SUCCESS;
+	port = string_skip_space(strtok(portlist, ","));
 	while (port) {
 		if (unsigned_int_check(port) == -1) {
 			xfree(portlist);
@@ -613,7 +617,7 @@ int get_header_portlist_from_page(struct transport_port_details *widget,
 		portnet = xmalloc(sizeof(struct unsigned_short_elem));
 		portnet->value = pt;
 		list_add_tail(&portnet->list, &data->portlist.ports);
-		port = strtok(NULL, " ");
+		port = string_skip_space(strtok(NULL, ","));
 	}
 	xfree(portlist);
 	return RULE_SUCCESS;
@@ -807,6 +811,8 @@ int get_pktmeta_ifname_from_page(GtkWidget *ifname, struct  list_head *list)
 	struct  string_elem  *elem;
 
 	names = get_data_from_entry(GTK_ENTRY(ifname));
+	if (!names)
+		return RULE_SUCCESS;
 	name = string_skip_space(strtok(names, ","));
 	while (name) {
 		elem  = xzalloc(sizeof(struct string_elem));
@@ -854,6 +860,8 @@ int get_pktmeta_iftype_from_page(GtkWidget *iftype, struct  list_head *list)
 	struct  unsigned_short_elem  *elem;
 
 	types = get_data_from_entry(GTK_ENTRY(iftype));
+	if(!types)
+		return RULE_SUCCESS;
 	type = string_skip_space(strtok(types, ","));
 	while (type) {
 		res = pktmeta_iftype_check(type, &type_value);
@@ -881,6 +889,8 @@ int get_pktmeta_skid_from_page(GtkWidget *skid, struct  list_head *list)
 	struct  unsigned_int_elem  *elem;
 
 	ids = get_data_from_entry(GTK_ENTRY(skid));
+	if (!ids)
+		return RULE_SUCCESS;
 	id = string_skip_space(strtok(ids, ","));
 	while (id) {
 		res = strtouint(id, &id_value);

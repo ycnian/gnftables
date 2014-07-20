@@ -148,6 +148,7 @@ struct rule_create_data {
 	int		family;
 	char		*table;
 	char		*chain;
+	uint64_t	handle;
 	struct pktheader	*header;
 	struct pktmeta	*pktmeta;
 	struct list_head exprs;

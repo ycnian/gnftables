@@ -351,7 +351,9 @@ int netlink_add_rule_batch(struct netlink_ctx *ctx,
 	nlr = alloc_nft_rule(&rule->handle);
 	err = netlink_linearize_rule(ctx, nlr, rule);
 	if (err == 0) {
-		err = mnl_nft_rule_batch_add(nlr, flags | NLM_F_EXCL,
+// Remove NLM_F_EXCL for it conflicts with NLM_F_REPLACE.
+//		err = mnl_nft_rule_batch_add(nlr, flags | NLM_F_EXCL,
+		err = mnl_nft_rule_batch_add(nlr, flags,
 					     ctx->seqnum);
 		if (err < 0)
 			netlink_io_error(ctx, &rule->location,

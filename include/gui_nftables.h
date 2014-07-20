@@ -252,6 +252,7 @@ struct rule_create_widget {
 	gint		family;
 	gchar		*table;
 	gchar		*chain;
+	uint64_t	handle;
 	struct match_header	*header;
 	struct match_pktmeta	*meta;
 	struct match_trackmeta	*track;

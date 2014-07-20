@@ -364,6 +364,7 @@ void begin_create_new_rule(GtkButton *button, gpointer  info)
 	data->family = widget->family;
 	data->table = xstrdup(widget->table);
 	data->chain = xstrdup(widget->chain);
+	data->handle = widget->handle;
 	res = gui_add_rule(data);
 	// xfree(data);
 	if (res != CHAIN_SUCCESS) {
@@ -861,6 +862,7 @@ struct rule_create_widget *rule_widget_container_create(struct rule_list_args *r
 	container->family = rule_arg->family;
 	container->table = xstrdup(rule_arg->table);
 	container->chain = xstrdup(rule_arg->chain);
+	container->handle = rule_arg->handle;
 
 	return container;
 }
@@ -1514,8 +1516,8 @@ void create_new_chain(GtkButton *button, gpointer  data)
 	GtkWidget	*notebook;
 	GtkWidget	*msg;
 
-	struct  basechain_info  *basechain = g_malloc(sizeof(*basechain));
-	struct chain_create_widget *widgets = g_malloc(sizeof(struct chain_create_widget));
+	struct  basechain_info  *basechain = xzalloc(sizeof(*basechain));
+	struct chain_create_widget *widgets = xzalloc(sizeof(struct chain_create_widget));
 	struct chain_list_args	*chain_arg = (struct chain_list_args *)data;
 	notebook = chain_arg->notebook;
 	widgets->notebook = notebook;
@@ -1666,7 +1668,7 @@ void create_new_table(GtkButton *button, gpointer  notebook)
 	GtkWidget	*msg;
 
 	struct	table_create_widget  *args;
-	args = xmalloc(sizeof(struct table_create_widget));
+	args = xzalloc(sizeof(struct table_create_widget));
 	args->notebook = GTK_WIDGET(notebook);
 
 	gtk_notebook_remove_page(notebook, 0);
@@ -1738,7 +1740,7 @@ void gnftables_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkW
 	GtkCellRenderer	*renderer_delete;
 	GtkTreeViewColumn	*column;
 
-	struct rule_list_args  *rule_arg = g_malloc(sizeof(*rule_arg));
+	struct rule_list_args  *rule_arg = xzalloc(sizeof(*rule_arg));
 	rule_arg->notebook = notebook;
 	rule_arg->family = family;
 	rule_arg->table = table_name;
@@ -1898,7 +1900,7 @@ void rule_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer
 	int			family;
 	gchar			*table;
 	gchar			*chain;
-	gint			handle;
+	uint64_t		handle;
 	GtkTreeModel		*model;
 	GtkTreeView		*treeview;
 	struct rule_list_args	*rule_args = (struct rule_list_args *)data;
@@ -1912,6 +1914,7 @@ void rule_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer
 	model = gtk_tree_view_get_model(treeview);
 	gtk_tree_model_get_iter_from_string(model, &iter, path_str);
 	gtk_tree_model_get(model, &iter, RULE_HANDLE, &handle, -1);
+	rule_args->handle = handle;
 
 	gui_get_rule(family, table, chain, handle, &rule_args->data);
 
@@ -2216,7 +2219,7 @@ void gnftables_set_init(GtkButton *button, gpointer  data)
 	struct chain_list_args *chain_arg;
 
 	chain_arg = (struct chain_list_args *)data;
-	set_arg = g_malloc(sizeof(struct set_list_args));
+	set_arg = xzalloc(sizeof(struct set_list_args));
 	set_arg->notebook = chain_arg->notebook;
 	set_arg->family = chain_arg->family;
 	set_arg->table = chain_arg->table;
@@ -2333,7 +2336,7 @@ void gnftables_set_chain_init(gint family, gchar *table_name, GtkWidget *noteboo
 	GtkTreeViewColumn	*column;
 
 	struct chain_list_args  *chain_arg;
-	chain_arg = g_malloc(sizeof(struct chain_list_args));
+	chain_arg = xzalloc(sizeof(struct chain_list_args));
 	chain_arg->notebook = notebook;
 	chain_arg->family = family;
 	chain_arg->table = table_name;
@@ -2670,7 +2673,7 @@ void gnftables_table_init(GtkWidget *notebook)
 	GtkTreeViewColumn *column;
 
 	struct list_sets_and_chains  *data;
-	data = xmalloc(sizeof(struct list_sets_and_chains));
+	data = xzalloc(sizeof(struct list_sets_and_chains));
 
 	store = gtk_tree_store_new(TABLE_TOTAL, G_TYPE_INT, G_TYPE_STRING, 
 			G_TYPE_STRING, G_TYPE_INT, G_TYPE_INT,G_TYPE_BOOLEAN,

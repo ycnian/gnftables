@@ -497,6 +497,7 @@ int rule_ifname_gen_exprs(struct rule_create_data *data, struct list_head *head,
 	s_elem = list_first_entry(head, struct string_elem, list);
 	constant = constant_expr_alloc(data->loc, &string_type, BYTEORDER_HOST_ENDIAN,
 			(strlen(s_elem->value) + 1) * 8, s_elem->value);
+	printf("bbbbbbbbbbbbbbbbbbbbbb  %s\n", s_elem->value);
 	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, meta, constant);
 	rela->op = op;
 	stmt = expr_stmt_alloc(data->loc, rela);
@@ -802,11 +803,12 @@ int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr, enum o
 			BUG();
 		}
 	} else if (expr->ops->type == EXPR_SET_REF) {
-		int	size;
+		int	size = expr->ops->snprint(NULL, 0, expr);
+		char	buf[size + 1];
 		addr->ip_type = ADDRESS_EXACT;
-		size = expr->ops->snprint(NULL, 0, expr);
-		addr->iplist_str.ips = xzalloc(size + 1);
-		expr->ops->snprint(addr->iplist_str.ips, size + 1, expr);
+		addr->iplist_str.ips = xzalloc(size - 2);
+		expr->ops->snprint(buf, size + 1, expr);
+		strncpy(addr->iplist_str.ips, buf + 2, size - 3);
 	} else
 		BUG();
 	return RULE_SUCCESS;
@@ -874,11 +876,13 @@ int rule_parse_port_expr(struct expr *expr,  struct trans_port_data *port, enum 
 			BUG();
 		}
 	} else if (expr->ops->type == EXPR_SET_REF) {
-		int	size;
+		int	size = expr->ops->snprint(NULL, 0, expr);
+		char	buf[size + 1];
 		port->port_type = PORT_EXACT;
 		size = expr->ops->snprint(NULL, 0, expr);
-		port->portlist_str.ports = xzalloc(size + 1);
-		expr->ops->snprint(port->portlist_str.ports, size + 1, expr);
+		port->portlist_str.ports = xzalloc(size - 2);
+		expr->ops->snprint(buf, size + 1, expr);
+		strncpy(port->portlist_str.ports, buf + 2, size - 3);
 	} else
 		BUG();
 

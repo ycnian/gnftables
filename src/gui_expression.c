@@ -677,18 +677,81 @@ int rule_pktmeta_gen_exprs(struct rule_create_data *data, struct pktmeta *pktmet
 	return res;
 }
 
-int rule_counter_gen_exprs(struct rule_create_data *data)
+int rule_accept_gen_exprs(struct rule_create_data *data, struct action *action)
 {
-	struct stmt *stmt;
-	stmt = counter_stmt_alloc(data->loc);
-	stmt->counter.packets = 0;
-	stmt->counter.bytes = 0;
+	struct expr	*expr;
+	struct stmt	*stmt;
+	expr = verdict_expr_alloc(data->loc, NF_ACCEPT, NULL);
+	stmt = verdict_stmt_alloc(data->loc, expr);
 	list_add_tail(&stmt->list, &data->exprs);
-
 	return RULE_SUCCESS;
 }
 
+int rule_drop_gen_exprs(struct rule_create_data *data, struct action *action)
+{
+	struct expr	*expr;
+	struct stmt	*stmt;
+	expr = verdict_expr_alloc(data->loc, NF_DROP, NULL);
+	stmt = verdict_stmt_alloc(data->loc, expr);
+	list_add_tail(&stmt->list, &data->exprs);
+	return RULE_SUCCESS;
+}
 
+int rule_jump_gen_exprs(struct rule_create_data *data, struct action *action)
+{
+	struct expr	*expr;
+	struct stmt	*stmt;
+	expr = verdict_expr_alloc(data->loc, NFT_JUMP, action->chain);
+	stmt = verdict_stmt_alloc(data->loc, expr);
+	list_add_tail(&stmt->list, &data->exprs);
+	return RULE_SUCCESS;
+}
+
+int rule_counter_gen_exprs(struct rule_create_data *data, struct action *action)
+{
+	struct stmt *stmt;
+	stmt = counter_stmt_alloc(data->loc);
+	stmt->counter.packets = action->packets;
+	stmt->counter.bytes = action->bytes;
+	list_add_tail(&stmt->list, &data->exprs);
+	return RULE_SUCCESS;
+}
+
+int rule_actions_gen_exprs(struct rule_create_data *data, struct actions *actions)
+{
+	int	res;
+	struct action	*action;
+
+	if (list_empty(&actions->list))
+		return RULE_SUCCESS;
+	list_for_each_entry(action, &actions->list, list) {
+		switch (action->type) {
+		case ACTION_ACCEPT:
+			res = rule_accept_gen_exprs(data, action);
+			if (res != RULE_SUCCESS)
+				return res;
+			break;
+		case ACTION_DROP:
+			res = rule_drop_gen_exprs(data, action);
+			if (res != RULE_SUCCESS)
+				return res;
+			break;
+		case ACTION_JUMP:
+			res = rule_jump_gen_exprs(data, action);
+			if (res != RULE_SUCCESS)
+				return res;
+			break;
+		case ACTION_COUNTER:
+			res = rule_counter_gen_exprs(data, action);
+			if (res != RULE_SUCCESS)
+				return res;
+			break;
+		default:
+			BUG();
+		}
+	}
+	return RULE_SUCCESS;
+}
 
 /*
  * Gen expressions according to data from rule creating page.
@@ -704,7 +767,7 @@ int rule_gen_expressions(struct rule_create_data *data)
 	res = rule_pktmeta_gen_exprs(data, data->pktmeta);
 	if (res != RULE_SUCCESS)
 		return res;
-	res = rule_counter_gen_exprs(data);
+	res = rule_actions_gen_exprs(data, data->actions);
 	return res;
 }
 
@@ -1077,15 +1140,57 @@ int rule_parse_expr(struct stmt *stmt, struct rule_create_data *p)
 	}
 }
 
+int rule_parse_accept_expr(struct expr *expr, struct actions *actions)
+{
+	struct action	*action;
+	action = xzalloc(sizeof(struct action));
+	action->type = ACTION_ACCEPT;
+	list_add_tail(&action->list, &actions->list);
+	return RULE_SUCCESS;
+}
+
+int rule_parse_drop_expr(struct expr *expr, struct actions *actions)
+{
+	struct action	*action;
+	action = xzalloc(sizeof(struct action));
+	action->type = ACTION_DROP;
+	list_add_tail(&action->list, &actions->list);
+	return RULE_SUCCESS;
+}
+
+int rule_parse_jump_expr(struct expr *expr, struct actions *actions)
+{
+	struct action	*action;
+	action = xzalloc(sizeof(struct action));
+	action->type = ACTION_JUMP;
+	action->chain = xstrdup(expr->chain);
+	list_add_tail(&action->list, &actions->list);
+	return RULE_SUCCESS;
+}
+
 int rule_parse_verdict_stmt(struct stmt *stmt, struct rule_create_data *p)
 {
-
+	struct expr	*expr;
+	expr = stmt->expr;
+	switch (expr->verdict) {
+	case NF_ACCEPT:
+		return rule_parse_accept_expr(expr, p->actions);
+	case NF_DROP:
+		return rule_parse_drop_expr(expr, p->actions);
+	case NFT_JUMP:
+		return rule_parse_jump_expr(expr, p->actions);
+	}
 	return RULE_SUCCESS;
 }
 
 int rule_parse_counter_stmt(struct stmt *stmt, struct rule_create_data *p)
 {
-
+	struct action	*action;
+	action = xzalloc(sizeof(struct action));
+	action->type = ACTION_COUNTER;
+	action->packets = stmt->counter.packets;
+	action->bytes = stmt->counter.bytes;
+	list_add_tail(&action->list, &p->actions->list);
 	return RULE_SUCCESS;
 }
 
@@ -1115,6 +1220,9 @@ int rule_de_expressions(struct rule *rule, struct rule_create_data **data)
 	p->header = xmalloc(sizeof(struct pktheader));
 	p->pktmeta = xmalloc(sizeof(struct pktmeta));
 	p->loc = xzalloc(sizeof(struct location));
+	p->actions = xzalloc(sizeof(struct actions));
+	init_list_head(&p->actions->list);
+
 
 	list_for_each_entry(stmt, &rule->stmts, list) {
 		rule_parse_stmt(stmt, p);

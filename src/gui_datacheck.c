@@ -1005,6 +1005,90 @@ int get_pktmeta_data_from_page(struct match_pktmeta  *widget,
 	return res;
 }
 
+int get_accept_data_from_page(struct action_elem *elem, struct actions *data)
+{
+	struct action *action;
+	action = xzalloc(sizeof(struct action));
+	action->type = ACTION_ACCEPT;
+	list_add_tail(&action->list, &data->list);
+	return RULE_SUCCESS;
+}
+
+int get_drop_data_from_page(struct action_elem *elem, struct actions *data)
+{
+	struct action *action;
+	action = xzalloc(sizeof(struct action));
+	action->type = ACTION_DROP;
+	list_add_tail(&action->list, &data->list);
+	return RULE_SUCCESS;
+}
+
+int get_jump_data_from_page(struct action_elem *elem, struct actions *data)
+{
+	struct action *action;
+	action = xzalloc(sizeof(struct action));
+	action->type = ACTION_JUMP;
+	action->chain = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(elem->widget1));
+	list_add_tail(&action->list, &data->list);
+	return RULE_SUCCESS;
+}
+
+int get_counter_data_from_page(struct action_elem *elem, struct actions *data)
+{
+	unsigned int	packets;
+	unsigned int	bytes;
+	char	*packets_str;
+	char	*bytes_str;
+	struct action *action;
+	action = xzalloc(sizeof(struct action));
+	action->type = ACTION_COUNTER;
+	packets_str = get_data_from_entry(GTK_ENTRY(elem->widget2));
+	bytes_str = get_data_from_entry(GTK_ENTRY(elem->widget4));
+	strtouint(packets_str, &packets);
+	strtouint(bytes_str, &bytes);
+	action->packets = packets;
+	action->bytes = bytes;
+	list_add_tail(&action->list, &data->list);
+	return RULE_SUCCESS;
+}
+
+int get_actions_data_from_page(struct actions_all *widget, struct actions *data)
+{
+	int	res = RULE_SUCCESS;
+	struct action_elem	*elem;
+
+	if (list_empty(&widget->list))
+		return RULE_SUCCESS;
+	list_for_each_entry(elem, &widget->list, list) {
+		switch(elem->type) {
+		case ACTION_ACCEPT:
+			res = get_accept_data_from_page(elem, data);
+			if (res != RULE_SUCCESS)
+				goto out;
+			break;
+		case ACTION_DROP:
+			res = get_drop_data_from_page(elem, data);
+			if (res != RULE_SUCCESS)
+				goto out;
+			break;
+		case ACTION_JUMP:
+			res = get_jump_data_from_page(elem, data);
+			if (res != RULE_SUCCESS)
+				goto out;
+			break;
+		case ACTION_COUNTER:
+			res = get_counter_data_from_page(elem, data);
+			if (res != RULE_SUCCESS)
+				goto out;
+			break;
+		default:
+			BUG();
+		}
+	}
+
+out:
+	return res;
+}
 
 /*
  * Get all informations from rule creating page.
@@ -1020,8 +1104,9 @@ int get_data_from_page(struct rule_create_widget  *widget,
 	res = get_pktmeta_data_from_page(widget->meta, data->pktmeta);
 	if (res != RULE_SUCCESS)
 		return res;
+	res = get_actions_data_from_page(widget->actions, data->actions);
 
-	return RULE_SUCCESS;
+	return res;
 }
 
 
@@ -1045,6 +1130,8 @@ int rule_create_getdata(struct rule_create_widget  *widget,
 	p = xmalloc(sizeof(struct rule_create_data));
 	p->header = xzalloc(sizeof(struct pktheader));
 	p->pktmeta = xzalloc(sizeof(struct pktmeta));
+	p->actions = xzalloc(sizeof(struct actions));
+	init_list_head(&p->actions->list);
 	init_list_head(&p->exprs);
 	p->header->saddr = xmalloc(sizeof(struct ip_addr_data));
 	p->header->daddr = xmalloc(sizeof(struct ip_addr_data));

@@ -245,7 +245,7 @@ struct match_pktmeta {
 enum action_type {
 	ACTION_ACCEPT,
 	ACTION_DROP,
-	ACTION_GOTO,
+	ACTION_JUMP,
 	ACTION_COUNTER,
 };
 
@@ -261,7 +261,7 @@ struct action_elem {
 	GtkWidget	*remove;
 };
 
-struct actions {
+struct actions_all {
 	int		offset;
 	int		len;
 	GtkWidget	*expander;
@@ -286,7 +286,7 @@ struct rule_create_widget {
 	struct match_header	*header;
 	struct match_pktmeta	*meta;
 	struct match_trackmeta	*track;
-	struct actions		*actions;
+	struct actions_all	*actions;
 	GtkWidget	*cancel;
 	GtkWidget	*ok;
 	GtkWidget	*msg;

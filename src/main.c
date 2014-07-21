@@ -882,7 +882,7 @@ struct rule_create_widget *rule_widget_container_create(struct rule_list_args *r
 
 	container->meta = xzalloc(sizeof(struct match_pktmeta));
 	container->track = xzalloc(sizeof(struct match_trackmeta));
-	container->actions = xzalloc(sizeof(struct actions));
+	container->actions = xzalloc(sizeof(struct actions_all));
 	init_list_head(&container->actions->list);
 
 	container->notebook = rule_arg->notebook;
@@ -1430,71 +1430,179 @@ void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_l
 static void rule_actions_remove(GtkButton *button, gpointer data)
 {
 	struct rule_create_widget *rule;
-	struct actions	*actions;
+	struct actions_all	*actions;
 	struct action_elem *elem;
-	
+	int	offset = 40;	
+
 	elem = (struct action_elem *)data;
 	rule = elem->rule;
 	actions = rule->actions;
 	list_del(&elem->list);
-	printf("aaaaaaaaaaaaaaaaa  %d\n", elem->type);
 	actions->len = 40;
+	switch (elem->type) {
+	case ACTION_ACCEPT:
+		gtk_widget_destroy(elem->label);
+		gtk_widget_destroy(elem->remove);
+		gtk_widget_set_sensitive(actions->action_list, TRUE);
+		gtk_widget_set_sensitive(actions->action, TRUE);
+		break;
+	case ACTION_DROP:
+		gtk_widget_destroy(elem->label);
+		gtk_widget_destroy(elem->remove);
+		gtk_widget_set_sensitive(actions->action_list, TRUE);
+		gtk_widget_set_sensitive(actions->action, TRUE);
+		break;
+	case ACTION_JUMP:
+		gtk_widget_destroy(elem->label);
+		gtk_widget_destroy(elem->widget1);
+		gtk_widget_destroy(elem->remove);
+		break;
+	case ACTION_COUNTER:
+		gtk_widget_destroy(elem->label);
+		gtk_widget_destroy(elem->widget1);
+		gtk_widget_destroy(elem->widget2);
+		gtk_widget_destroy(elem->widget3);
+		gtk_widget_destroy(elem->widget4);
+		gtk_widget_destroy(elem->remove);
+		break;
+	default:
+		BUG();
+	}
 
+	list_for_each_entry(elem, &actions->list, list) {
+		switch (elem->type) {
+		case ACTION_ACCEPT:
+			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->label, 100, offset);
+			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->remove, 40, offset);
+			offset += 40;
+			actions->len += 40;
+			break;
+		case ACTION_DROP:
+			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->label, 100, offset);
+			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->remove, 40, offset);
+			offset += 40;
+			actions->len += 40;
+			break;
+		case ACTION_JUMP:
+			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->label, 100, offset);
+			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->widget1, 160, offset);
+			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->remove, 40, offset);
+			offset += 40;
+			actions->len += 40;
+			break;
+		case ACTION_COUNTER:
+			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->label, 100, offset);
+			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->widget1, 380, offset);
+			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->widget2, 160, offset);
+			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->widget3, 700, offset);
+			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->widget4, 480, offset);
+			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->remove, 40, offset);
+			offset += 40;
+			actions->len += 40;
+			break;
+		default:
+			BUG();
+		}
+	}
+
+	update_cancel_ok_position(rule);
 }
 
-static void rule_actions_add_goto(struct rule_create_widget *new_rule)
+static void rule_actions_add_jump(struct rule_create_widget *new_rule, struct action *action)
 {
 	struct action_elem *elem;
-	struct actions	*actions;
+	struct actions_all	*actions;
+	LIST_HEAD(chain_list);
+	struct chain_list_data   *chain, *c;
+	int	res;
+	int	index = 0;
+	int	selected = 0;
+
+	res = gui_get_chains_list(&chain_list, new_rule->family, new_rule->table, "user");
+	if (res != CHAIN_SUCCESS) {
+		GtkWidget *dialog;
+		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+                                 0,
+                                 GTK_MESSAGE_ERROR,
+                                 GTK_BUTTONS_OK,
+                                 chain_error[res]
+                                 );
+
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		return;
+	}
+
 
 	actions = new_rule->actions;
 	elem = xzalloc(sizeof(struct action_elem));
 	elem->rule = new_rule;
-	elem->type = ACTION_GOTO;
-	elem->label = gtk_label_new("Go to:");
-	elem->widget1 = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(elem->widget1), 30);
-	gtk_entry_set_max_length(GTK_ENTRY(elem->widget1), 20);
-	elem->remove = gtk_button_new_with_label("Delete");
+	elem->type = ACTION_JUMP;
+	elem->label = gtk_label_new("Jump to:");
+
+	elem->widget1 = gtk_combo_box_text_new();
+	gtk_widget_set_size_request(elem->widget1, 150, 10);
+	list_for_each_entry_safe(chain, c, &chain_list, list) {
+		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(elem->widget1),
+				xstrdup(chain->chain), xstrdup(chain->chain));
+		list_del(&chain->list);
+		gui_chain_free(chain);	
+		if (action) {
+			if (!strcpy(action->chain, chain->chain))
+				selected = index;
+		}
+		index++;
+	}
+	gtk_combo_box_set_active(GTK_COMBO_BOX(elem->widget1), selected);
+	elem->remove = gtk_button_new_with_label("X");
 	g_signal_connect(G_OBJECT(elem->remove), "clicked", G_CALLBACK(rule_actions_remove), elem);
 	list_add_tail(&elem->list, &actions->list);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->label, 40, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->widget1, 100, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->remove, 400, actions->len);
+	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->label, 100, actions->len);
+	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->widget1, 160, actions->len);
+	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->remove, 40, actions->len);
 	actions->len += 40;
 	gtk_widget_show(elem->label);
 	gtk_widget_show(elem->widget1);
 	gtk_widget_show(elem->remove);
-	update_cancel_ok_position(new_rule);
+	gtk_widget_set_sensitive(actions->action_list, FALSE);
+	gtk_widget_set_sensitive(actions->action, FALSE);
 }
 
-static void rule_actions_add_counter(struct rule_create_widget *new_rule)
+static void rule_actions_add_counter(struct rule_create_widget *new_rule, struct action *action)
 {
 	struct action_elem *elem;
-	struct actions	*actions;
+	struct actions_all	*actions;
 
 	actions = new_rule->actions;
 	elem = xzalloc(sizeof(struct action_elem));
 	elem->rule = new_rule;
 	elem->type = ACTION_COUNTER;
 	elem->label = gtk_label_new("Counter:");
-	elem->widget1 = gtk_label_new("packets");
+	elem->widget1 = gtk_label_new("(packets)");
 	elem->widget2 = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(elem->widget2), 20);
-	gtk_entry_set_max_length(GTK_ENTRY(elem->widget2), 20);
-	elem->widget3 = gtk_label_new("bytes");
+	gtk_entry_set_width_chars(GTK_ENTRY(elem->widget2), 25);
+	gtk_entry_set_max_length(GTK_ENTRY(elem->widget2), 30);
+	elem->widget3 = gtk_label_new("(bytes)");
 	elem->widget4 = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(elem->widget4), 20);
-	gtk_entry_set_max_length(GTK_ENTRY(elem->widget4), 20);
-	elem->remove = gtk_button_new_with_label("Delete");
+	gtk_entry_set_width_chars(GTK_ENTRY(elem->widget4), 25);
+	gtk_entry_set_max_length(GTK_ENTRY(elem->widget4), 30);
+	elem->remove = gtk_button_new_with_label("X");
 	g_signal_connect(G_OBJECT(elem->remove), "clicked", G_CALLBACK(rule_actions_remove), elem);
 	list_add_tail(&elem->list, &actions->list);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->label, 40, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->widget1, 140, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->widget2, 200, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->widget3, 400, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->widget4, 440, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->remove, 700, actions->len);
+	if (action) {
+		char  packets[100];
+		char  bytes[100];
+		snprintf(packets, 100, "%llu", action->packets);
+		snprintf(bytes, 100, "%llu", action->bytes);
+		gtk_entry_set_text(GTK_ENTRY(elem->widget2), packets);
+		gtk_entry_set_text(GTK_ENTRY(elem->widget4), bytes);
+	}
+	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->label, 100, actions->len);
+	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->widget1, 380, actions->len);
+	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->widget2, 160, actions->len);
+	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->widget3, 700, actions->len);
+	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->widget4, 480, actions->len);
+	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->remove, 40, actions->len);
 	actions->len += 40;
 	gtk_widget_show(elem->label);
 	gtk_widget_show(elem->widget1);
@@ -1502,53 +1610,50 @@ static void rule_actions_add_counter(struct rule_create_widget *new_rule)
 	gtk_widget_show(elem->widget3);
 	gtk_widget_show(elem->widget4);
 	gtk_widget_show(elem->remove);
-	update_cancel_ok_position(new_rule);
 }
 
-static void rule_actions_add_accept(struct rule_create_widget *new_rule)
+static void rule_actions_add_accept(struct rule_create_widget *new_rule, struct action *action)
 {
 	struct action_elem *elem;
-	struct actions	*actions;
+	struct actions_all	*actions;
 
 	actions = new_rule->actions;
 	elem = xzalloc(sizeof(struct action_elem));
 	elem->rule = new_rule;
 	elem->type = ACTION_ACCEPT;
 	elem->label = gtk_label_new("Accept:");
-	elem->remove = gtk_button_new_with_label("Delete");
+	elem->remove = gtk_button_new_with_label("X");
 	g_signal_connect(G_OBJECT(elem->remove), "clicked", G_CALLBACK(rule_actions_remove), elem);
 	list_add_tail(&elem->list, &actions->list);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->label, 40, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->remove, 200, actions->len);
+	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->label, 100, actions->len);
+	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->remove, 40, actions->len);
 	actions->len += 40;
 	gtk_widget_show(elem->label);
 	gtk_widget_show(elem->remove);
 	gtk_widget_set_sensitive(actions->action_list, FALSE);
 	gtk_widget_set_sensitive(actions->action, FALSE);
-	update_cancel_ok_position(new_rule);
 }
 
-static void rule_actions_add_drop(struct rule_create_widget *new_rule)
+static void rule_actions_add_drop(struct rule_create_widget *new_rule, struct action *action)
 {
 	struct action_elem *elem;
-	struct actions	*actions;
+	struct actions_all	*actions;
 
 	actions = new_rule->actions;
 	elem = xzalloc(sizeof(struct action_elem));
 	elem->rule = new_rule;
 	elem->type = ACTION_DROP;
 	elem->label = gtk_label_new("Drop:");
-	elem->remove = gtk_button_new_with_label("Delete");
+	elem->remove = gtk_button_new_with_label("X");
 	g_signal_connect(G_OBJECT(elem->remove), "clicked", G_CALLBACK(rule_actions_remove), elem);
 	list_add_tail(&elem->list, &actions->list);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->label, 40, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->remove, 200, actions->len);
+	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->label, 100, actions->len);
+	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->remove, 40, actions->len);
 	actions->len += 40;
 	gtk_widget_show(elem->label);
 	gtk_widget_show(elem->remove);
 	gtk_widget_set_sensitive(actions->action_list, FALSE);
 	gtk_widget_set_sensitive(actions->action, FALSE);
-	update_cancel_ok_position(new_rule);
 }
 
 void rule_actions_add(GtkButton *button, gpointer data)
@@ -1561,15 +1666,16 @@ void rule_actions_add(GtkButton *button, gpointer data)
 	combo = GTK_COMBO_BOX_TEXT(new_rule->actions->action_list);
 	action = gtk_combo_box_text_get_active_text(combo);
 	if (!(strcmp(action, "accept")))
-		rule_actions_add_accept(new_rule);
+		rule_actions_add_accept(new_rule, NULL);
 	else if (!(strcmp(action, "drop")))
-		rule_actions_add_drop(new_rule);
+		rule_actions_add_drop(new_rule, NULL);
 	else if (!(strcmp(action, "go to")))
-		rule_actions_add_goto(new_rule);
+		rule_actions_add_jump(new_rule, NULL);
 	else if (!(strcmp(action, "counter")))
-		rule_actions_add_counter(new_rule);
+		rule_actions_add_counter(new_rule, NULL);
 	else
-		return;
+		BUG();
+	update_cancel_ok_position(new_rule);
 }
 
 void rule_add_content_actions(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg)
@@ -1580,14 +1686,17 @@ void rule_add_content_actions(struct rule_create_widget *new_rule, struct rule_l
 	GtkWidget	*list;
 	GtkWidget	*add;
 	int	offset = 80;
-	struct actions	*actions;
+	struct actions_all	*actions;
+	struct actions	*data = NULL;
+	struct action	*data_act;
 
 	actions = new_rule->actions;
 	actions->len = 40;
 	actions->expanded = 0;
 	fixed = new_rule->fixed;
-//	if (rule_arg && rule_arg->data)
-//		pktmeta = rule_arg->data->pktmeta;
+	if (rule_arg && rule_arg->data) {
+		data = rule_arg->data->actions;
+	}
 
 	if (new_rule->header->expanded)
 		offset += new_rule->header->len;
@@ -1623,6 +1732,27 @@ void rule_add_content_actions(struct rule_create_widget *new_rule, struct rule_l
 	actions->action_list = list;
 	actions->action = add;
 
+	if (data && !list_empty(&data->list)) {
+		actions->expanded = 1;
+		list_for_each_entry(data_act, &data->list, list) {
+			switch (data_act->type) {
+			case ACTION_ACCEPT:
+				rule_actions_add_accept(new_rule, data_act);
+				break;
+			case ACTION_DROP:
+				rule_actions_add_drop(new_rule, data_act);
+				break;
+			case ACTION_JUMP:
+				rule_actions_add_jump(new_rule, data_act);
+				break;
+			case ACTION_COUNTER:
+				rule_actions_add_counter(new_rule, data_act);
+				break;
+			default:
+				BUG();
+			}
+		}
+	}
 
 	gtk_widget_show_all(GTK_WIDGET(expander_actions));
 
@@ -1675,6 +1805,7 @@ void rule_add_content(struct rule_create_widget *new_rule, struct rule_list_args
 	rule_add_content_submit(new_rule);
 	gtk_expander_set_expanded(GTK_EXPANDER(new_rule->header->expander), new_rule->header->expanded);
 	gtk_expander_set_expanded(GTK_EXPANDER(new_rule->meta->expander), new_rule->meta->expanded);
+	gtk_expander_set_expanded(GTK_EXPANDER(new_rule->actions->expander), new_rule->actions->expanded);
 }
 
 void create_new_rule_begin(gpointer  data)

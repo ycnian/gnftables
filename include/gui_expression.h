@@ -24,7 +24,11 @@ int rule_iftype_gen_exprs(struct rule_create_data *data, struct list_head *head,
 int rule_skid_gen_exprs(struct rule_create_data *data, struct list_head *head, int uid);
 int rule_pktmeta_gen_exprs(struct rule_create_data *data, struct pktmeta *pktmeta);
 
-int rule_counter_gen_exprs(struct rule_create_data *data);
+int rule_accept_gen_exprs(struct rule_create_data *data, struct action *action);
+int rule_drop_gen_exprs(struct rule_create_data *data, struct action *action);
+int rule_jump_gen_exprs(struct rule_create_data *data, struct action *action);
+int rule_counter_gen_exprs(struct rule_create_data *data, struct action *action);
+int rule_actions_gen_exprs(struct rule_create_data *data, struct actions *actions);
 int rule_gen_expressions(struct rule_create_data *data);
 int rule_ip_upper_expr(struct rule_create_data *data, enum transport_type upper);
 
@@ -40,6 +44,9 @@ int rule_parse_udp_dport_expr(struct expr *expr, struct pktheader *header, enum 
 int rule_parse_header_expr(struct expr *expr, struct pktheader *header);
 int rule_parse_pktmeta(struct expr *expr, struct pktmeta *pktmeta);
 int rule_parse_expr(struct stmt *stmt, struct rule_create_data *p);
+int rule_parse_accept_expr(struct expr *expr, struct actions *actions);
+int rule_parse_drop_expr(struct expr *expr, struct actions *actions);
+int rule_parse_jump_expr(struct expr *expr, struct actions *actions);
 int rule_parse_verdict_stmt(struct stmt *stmt, struct rule_create_data *p);
 int rule_parse_counter_stmt(struct stmt *stmt, struct rule_create_data *p);
 int rule_parse_stmt(struct stmt *stmt, struct rule_create_data *p);

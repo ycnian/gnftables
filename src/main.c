@@ -1852,6 +1852,190 @@ void create_new_rule_begin(gpointer  data)
 }
 
 
+static void set_element_type_changed(GtkComboBoxText *widget, gpointer data)
+{
+	GtkTreeStore	*store;
+	struct set_create_widget *widgets;
+
+	widgets = (struct GtkTreeStore *)data;
+	store = GTK_TREE_STORE(widgets->store);
+	gtk_tree_store_clear(store);
+}
+
+static void set_add_element(GtkButton *button, gpointer  info)
+{
+	char	*value;
+	GtkEntry	*add;
+	GtkTreeIter	iter;
+	GtkTreeStore	*store;
+	struct set_create_widget *widgets;
+
+	widgets = (struct GtkTreeStore *)info;
+	store = GTK_TREE_STORE(widgets->store);
+	add = GTK_ENTRY(widgets->add);
+	value = get_data_from_entry(add);
+	if (value) {
+		gtk_tree_store_append(store, &iter, NULL);
+		gtk_tree_store_set(store, &iter, 0, value, -1);
+		gtk_entry_set_text(add, "");
+	}
+}
+
+static void set_remove_element(GtkButton *button, gpointer  info)
+{
+/*
+	char	*value;
+	GtkEntry	*add;
+	GtkTreeIter	iter;
+	GtkTreeStore	*store;
+	struct set_create_widget *widgets;
+
+	widgets = (struct GtkTreeStore *)info;
+	store = GTK_TREE_STORE(widgets->store);
+	add = GTK_ENTRY(widgets->add);
+	value = get_data_from_entry(add);
+	if (value) {
+		gtk_tree_store_append(store, &iter, NULL);
+		gtk_tree_store_set(store, &iter, 0, value, -1);
+		gtk_entry_set_text(add, "");
+	}
+*/
+}
+
+static void create_new_set(GtkButton *button, gpointer  data)
+{
+	GtkWidget	*layout;
+	GtkWidget	*title;
+	GtkWidget	*ok;
+	GtkWidget	*cancel;
+	GtkWidget	*frame;
+	GtkWidget	*layout_chain;
+	GtkWidget	*name;
+	GtkWidget	*name_value;
+	GtkWidget	*type;
+	GtkWidget	*type_value;
+	GtkWidget	*new;
+	GtkWidget	*new_value;
+	GtkWidget	*remove;
+	GtkWidget	*remove_value;
+	GtkWidget	*hook;
+	GtkWidget	*hook_value;
+	GtkWidget	*priority;
+	GtkWidget	*priority_value;
+	GtkWidget	*notebook;
+	GtkWidget	*msg;
+	GtkWidget	*scrolledwindow;
+	GtkWidget	*elems;
+	GtkCellRenderer	*renderer;
+	GtkTreeViewColumn	*column;
+	GtkTreeStore	*store;
+	GtkTreeIter	iter;
+
+	struct set_list_args  *set_arg;
+	struct set_create_widget *widgets;
+
+	set_arg = (struct set_list_args *)data;
+	widgets = xzalloc(sizeof(struct set_create_widget));
+	notebook = set_arg->notebook;
+	widgets->notebook = notebook;
+	widgets->family = set_arg->family;
+	widgets->table = set_arg->table;
+
+	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
+
+	layout = gtk_layout_new(NULL, NULL);
+	title = gtk_label_new("Sets");
+	gtk_widget_set_size_request(title, 200, 10);
+
+	frame = gtk_frame_new ("Create a new set");
+	gtk_container_set_border_width (GTK_CONTAINER(frame), 0);
+	gtk_widget_set_size_request(frame, 750, 420);
+	gtk_layout_put(GTK_LAYOUT(layout), frame, 50, 20);
+
+
+	layout_chain = gtk_layout_new(NULL, NULL);
+	gtk_container_add(GTK_CONTAINER(frame), layout_chain);
+
+	name = gtk_label_new("Name:");
+	gtk_layout_put(GTK_LAYOUT(layout_chain), name, 30, 30);
+	name_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(name_value), 30);
+	gtk_entry_set_max_length(GTK_ENTRY(name_value), 32);
+	gtk_layout_put(GTK_LAYOUT(layout_chain), name_value, 100, 30);
+	widgets->name = name_value;
+
+	type = gtk_label_new("Type:");
+	gtk_layout_put(GTK_LAYOUT(layout_chain), type, 30, 70);
+	type_value = gtk_combo_box_text_new();
+	gtk_widget_set_size_request(type_value, 150, 10);
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(type_value),
+			"IPv4 address", "IPv4 address");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(type_value),
+			"internet network service", "internet network service");
+	gtk_combo_box_set_active(GTK_COMBO_BOX(type_value), 0);
+	gtk_layout_put(GTK_LAYOUT(layout_chain), type_value, 100, 70);
+	widgets->type = type_value;
+
+    	new = gtk_button_new_with_label("==>");
+	gtk_layout_put(GTK_LAYOUT(layout_chain), new, 370, 140);
+	new_value = gtk_entry_new();
+	gtk_entry_set_width_chars(GTK_ENTRY(new_value), 30);
+	gtk_entry_set_max_length(GTK_ENTRY(new_value), 30);
+	gtk_layout_put(GTK_LAYOUT(layout_chain), new_value, 100, 140);
+	widgets->add = new_value;
+    	remove = gtk_button_new_with_label("<==");
+	gtk_layout_put(GTK_LAYOUT(layout_chain), remove, 370, 210);
+
+	store = gtk_tree_store_new(1, G_TYPE_STRING);
+	widgets->store = store;
+	elems = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
+	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(elems), FALSE);
+	renderer = gtk_cell_renderer_text_new();
+	column = gtk_tree_view_column_new_with_attributes("Id", renderer,
+			"text", 0, NULL);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(elems), column);
+	gtk_tree_store_append(store, &iter, NULL);
+	gtk_tree_store_set(store, &iter, 0, "hello world", -1);
+        scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
+	gtk_scrolled_window_set_min_content_width(
+			GTK_SCROLLED_WINDOW(scrolledwindow), 250);
+	gtk_scrolled_window_set_min_content_height(
+			GTK_SCROLLED_WINDOW(scrolledwindow), 300);
+	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolledwindow),
+			GTK_SHADOW_ETCHED_IN);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledwindow),
+			GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+	gtk_container_add(GTK_CONTAINER(scrolledwindow), elems);
+
+	gtk_layout_put(GTK_LAYOUT(layout_chain), scrolledwindow, 450, 30);
+
+	g_signal_connect(type_value, "changed",
+			G_CALLBACK(set_element_type_changed), widgets);
+	g_signal_connect(G_OBJECT(new), "clicked", G_CALLBACK(set_add_element), widgets);
+	g_signal_connect(G_OBJECT(remove), "clicked", G_CALLBACK(set_remove_element), widgets);
+
+
+	msg = gtk_label_new("");
+	gtk_layout_put(GTK_LAYOUT(layout_chain), msg, 30, 280);
+	widgets->msg = msg;
+
+    	cancel = gtk_button_new_with_label("Cancel");
+	gtk_widget_set_size_request(cancel, 100, 10);
+	g_signal_connect(G_OBJECT(cancel), "clicked", G_CALLBACK(back_to_chain_list), widgets);
+	gtk_layout_put(GTK_LAYOUT(layout_chain), cancel, 360, 360);
+
+    	ok = gtk_button_new_with_label("OK");
+	gtk_widget_set_size_request(ok, 100, 10);
+	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_chain), widgets);
+	gtk_layout_put(GTK_LAYOUT(layout_chain), ok, 480, 360);
+
+
+	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, title, 1);
+	gtk_widget_show_all(GTK_WIDGET(notebook));
+	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 1);
+	gtk_widget_queue_draw(GTK_WIDGET(notebook));
+}
+
 /*
  * Goto chain creating page
  *
@@ -2598,12 +2782,12 @@ void gnftables_set_init(GtkButton *button, gpointer  data)
 	gtk_widget_set_size_request(chain_list, 150, 10);
 	g_signal_connect(G_OBJECT(chain_list), "clicked",
 			G_CALLBACK(gnftables_goto_chain_list), set_arg);
-	gtk_layout_put(GTK_LAYOUT(layout), chain_list, 20, 10);
+	gtk_layout_put(GTK_LAYOUT(layout), chain_list, 530, 10);
 
     	create_set = gtk_button_new_with_label("Create Set");
 	gtk_widget_set_size_request(create_set, 150, 10);
-//	g_signal_connect(G_OBJECT(create_set), "clicked",
-//			G_CALLBACK(create_new_chain), set_arg);
+	g_signal_connect(G_OBJECT(create_set), "clicked",
+			G_CALLBACK(create_new_set), set_arg);
 	gtk_layout_put(GTK_LAYOUT(layout), create_set, 700, 10);
 	set_arg->store = store;
 
@@ -2714,7 +2898,7 @@ void gnftables_set_chain_init(gint family, gchar *table_name, GtkWidget *noteboo
 
 
 	type = gtk_label_new("Type");
-	gtk_layout_put(GTK_LAYOUT(layout), type, 30, 10);
+	gtk_layout_put(GTK_LAYOUT(layout), type, 20, 10);
 
 	combo_type = gtk_combo_box_text_new();
 	gtk_widget_set_size_request(combo_type, 100, 10);
@@ -2724,21 +2908,19 @@ void gnftables_set_chain_init(gint family, gchar *table_name, GtkWidget *noteboo
 			"user", "user");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
 			"filter", "filter");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
-			"nat", "nat");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
-			"route", "route");
-//	g_signal_connect(combo_type, "changed",
-//			G_CALLBACK(nftables_type_changed), chain_arg);
+//	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
+//			"nat", "nat");
+//	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
+//			"route", "route");
 	gtk_combo_box_set_active(GTK_COMBO_BOX(combo_type), 0);
 	chain_arg->type = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combo_type));
-	gtk_layout_put(GTK_LAYOUT(layout), combo_type, 90, 10);
+	gtk_layout_put(GTK_LAYOUT(layout), combo_type, 60, 10);
 
     	set_list = gtk_button_new_with_label("Go to set list page");
 	gtk_widget_set_size_request(set_list, 150, 10);
 	g_signal_connect(G_OBJECT(set_list), "clicked",
 			G_CALLBACK(gnftables_set_init), chain_arg);
-	gtk_layout_put(GTK_LAYOUT(layout), set_list, 220, 10);
+	gtk_layout_put(GTK_LAYOUT(layout), set_list, 530, 10);
 
     	create_chain = gtk_button_new_with_label("Create Chain");
 	gtk_widget_set_size_request(create_chain, 150, 10);

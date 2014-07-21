@@ -92,6 +92,16 @@ struct chain_list_args {
 	gchar		*type;
 };
 
+struct set_create_widget {
+	GtkWidget	*notebook;
+	GtkWidget	*name;
+	GtkWidget	*type;
+	GtkWidget	*add;
+	GtkWidget	*store;
+	GtkWidget	*msg;
+	gint		family;
+	gchar		*table;
+};
 
 struct set_list_args {
 	GtkWidget	*notebook;

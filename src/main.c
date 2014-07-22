@@ -381,6 +381,51 @@ void begin_create_new_rule(GtkButton *button, gpointer  info)
 
 }
 
+void begin_create_new_set(GtkButton *button, gpointer  info)
+{
+	GtkWidget	*notebook;
+	int		res;
+	struct chain_list_args *datac;
+	struct set_create_widget *widget;
+	struct set_create_data	*data = NULL;
+
+	widget = (struct set_create_widget *)info;
+	notebook = widget->notebook;
+
+	// check table exists
+	res = gui_check_table_exist(widget->family, widget->table);
+	if (res == TABLE_NOT_EXIST) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), set_error[SET_TABLE_NOT_EXIST]);
+		return;
+	} else if (res == TABLE_KERNEL_ERROR) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), set_error[SET_KERNEL_ERROR]);
+		return;
+	}
+
+	// get data
+	res = set_create_getdata(widget, &data);
+	if (res != SET_SUCCESS) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), set_error[res]);
+		return;
+	}
+
+	res = gui_add_set(data);
+//	xfree(data->table);
+//	xfree(data->set);
+	xfree(data);
+	if (res != SET_SUCCESS) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), set_error[res]);
+		return;
+	}
+
+	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
+	datac = xzalloc(sizeof(struct chain_list_args));
+	datac->notebook = widget->notebook;
+	datac->family = widget->family;
+	datac->table = widget->table;
+	gnftables_set_init(NULL, datac);
+}
+
 /*
  * Get data from chain creating page and send NFT_MSG_NEWCHAIN message to kernel.
  */
@@ -479,6 +524,22 @@ void back_to_rule_list(GtkButton *button, gpointer  info)
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
 }
+
+void back_to_set_list(GtkButton *button, gpointer info)
+{
+	struct chain_list_args *data;
+	struct set_create_widget  *args;
+	args = (struct set_create_widget *)info;
+	data = xzalloc(sizeof(struct chain_list_args));
+	GtkWidget	*notebook = args->notebook;
+	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
+
+	data->notebook = args->notebook;
+	data->family = args->family;
+	data->table = args->table;
+	gnftables_set_init(NULL, data);
+}
+
 
 void back_to_chain_list(GtkButton *button, gpointer  info)
 {
@@ -1592,8 +1653,8 @@ static void rule_actions_add_counter(struct rule_create_widget *new_rule, struct
 	if (action) {
 		char  packets[100];
 		char  bytes[100];
-		snprintf(packets, 100, "%llu", action->packets);
-		snprintf(bytes, 100, "%llu", action->bytes);
+		snprintf(packets, 100, "%lu", action->packets);
+		snprintf(bytes, 100, "%lu", action->bytes);
 		gtk_entry_set_text(GTK_ENTRY(elem->widget2), packets);
 		gtk_entry_set_text(GTK_ENTRY(elem->widget4), bytes);
 	}
@@ -1966,7 +2027,7 @@ static void create_new_set(GtkButton *button, gpointer  data)
 	widgets->name = name_value;
 
 	type = gtk_label_new("Type:");
-	gtk_layout_put(GTK_LAYOUT(layout_chain), type, 30, 70);
+	gtk_layout_put(GTK_LAYOUT(layout_chain), type, 30, 80);
 	type_value = gtk_combo_box_text_new();
 	gtk_widget_set_size_request(type_value, 150, 10);
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(type_value),
@@ -1974,15 +2035,15 @@ static void create_new_set(GtkButton *button, gpointer  data)
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(type_value),
 			"internet network service", "internet network service");
 	gtk_combo_box_set_active(GTK_COMBO_BOX(type_value), 0);
-	gtk_layout_put(GTK_LAYOUT(layout_chain), type_value, 100, 70);
+	gtk_layout_put(GTK_LAYOUT(layout_chain), type_value, 100, 80);
 	widgets->type = type_value;
 
     	new = gtk_button_new_with_label("==>");
-	gtk_layout_put(GTK_LAYOUT(layout_chain), new, 370, 140);
+	gtk_layout_put(GTK_LAYOUT(layout_chain), new, 370, 130);
 	new_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(new_value), 30);
 	gtk_entry_set_max_length(GTK_ENTRY(new_value), 30);
-	gtk_layout_put(GTK_LAYOUT(layout_chain), new_value, 100, 140);
+	gtk_layout_put(GTK_LAYOUT(layout_chain), new_value, 100, 130);
 	widgets->add = new_value;
     	remove = gtk_button_new_with_label("<==");
 	gtk_layout_put(GTK_LAYOUT(layout_chain), remove, 370, 210);
@@ -2023,13 +2084,13 @@ static void create_new_set(GtkButton *button, gpointer  data)
 
     	cancel = gtk_button_new_with_label("Cancel");
 	gtk_widget_set_size_request(cancel, 100, 10);
-	g_signal_connect(G_OBJECT(cancel), "clicked", G_CALLBACK(back_to_chain_list), widgets);
-	gtk_layout_put(GTK_LAYOUT(layout_chain), cancel, 360, 360);
+	g_signal_connect(G_OBJECT(cancel), "clicked", G_CALLBACK(back_to_set_list), widgets);
+	gtk_layout_put(GTK_LAYOUT(layout_chain), cancel, 420, 360);
 
     	ok = gtk_button_new_with_label("OK");
 	gtk_widget_set_size_request(ok, 100, 10);
-	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_chain), widgets);
-	gtk_layout_put(GTK_LAYOUT(layout_chain), ok, 480, 360);
+	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_set), widgets);
+	gtk_layout_put(GTK_LAYOUT(layout_chain), ok, 540, 360);
 
 
 	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, title, 1);

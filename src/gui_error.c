@@ -48,6 +48,7 @@ const char *rule_error[RULE_ERROR_NUM] = {
 const char *set_error[SET_ERROR_NUM]  = {
 	[SET_SUCCESS]		= "OK",
 	[SET_KERNEL_ERROR]	= "Could not receive data from kernel.",
+	[SET_TABLE_NOT_EXIST] = "Table doesn't exist.",
 };
 
 

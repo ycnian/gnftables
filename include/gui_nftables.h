@@ -392,5 +392,7 @@ void rule_add_content(struct rule_create_widget *new_rule, struct rule_list_args
 //void rule_add_content_header_data(struct match_header *header, struct pktheader *header_data);
 void rule_add_content_actions(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg);
 void rule_actions_add(GtkButton *button, gpointer data);
+void back_to_set_list(GtkButton *button, gpointer info);
+void begin_create_new_set(GtkButton *button, gpointer info);
 
 #endif

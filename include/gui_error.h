@@ -44,7 +44,8 @@
 
 #define  SET_SUCCESS		0
 #define  SET_KERNEL_ERROR	1
-#define  SET_ERROR_NUM		2
+#define  SET_TABLE_NOT_EXIST	2
+#define  SET_ERROR_NUM		3
 
 #define  ELEMENT_SUCCESS	0
 #define  ELEMENT_KERNEL_ERROR	1

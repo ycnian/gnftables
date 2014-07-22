@@ -863,3 +863,8 @@ int str2family(const char *family)
 		return -1;
 }
 
+int gui_add_set(struct set_create_data *gui_set)
+{
+
+	return SET_SUCCESS;
+}

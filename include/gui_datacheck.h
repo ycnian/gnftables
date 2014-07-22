@@ -18,6 +18,16 @@ struct chain_create_data {
 	int	priority;
 };
 
+struct set_create_data {
+	int	family;
+	char	*table;
+	char	*set;
+	int	basechain;
+	char	*type;
+	int	hook;
+	int	priority;
+};
+
 struct ip_convert {
 	char	ip[4];
 	struct list_head  list;
@@ -246,4 +256,7 @@ int get_actions_data_from_page(struct actions_all *widget, struct actions *data)
 
 char *string_skip_space(char *str);
 int pktmeta_iftype_check(char *type, unsigned short *value);
+
+int set_create_getdata(struct set_create_widget  *widget,
+                struct set_create_data **data);
 #endif

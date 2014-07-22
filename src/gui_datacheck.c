@@ -1157,3 +1157,11 @@ error:
 	rule_free_data(p);
 	return res;
 }
+
+
+int set_create_getdata(struct set_create_widget  *widget,
+		struct set_create_data **data)
+{
+
+	return SET_SUCCESS;
+}

@@ -1883,23 +1883,24 @@ static void set_add_element(GtkButton *button, gpointer  info)
 
 static void set_remove_element(GtkButton *button, gpointer  info)
 {
-/*
-	char	*value;
-	GtkEntry	*add;
 	GtkTreeIter	iter;
 	GtkTreeStore	*store;
+	GtkTreeView	*treeview;
+	GtkTreeModel	*model;
+	GtkTreeSelection *selection;
 	struct set_create_widget *widgets;
 
 	widgets = (struct GtkTreeStore *)info;
 	store = GTK_TREE_STORE(widgets->store);
-	add = GTK_ENTRY(widgets->add);
-	value = get_data_from_entry(add);
-	if (value) {
-		gtk_tree_store_append(store, &iter, NULL);
-		gtk_tree_store_set(store, &iter, 0, value, -1);
-		gtk_entry_set_text(add, "");
+	treeview = GTK_TREE_VIEW(widgets->treeview);
+	selection  = gtk_tree_view_get_selection(treeview);
+	model = gtk_tree_view_get_model(treeview);
+	if (gtk_tree_model_get_iter_first(model, &iter) == FALSE)
+		return;
+	if (gtk_tree_selection_get_selected(GTK_TREE_SELECTION(selection),
+			&model, &iter)) {
+		gtk_tree_store_remove(store, &iter);
 	}
-*/
 }
 
 static void create_new_set(GtkButton *button, gpointer  data)
@@ -2006,6 +2007,7 @@ static void create_new_set(GtkButton *button, gpointer  data)
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledwindow),
 			GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_container_add(GTK_CONTAINER(scrolledwindow), elems);
+	widgets->treeview = elems;
 
 	gtk_layout_put(GTK_LAYOUT(layout_chain), scrolledwindow, 450, 30);
 

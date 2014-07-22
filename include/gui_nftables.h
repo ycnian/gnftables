@@ -98,6 +98,7 @@ struct set_create_widget {
 	GtkWidget	*type;
 	GtkWidget	*add;
 	GtkWidget	*store;
+	GtkWidget	*treeview;
 	GtkWidget	*msg;
 	gint		family;
 	gchar		*table;

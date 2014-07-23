@@ -19,13 +19,23 @@ struct chain_create_data {
 };
 
 struct set_create_data {
-	int	family;
-	char	*table;
-	char	*set;
-	int	basechain;
-	char	*type;
-	int	hook;
-	int	priority;
+	int		family;
+	char		*table;
+	char		*set;
+	unsigned int	flags;
+	const struct datatype	*keytype;
+	unsigned int	keylen;
+	const struct datatype	*datatype;
+	unsigned int	datalen;
+	struct list_head	elems;
+};
+
+struct elem_create_data {
+	struct list_head	list;
+	unsigned int	flags;
+	unsigned int	type;
+	char		*key;
+	char		*data;
 };
 
 struct ip_convert {

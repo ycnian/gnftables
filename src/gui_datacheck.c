@@ -1158,10 +1158,77 @@ error:
 	return res;
 }
 
+static int set_get_name_from_page(struct set_create_widget *widget,
+		struct set_create_data *data)
+{
+	char	*name;
+	name = get_data_from_entry(GTK_ENTRY(widget->name));
+	data->set = xstrdup(name);
+	return SET_SUCCESS;
+}
+
+static int set_get_type_from_page(struct set_create_widget *widget,
+		struct set_create_data *data)
+{
+	char	*type;
+	type = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget->type));
+	data->keytype = datatype_lookup_bydesc(type);
+	data->keylen = data->keytype->size;
+	return SET_SUCCESS;
+}
+
+static int set_get_elems_from_page(struct set_create_widget *widget,
+		struct set_create_data *data)
+{
+	GtkTreeIter     iter;
+	GtkTreeView     *treeview;
+	GtkTreeModel    *model;
+	char    *value;
+	int     valid = 1;
+	struct elem_create_data *elem;
+
+	treeview = GTK_TREE_VIEW(widget->treeview);
+	model = gtk_tree_view_get_model(treeview);
+	if (gtk_tree_model_get_iter_first(model, &iter) == FALSE)
+		return SET_SUCCESS;
+
+	while(valid) {
+		elem = xzalloc(sizeof(struct elem_create_data));
+		elem->type = data->keytype->type;
+		gtk_tree_model_get(model, &iter, 0, &value, -1);
+		elem->key = value;
+		valid = gtk_tree_model_iter_next(model, &iter);
+		list_add_tail(&elem->list, &data->elems);
+	}
+	return SET_SUCCESS;
+}
 
 int set_create_getdata(struct set_create_widget  *widget,
 		struct set_create_data **data)
 {
+	int	res;
+	struct set_create_data	*p;
 
+	p = xzalloc(sizeof(struct set_create_data));
+	p->family = widget->family;
+	p->table = xstrdup(widget->table);
+	init_list_head(&p->elems);
+
+	res = set_get_name_from_page(widget, p);
+	if (res != SET_SUCCESS)
+		goto out;
+	res = set_get_type_from_page(widget, p);
+	if (res != SET_SUCCESS)
+		goto out;
+	res = set_get_elems_from_page(widget, p);
+	if (res != SET_SUCCESS)
+		goto out;
+
+	*data = p;
 	return SET_SUCCESS;
+out:
+	xfree(p->table);
+	xfree(p->set);
+	xfree(p);
+	return res;
 }

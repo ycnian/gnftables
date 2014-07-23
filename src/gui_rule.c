@@ -541,7 +541,6 @@ int gui_add_chain(struct chain_create_data *gui_chain)
 	init_list_head(&chain.list);
 	init_list_head(&chain.rules);
 
-	netlink_add_chain(&ctx, &handle, &loc, &chain, false);
 	if (netlink_add_chain(&ctx, &handle, &loc, &chain, false) < 0) {
 		if (errno == EEXIST)
 			return CHAIN_EXIST;
@@ -865,6 +864,44 @@ int str2family(const char *family)
 
 int gui_add_set(struct set_create_data *gui_set)
 {
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	struct set		set;
+	int	res = SET_SUCCESS;
+
+	bool batch_supported = netlink_batch_supported();
+	LIST_HEAD(msgs);
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+	ctx.seqnum  = mnl_seqnum_alloc();
+	ctx.batch_supported = 0;
+	init_list_head(&ctx.list);
+
+	handle.family = gui_set->family;
+	handle.table = xstrdup(gui_set->table);
+	handle.set = xstrdup(gui_set->set);
+	handle.handle = 0;
+
+	set.handle = handle;
+	set.flags = 0;
+	set.keytype = gui_set->keytype;
+	set.keylen = gui_set->keylen;
+	set.init = NULL;
+
+	if (!list_empty(&(gui_set->elems)))
+		res = set_gen_expressions(&set, gui_set);
+	if (res != SET_SUCCESS)
+		return CHAIN_KERNEL_ERROR;
+
+	if (netlink_add_set(&ctx, &handle, &set) < 0) {
+		return CHAIN_KERNEL_ERROR;
+	}
+	if (set.init != NULL) {
+		if (netlink_add_setelems(&ctx, &set.handle, set.init) < 0)
+			return CHAIN_KERNEL_ERROR;
+	}
 
 	return SET_SUCCESS;
 }

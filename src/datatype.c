@@ -70,6 +70,21 @@ const struct datatype *datatype_lookup_byname(const char *name)
 	return NULL;
 }
 
+const struct datatype *datatype_lookup_bydesc(const char *desc)
+{
+	const struct datatype *dtype;
+	enum datatypes type;
+
+	for (type = TYPE_INVALID; type <= TYPE_MAX; type++) {
+		dtype = datatypes[type];
+		if (dtype == NULL)
+			continue;
+		if (!strcmp(dtype->desc, desc))
+			return dtype;
+	}
+	return NULL;
+}
+
 void datatype_print(const struct expr *expr)
 {
 	const struct datatype *dtype = expr->dtype;

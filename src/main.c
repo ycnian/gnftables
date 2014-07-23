@@ -2042,7 +2042,6 @@ static void create_new_set(GtkButton *button, gpointer  data)
 	gtk_layout_put(GTK_LAYOUT(layout_chain), new, 370, 130);
 	new_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(new_value), 30);
-	gtk_entry_set_max_length(GTK_ENTRY(new_value), 30);
 	gtk_layout_put(GTK_LAYOUT(layout_chain), new_value, 100, 130);
 	widgets->add = new_value;
     	remove = gtk_button_new_with_label("<==");
@@ -2056,8 +2055,6 @@ static void create_new_set(GtkButton *button, gpointer  data)
 	column = gtk_tree_view_column_new_with_attributes("Id", renderer,
 			"text", 0, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(elems), column);
-	gtk_tree_store_append(store, &iter, NULL);
-	gtk_tree_store_set(store, &iter, 0, "hello world", -1);
         scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
 	gtk_scrolled_window_set_min_content_width(
 			GTK_SCROLLED_WINDOW(scrolledwindow), 250);
@@ -2528,7 +2525,7 @@ void rule_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer
 	gui_get_rule(family, table, chain, handle, &rule_args->data);
 
 	// goto rule edit page
-	create_new_rule_begin(data);	// zzzz
+	create_new_rule_begin(data);
 }
 
 void rule_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)

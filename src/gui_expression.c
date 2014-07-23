@@ -771,6 +771,45 @@ int rule_gen_expressions(struct rule_create_data *data)
 	return res;
 }
 
+
+int set_gen_expressions(struct set *set, struct set_create_data *gui_set)
+{
+	struct location	loc;
+	struct expr  *elem;
+	struct expr  *symbol;
+	struct expr  *next;
+	struct expr  *constant;
+	struct expr  *tmp;
+	struct elem_create_data	*data;
+
+	elem = set_expr_alloc(&loc);
+	list_for_each_entry(data, &(gui_set->elems), list) {
+		symbol = symbol_expr_alloc(&loc, SYMBOL_VALUE, NULL, data->key);
+		compound_expr_add(elem, symbol);
+	}
+	switch (gui_set->keytype->type) {
+	case TYPE_IPADDR:
+		elem->ops->set_type(elem, &ipaddr_type, BYTEORDER_BIG_ENDIAN);
+		break;
+	case TYPE_INET_SERVICE:
+		elem->ops->set_type(elem, &inet_service_type, BYTEORDER_BIG_ENDIAN);
+		break;
+	default:
+		BUG();
+	}
+	list_for_each_entry_safe(symbol, tmp, &(elem->expressions), list) {
+		next = list_entry(symbol->list.next, struct expr, list);
+		list_del(&(symbol->list));
+		symbol_parse(symbol, &constant);
+		list_add_tail(&constant->list, &next->list);
+		expr_free(symbol);
+	}
+
+	set->init = elem;
+	return SET_SUCCESS;
+}
+
+
 struct header_parse{
 	const char	*name;
 	int		(*parse)(struct expr *expr, struct pktheader *header, enum ops op);

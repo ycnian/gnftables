@@ -132,6 +132,7 @@ struct datatype {
 extern void datatype_register(const struct datatype *dtype);
 extern const struct datatype *datatype_lookup(enum datatypes type);
 extern const struct datatype *datatype_lookup_byname(const char *name);
+extern const struct datatype *datatype_lookup_bydesc(const char *name);
 
 extern struct error_record *symbol_parse(const struct expr *sym,
 					 struct expr **res);

@@ -32,6 +32,8 @@ int rule_actions_gen_exprs(struct rule_create_data *data, struct actions *action
 int rule_gen_expressions(struct rule_create_data *data);
 int rule_ip_upper_expr(struct rule_create_data *data, enum transport_type upper);
 
+int set_gen_expressions(struct set *set, struct set_create_data *gui_set);
+
 int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr, enum ops op);
 int rule_parse_ip_protocol_expr(struct expr *expr, struct pktheader *header, enum ops op);
 int rule_parse_ip_saddr_expr(struct expr *expr, struct pktheader *header, enum ops op);

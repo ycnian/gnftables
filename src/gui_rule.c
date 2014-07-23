@@ -908,7 +908,36 @@ int gui_add_set(struct set_create_data *gui_set)
 
 int gui_get_set(struct set_create_data *gui_set)
 {
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	int			res;
+	struct set	*set;
 
+	LIST_HEAD(msgs);
 
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+	ctx.seqnum  = mnl_seqnum_alloc();
+	init_list_head(&ctx.list);
 
+	handle.family = gui_set->family;
+	handle.table = gui_set->table;
+	handle.set = gui_set->set;
+
+	res = netlink_get_set(&ctx, &handle, &loc);
+	if (res < 0) {
+		return SET_KERNEL_ERROR;
+	}
+
+	set = list_first_entry(&ctx.list, struct set, list);
+	gui_set->keytype = set->keytype;
+	gui_set->keylen = set->keylen;
+
+	netlink_get_setelems(&ctx, &handle, &loc, set);
+	set_de_expressions(set, gui_set);
+
+	return SET_SUCCESS;
 }
+	
+

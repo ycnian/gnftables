@@ -53,4 +53,7 @@ int rule_parse_verdict_stmt(struct stmt *stmt, struct rule_create_data *p);
 int rule_parse_counter_stmt(struct stmt *stmt, struct rule_create_data *p);
 int rule_parse_stmt(struct stmt *stmt, struct rule_create_data *p);
 int rule_de_expressions(struct rule *rule, struct rule_create_data **data);
+
+int set_parse_expr(struct expr *expr, struct set_create_data *gui_set);
+int set_de_expressions(struct set *set, struct set_create_data *gui_set);
 #endif

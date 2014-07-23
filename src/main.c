@@ -1995,6 +1995,8 @@ static void create_new_set(GtkButton *button, gpointer  data)
 
 	struct set_list_args  *set_arg;
 	struct set_create_widget *widgets;
+	struct set_create_data	*set_data;
+	struct elem_create_data	*elem_data;
 
 	set_arg = (struct set_list_args *)data;
 	widgets = xzalloc(sizeof(struct set_create_widget));
@@ -2002,6 +2004,7 @@ static void create_new_set(GtkButton *button, gpointer  data)
 	widgets->notebook = notebook;
 	widgets->family = set_arg->family;
 	widgets->table = set_arg->table;
+	set_data = set_arg->data;
 
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
 
@@ -2023,6 +2026,10 @@ static void create_new_set(GtkButton *button, gpointer  data)
 	name_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(name_value), 30);
 	gtk_entry_set_max_length(GTK_ENTRY(name_value), 32);
+	if (set_data) {
+		gtk_entry_set_text(GTK_ENTRY(name_value), set_data->set);
+		gtk_widget_set_sensitive(name_value, FALSE);
+	}
 	gtk_layout_put(GTK_LAYOUT(layout_chain), name_value, 100, 30);
 	widgets->name = name_value;
 
@@ -2034,7 +2041,14 @@ static void create_new_set(GtkButton *button, gpointer  data)
 			"IPv4 address", "IPv4 address");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(type_value),
 			"internet network service", "internet network service");
-	gtk_combo_box_set_active(GTK_COMBO_BOX(type_value), 0);
+	if (set_data) {
+		if (set_data->keytype->type == TYPE_IPADDR)
+			gtk_combo_box_set_active(GTK_COMBO_BOX(type_value), 0);
+		if (set_data->keytype->type == TYPE_INET_SERVICE)
+			gtk_combo_box_set_active(GTK_COMBO_BOX(type_value), 1);
+		gtk_widget_set_sensitive(type_value, FALSE);
+	} else
+		gtk_combo_box_set_active(GTK_COMBO_BOX(type_value), 0);
 	gtk_layout_put(GTK_LAYOUT(layout_chain), type_value, 100, 80);
 	widgets->type = type_value;
 
@@ -2055,6 +2069,13 @@ static void create_new_set(GtkButton *button, gpointer  data)
 	column = gtk_tree_view_column_new_with_attributes("Id", renderer,
 			"text", 0, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(elems), column);
+	if (set_data) {
+		list_for_each_entry(elem_data, &(set_data->elems), list) {
+			gtk_tree_store_append(store, &iter, NULL);
+			gtk_tree_store_set(store, &iter, 0, xstrdup(elem_data->key), -1);
+		}
+	}
+
         scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
 	gtk_scrolled_window_set_min_content_width(
 			GTK_SCROLLED_WINDOW(scrolledwindow), 250);
@@ -2465,7 +2486,12 @@ static void set_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gp
 	gtk_tree_model_get_iter_from_string(model, &iter, path_str);
 	gtk_tree_model_get(model, &iter, SET_NAME, &set, -1);
 	set_args->set = set;
-
+	set_args->data = xzalloc(sizeof(struct set_create_data));
+	init_list_head(&(set_args->data->elems));
+	set_args->data->family = set_args->family;
+	set_args->data->table = xstrdup(set_args->table);
+	set_args->data->set = xstrdup(set_args->set);
+	gui_get_set(set_args->data);
 	// check set exists
 	// if ((!set exists) && !(table exits))
 	// 	show tables list page

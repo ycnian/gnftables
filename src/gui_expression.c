@@ -1269,3 +1269,30 @@ int rule_de_expressions(struct rule *rule, struct rule_create_data **data)
 	*data = p;
 	return RULE_SUCCESS;
 }
+
+int set_parse_expr(struct expr *expr, struct set_create_data *gui_set)
+{
+	int	size;
+	char	*buf;
+	struct elem_create_data	*elem;
+
+	elem = xzalloc(sizeof(struct elem_create_data));
+	elem->type = gui_set->keytype->type;
+	size = expr->ops->snprint(NULL, 0, expr);
+	buf = xmalloc(size + 1);
+	expr->ops->snprint(buf, size + 1, expr);
+	elem->key = buf;
+	list_add_tail(&elem->list, &gui_set->elems);
+	return SET_SUCCESS;
+}
+
+int set_de_expressions(struct set *set, struct set_create_data *gui_set)
+{
+	int	res;
+	struct expr	*expr;
+
+	list_for_each_entry(expr, &set->init->expressions, list) {
+		set_parse_expr(expr, gui_set);
+	}
+	return SET_SUCCESS;
+}

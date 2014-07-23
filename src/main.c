@@ -2089,7 +2089,6 @@ static void create_new_set(GtkButton *button, gpointer  data)
 	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_set), widgets);
 	gtk_layout_put(GTK_LAYOUT(layout_chain), ok, 540, 360);
 
-
 	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, title, 1);
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 1);
@@ -2446,7 +2445,36 @@ void gnftables_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkW
 }
 
 
+static void set_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
+{
+	GtkTreeIter		iter;
+	int			family;
+	gchar			*table;
+	gchar			*set;
+	GtkTreeModel		*model;
+	GtkWidget		*notebook;
+	struct set_list_args  *set_args;
 
+	set_args = (struct set_list_args *)data;
+
+	table = set_args->table;
+	family = set_args->family;
+	notebook = set_args->notebook;
+
+	model = GTK_TREE_MODEL(set_args->model);
+	gtk_tree_model_get_iter_from_string(model, &iter, path_str);
+	gtk_tree_model_get(model, &iter, SET_NAME, &set, -1);
+	set_args->set = set;
+
+	// check set exists
+	// if ((!set exists) && !(table exits))
+	// 	show tables list page
+	// else (!(set exists))
+	// 	set_update_data(family, table, GTK_TREE_STORE(model));
+	// else
+	// 	show set's details
+	create_new_set(NULL, set_args);
+}
 
 void chain_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
 {
@@ -2476,8 +2504,6 @@ void chain_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 		gnftables_rule_init(family, table, chain, notebook);
 
 	return;
-
-
 }
 
 void basechain_selected(GtkWidget *check_button, gpointer data) 
@@ -2856,7 +2882,7 @@ void gnftables_set_init(GtkButton *button, gpointer  data)
 	// treeview style
 	list_sets = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
 	renderer = gtk_cell_renderer_text_new();
-	chain_arg->model = gtk_tree_view_get_model(GTK_TREE_VIEW(list_sets));
+	set_arg->model = gtk_tree_view_get_model(GTK_TREE_VIEW(list_sets));
 
 	column = gtk_tree_view_column_new_with_attributes("Id", renderer,
 			"text", SET_ID, NULL);
@@ -2887,8 +2913,8 @@ void gnftables_set_init(GtkButton *button, gpointer  data)
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
 
 	renderer_details = gtk_cell_renderer_toggle_new();
-//	g_signal_connect(renderer_details, "toggled",
-//			G_CALLBACK(chain_callback_detail), chain_arg) ;
+	g_signal_connect(renderer_details, "toggled",
+			G_CALLBACK(set_callback_detail), set_arg) ;
 	column = gtk_tree_view_column_new_with_attributes("Details",
 			renderer_details, "active", SET_DETAIL, NULL);
 	gtk_tree_view_column_set_min_width(column, 80);
@@ -2917,6 +2943,7 @@ void gnftables_set_init(GtkButton *button, gpointer  data)
 	gtk_container_add(GTK_CONTAINER(scrolledwindow), list_sets);
 
 	gtk_layout_put(GTK_LAYOUT(layout), scrolledwindow, 0, 50);
+	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 2);
 	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, title, 1);
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 1);

@@ -905,3 +905,10 @@ int gui_add_set(struct set_create_data *gui_set)
 
 	return SET_SUCCESS;
 }
+
+int gui_get_set(struct set_create_data *gui_set)
+{
+
+
+
+}

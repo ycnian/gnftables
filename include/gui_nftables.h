@@ -112,6 +112,7 @@ struct set_list_args {
 	gchar		*table;
 	gchar		*set;
 	gchar		*type;
+	struct set_create_data	*data;
 };
 
 struct rule_list_args {

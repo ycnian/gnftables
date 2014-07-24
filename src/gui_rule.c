@@ -115,18 +115,32 @@ int gui_get_rules_number(int family, char *table, char *chain, int *nrules)
 	return RULE_SUCCESS;
 }
 
-
-// This is a tmp function, save rule in a tmp file.
-// We will get the data in an other way.
-int get_rule_data(struct rule *rule, char *file)
+static int rule_snprint(char *str, size_t size, const struct rule *rule)
 {
-	freopen(file, "w+", stdout);
-	rule_print(rule);
-	freopen("/dev/tty", "w", stdout);
-	return 0;
+	int	res = 0;
+	int	len;
+	const struct stmt *stmt;
+
+	if (!str) {
+		list_for_each_entry(stmt, &rule->stmts, list) {
+			res += snprintf(NULL, 0, " ");
+			res += stmt->ops->snprint(NULL, 0, stmt);
+		}
+		return res;
+	}
+
+	list_for_each_entry(stmt, &rule->stmts, list) {
+		len = snprintf(str + res, size - res, " ");
+		res += len;
+		if ((size_t)res >= size)
+			return -1;
+		len = stmt->ops->snprint(str + res, size - res, stmt);
+		res += len;
+		if ((size_t)res >= size)
+			return -1;
+	}
+	return res;
 }
-
-
 
 int gui_get_rules_list(struct list_head *head, int family, char *table, char *chain)
 {
@@ -137,9 +151,6 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 	struct rule		*rulee;
 	int			res;
 	struct gui_rule		*gui_rule;
-
-	char		*file = "/tmp/sjfosfaaheofsofaofa.txt";
-	int		fd;
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.seqnum  = mnl_seqnum_alloc();
@@ -165,16 +176,15 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 		return -1;
 
 	list_for_each_entry(rulee, &ctx.list, list) {
+		int	rule_len;
 		gui_rule = (struct gui_rule  *)malloc(sizeof(*gui_rule));
 		gui_rule->handle = rulee->handle.handle;
 		gui_rule->family = rulee->handle.family;
 		gui_rule->table = strdup(rulee->handle.table);
 		gui_rule->chain = strdup(rulee->handle.chain);
-		gui_rule->stmt = (char *)malloc(1024);
-		memset(gui_rule->stmt, 0, 1024);
-		get_rule_data(rulee, file);
-		fd = open(file, O_RDONLY);
-		read(fd, gui_rule->stmt, 1023);
+		rule_len = rule_snprint(NULL, 0, rulee);
+		gui_rule->stmt = xmalloc(rule_len + 1);
+		rule_snprint(gui_rule->stmt, rule_len + 1, rulee);
 		list_add_tail(&gui_rule->list, head);
 	}
 

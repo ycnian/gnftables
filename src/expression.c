@@ -164,6 +164,11 @@ static void verdict_expr_print(const struct expr *expr)
 	datatype_print(expr);
 }
 
+static int verdict_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	return datatype_snprint(str, size, expr);
+}
+
 static bool verdict_expr_cmp(const struct expr *e1, const struct expr *e2)
 {
 	if (e1->verdict != e2->verdict)
@@ -193,6 +198,7 @@ static const struct expr_ops verdict_expr_ops = {
 	.type		= EXPR_VERDICT,
 	.name		= "verdict",
 	.print		= verdict_expr_print,
+	.snprint	= verdict_expr_snprint,
 	.cmp		= verdict_expr_cmp,
 	.clone		= verdict_expr_clone,
 	.destroy	= verdict_expr_destroy,
@@ -217,6 +223,16 @@ static void symbol_expr_print(const struct expr *expr)
 	printf("%s%s", expr->scope != NULL ? "$" : "", expr->identifier);
 }
 
+static int symbol_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res;
+	res = snprintf(str, size, "%s%s", expr->scope != NULL ? "$" : "", expr->identifier);
+	if (res && (size_t)res >= size)
+		return -1;
+	else
+		return res;
+}
+
 static void symbol_expr_clone(struct expr *new, const struct expr *expr)
 {
 	new->symtype	= expr->symtype;
@@ -233,6 +249,7 @@ static const struct expr_ops symbol_expr_ops = {
 	.type		= EXPR_SYMBOL,
 	.name		= "symbol",
 	.print		= symbol_expr_print,
+	.snprint	= symbol_expr_snprint,
 	.clone		= symbol_expr_clone,
 	.destroy	= symbol_expr_destroy,
 };
@@ -490,6 +507,36 @@ static void unary_expr_print(const struct expr *expr)
 	printf(")");
 }
 
+static int unary_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res = 0;
+	int	len;
+	if (!str) {
+		if (expr_op_symbols[expr->op] != NULL)
+			res += snprintf(NULL, 0, "%s(", expr_op_symbols[expr->op]);
+		res += expr_snprint(NULL, 0, expr->arg);
+		res += snprintf(NULL, 0, ")");
+		return res;
+	}
+
+	if (expr_op_symbols[expr->op] != NULL) {
+		len = snprintf(str + res, size - res, "%s(", expr_op_symbols[expr->op]);
+		res += len;
+		if ((size_t)res >= size)
+			return -1;
+	}
+	len = expr_snprint(str + res, size - res, expr->arg);
+	res += len;
+	if ((size_t)res >= size)
+		return -1;
+	len = snprintf(str + res, size - res, ")");
+	res += len;
+	if ((size_t)res >= size)
+		return -1;
+
+	return res;
+}
+
 static void unary_expr_clone(struct expr *new, const struct expr *expr)
 {
 	new->arg = expr_clone(expr->arg);
@@ -504,6 +551,7 @@ static const struct expr_ops unary_expr_ops = {
 	.type		= EXPR_UNARY,
 	.name		= "unary",
 	.print		= unary_expr_print,
+	.snprint	= unary_expr_snprint,
 	.clone		= unary_expr_clone,
 	.destroy	= unary_expr_destroy,
 };
@@ -544,6 +592,45 @@ static void binop_arg_print(const struct expr *op, const struct expr *arg)
 		printf(")");
 }
 
+static int binop_arg_snprint(char *str, size_t size, const struct expr *op, const struct expr *arg)
+{
+	int	res = 0;
+	int	len;
+	bool prec = false;
+
+	if (arg->ops->type == EXPR_BINOP &&
+	    expr_binop_precedence[op->op] != 0 &&
+	    expr_binop_precedence[op->op] < expr_binop_precedence[arg->op])
+		prec = 1;
+
+	if (!str) {
+		if (prec)
+			res += snprintf(NULL, 0, "(");
+		res += expr_snprint(NULL, 0, arg);
+		if (prec)
+			res += snprintf(NULL, 0, ")");
+		return res;
+	}
+
+	if (prec) {
+		len = snprintf(str + res, size - res, "(");
+		res += len;
+		if ((size_t)res >= size)
+			return -1;
+	}
+	len = expr_snprint(str + res, size - res, arg);
+	res += len;
+	if (len == -1 || (size_t)res >= size)
+		return -1;
+	if (prec) {
+		len = snprintf(str + res, size - res, ")");
+		res += len;
+		if ((size_t)res >= size)
+			return -1;
+	}
+	return res;
+}
+
 static bool must_print_eq_op(const struct expr *expr)
 {
 	if (expr->right->dtype->basetype != NULL &&
@@ -566,6 +653,50 @@ static void binop_expr_print(const struct expr *expr)
 	binop_arg_print(expr, expr->right);
 }
 
+static int binop_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res = 0;
+	int	len;
+
+	if (!str) {
+		res += binop_arg_snprint(NULL, 0, expr, expr->left);
+
+		if (expr_op_symbols[expr->op] &&
+		    (expr->op != OP_EQ || must_print_eq_op(expr)))
+			res += snprintf(NULL, 0, " %s ", expr_op_symbols[expr->op]);
+		else
+			res += snprintf(NULL, 0, " ");
+
+		res += binop_arg_snprint(NULL, 0, expr, expr->right);
+		return res;
+	}
+
+	len = binop_arg_snprint(str + res, size - res, expr, expr->left);
+	res += len;
+	if (len == -1 || (size_t)res >= size)
+		return -1;
+
+	if (expr_op_symbols[expr->op] &&
+	    (expr->op != OP_EQ || must_print_eq_op(expr))) {
+		len = snprintf(str + res, size - res, " %s ", expr_op_symbols[expr->op]);
+		res += len;
+		if ((size_t)res >= size)
+			return -1;
+	} else {
+		len = snprintf(str + res, size - res, " ");
+		res += len;
+		if ((size_t)res >= size)
+			return -1;
+	}
+
+	len = binop_arg_snprint(str + res, size - res, expr, expr->right);
+	res += len;
+	if (len == -1 || (size_t)res >= size)
+		return -1;
+
+	return res;
+}
+
 static void binop_expr_clone(struct expr *new, const struct expr *expr)
 {
 	new->left  = expr_clone(expr->left);
@@ -582,6 +713,7 @@ static const struct expr_ops binop_expr_ops = {
 	.type		= EXPR_BINOP,
 	.name		= "binop",
 	.print		= binop_expr_print,
+	.snprint	= binop_expr_snprint,
 	.clone		= binop_expr_clone,
 	.destroy	= binop_expr_destroy,
 };
@@ -603,6 +735,7 @@ static const struct expr_ops relational_expr_ops = {
 	.type		= EXPR_RELATIONAL,
 	.name		= "relational",
 	.print		= binop_expr_print,
+	.snprint	= binop_expr_snprint,
 	.destroy	= binop_expr_destroy,
 };
 
@@ -624,6 +757,34 @@ static void range_expr_print(const struct expr *expr)
 	expr_print(expr->left);
 	printf("-");
 	expr_print(expr->right);
+}
+
+static int range_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res = 0;
+	int	len;
+
+	if (!str) {
+		res += expr_snprint(NULL, 0, expr->left);
+		res += snprintf(NULL, 0, "-");
+		res += expr_snprint(NULL, 0, expr->right);
+		return res;
+	}
+
+	len = expr_snprint(str + res, size - res, expr->left);
+	res += len;
+	if (len == -1 || (size_t)res >= size)
+		return -1;
+	len = snprintf(str + res, size - res, "-");
+	res += len;
+	if ((size_t)res >= size)
+		return -1;
+	len = expr_snprint(str + res, size - res, expr->right);
+	res += len;
+	if (len == -1 || (size_t)res >= size)
+		return -1;
+
+	return res;
 }
 
 static void range_expr_clone(struct expr *new, const struct expr *expr)
@@ -650,6 +811,7 @@ static const struct expr_ops range_expr_ops = {
 	.type		= EXPR_RANGE,
 	.name		= "range",
 	.print		= range_expr_print,
+	.snprint	= range_expr_snprint,
 	.clone		= range_expr_clone,
 	.destroy	= range_expr_destroy,
 	.set_type	= range_expr_set_type,
@@ -707,7 +869,7 @@ static void compound_expr_print(const struct expr *expr, const char *delim)
 }
 static int compound_expr_snprint(char *str, size_t size, const struct expr *expr, const char *delim)
 {
-	int	res;
+	int	res = 0;
 	int	len = 0;
 	const struct expr *i;
 	const char *d = "";
@@ -764,10 +926,16 @@ static void concat_expr_print(const struct expr *expr)
 	compound_expr_print(expr, " . ");
 }
 
+static int concat_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	return compound_expr_snprint(str, size, expr, " . ");
+}
+
 static const struct expr_ops concat_expr_ops = {
 	.type		= EXPR_CONCAT,
 	.name		= "concat",
 	.print		= concat_expr_print,
+	.snprint	= concat_expr_snprint,
 	.clone		= compound_expr_clone,
 	.destroy	= concat_expr_destroy,
 };
@@ -782,10 +950,16 @@ static void list_expr_print(const struct expr *expr)
 	compound_expr_print(expr, ",");
 }
 
+static int list_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	return compound_expr_snprint(str, size, expr, ",");
+}
+
 static const struct expr_ops list_expr_ops = {
 	.type		= EXPR_LIST,
 	.name		= "list",
 	.print		= list_expr_print,
+	.snprint	= list_expr_snprint,
 	.clone		= compound_expr_clone,
 	.destroy	= compound_expr_destroy,
 };
@@ -804,28 +978,29 @@ static void set_expr_print(const struct expr *expr)
 
 static int set_expr_snprint(char *str, size_t size, const struct expr *expr)
 {
-	int	res;
-	int	len = 0;
+	int	res = 0;
+	int	len;
 
-	if (!str)
-		return compound_expr_snprint(NULL, 0, expr, ", ") + 3;
+	if (!str) {
+		res += snprintf(NULL, 0, "{ ");
+		res += compound_expr_snprint(NULL, 0, expr, ", ");
+		res += snprintf(NULL, 0, "}");
+		return res;
+	}
 
-	res = snprintf(str, size, "{ ");
-	len += res;
-	if ((size_t)len >= size)
+	len = snprintf(str + res, size - res, "{ ");
+	res += len;
+	if ((size_t)res >= size)
 		return -1;
-	res = compound_expr_snprint(str + len, size - len, expr, ", ");
-	if (res == -1)
+	len = compound_expr_snprint(str + res, size - res, expr, ", ");
+	res += len;
+	if (len == -1 || (size_t)res >= size)
 		return -1;
-	len += res;
-	if ((size_t)len >= size)
+	len = snprintf(str + res, size - res, "}");
+	res += len;
+	if ((size_t)res >= size)
 		return -1;
-	res = snprintf(str + len, size - len, "}");
-	len += res;
-	if ((size_t)len >= size)
-		return -1;
-	else
-		return len;
+	return res;
 }
 
 static void set_expr_set_type(const struct expr *expr,
@@ -860,6 +1035,33 @@ static void mapping_expr_print(const struct expr *expr)
 	expr_print(expr->right);
 }
 
+static int mapping_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res = 0;
+	int	len;
+
+	if (!str) {
+		res += expr_snprint(NULL, 0, expr->left);
+		res += snprintf(NULL, 0, " : ");
+		res += expr_snprint(NULL, 0, expr->right);
+		return res;
+	}
+
+	len = expr_snprint(str + res, size - res, expr->left);
+	res += len;
+	if (len == -1 || (size_t)res >= size)
+		return -1;
+	len = snprintf(str + res, size - res, " : ");
+	res += len;
+	if ((size_t)res >= size)
+		return -1;
+	len = expr_snprint(str + res, size - res, expr->right);
+	res += len;
+	if (len == -1 || (size_t)res >= size)
+		return -1;
+	return res;
+}
+
 static void mapping_expr_set_type(const struct expr *expr,
 				  const struct datatype *dtype,
 				  enum byteorder byteorder)
@@ -883,6 +1085,7 @@ static const struct expr_ops mapping_expr_ops = {
 	.type		= EXPR_MAPPING,
 	.name		= "mapping",
 	.print		= mapping_expr_print,
+	.snprint	= mapping_expr_snprint,
 	.set_type	= mapping_expr_set_type,
 	.clone		= mapping_expr_clone,
 	.destroy	= mapping_expr_destroy,
@@ -911,6 +1114,44 @@ static void map_expr_print(const struct expr *expr)
 	expr_print(expr->mappings);
 }
 
+static int map_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res = 0;
+	int	len;
+
+	if (!str) {
+		res += expr_snprint(NULL, 0, expr->map);
+		if (expr->mappings->ops->type == EXPR_SET_REF &&
+		    expr->mappings->set->datatype->type == TYPE_VERDICT)
+			res += snprintf(NULL, 0, " vmap ");
+		else
+			res += snprintf(NULL, 0, " map ");
+		res += expr_snprint(NULL, 0, expr->mappings);
+		return res;
+	}
+
+	len = expr_snprint(str + res, size - res, expr->map);
+	res += len;
+	if (len == -1 || (size_t)res >= size)
+		return -1;
+	if (expr->mappings->ops->type == EXPR_SET_REF &&
+	    expr->mappings->set->datatype->type == TYPE_VERDICT)
+		len = snprintf(str + res, size - res, " vmap ");
+		res += len;
+		if ((size_t)res >= size)
+			return -1;
+	else
+		len = snprintf(str + res, size - res, " map ");
+		res += len;
+		if ((size_t)res >= size)
+			return -1;
+	len = expr_snprint(str + res, size - res, expr->mappings);
+	res += len;
+	if (len == -1 || (size_t)res >= size)
+		return -1;
+	return res;
+}
+
 static void map_expr_clone(struct expr *new, const struct expr *expr)
 {
 	new->map      = expr_clone(expr->map);
@@ -927,6 +1168,7 @@ static const struct expr_ops map_expr_ops = {
 	.type		= EXPR_MAP,
 	.name		= "map",
 	.print		= map_expr_print,
+	.snprint	= map_expr_snprint,
 	.clone		= map_expr_clone,
 	.destroy	= map_expr_destroy,
 };

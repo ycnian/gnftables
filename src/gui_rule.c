@@ -951,3 +951,29 @@ int gui_get_set(struct set_create_data *gui_set)
 }
 	
 
+int gui_delete_set(int family, char *table, char *set)
+{
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	int	res = SET_SUCCESS;
+
+	LIST_HEAD(msgs);
+	LIST_HEAD(err_list);
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+	ctx.seqnum  = mnl_seqnum_alloc();
+	init_list_head(&ctx.list);
+
+	handle.family = family;
+	handle.table = table;
+	handle.set = set;
+	handle.handle = 0;
+
+	if (netlink_delete_set(&ctx, &handle, &loc) < 0) {
+		res = SET_KERNEL_ERROR;
+	}
+
+	return res;
+}

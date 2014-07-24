@@ -2621,6 +2621,43 @@ void rule_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer
 
 }
 
+static void set_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
+{
+	GtkTreeIter		iter;
+	int			family;
+	gchar			*table;
+	gchar			*set;
+	GtkTreeModel		*model;
+	struct set_list_args	*set_args = (struct set_list_args *)data;
+
+	gint	res;
+	GtkWidget *dialog;
+
+	dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+                                 0,
+                                 GTK_MESSAGE_WARNING,
+                                 GTK_BUTTONS_OK_CANCEL,
+                                 "The set will be deleted. Are you sure?"
+                                 );
+
+	table = set_args->table;
+	family = set_args->family;
+
+	res = gtk_dialog_run(GTK_DIALOG(dialog));
+	if (res == GTK_RESPONSE_OK) {
+		model = GTK_TREE_MODEL(set_args->model);
+		gtk_tree_model_get_iter_from_string(model, &iter, path_str);
+		gtk_tree_model_get(model, &iter, SET_NAME, &set, -1);
+
+		gui_delete_set(family, table, set);
+		set_update_data(set_args);
+	}
+
+	gtk_widget_destroy(dialog);
+	return;
+
+
+}
 
 void chain_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
 {
@@ -2948,8 +2985,8 @@ void gnftables_set_init(GtkButton *button, gpointer  data)
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
 
 	renderer_delete = gtk_cell_renderer_toggle_new();
-//	g_signal_connect(renderer_delete, "toggled",
-//			G_CALLBACK(chain_callback_delete), chain_arg) ;
+	g_signal_connect(renderer_delete, "toggled",
+			G_CALLBACK(set_callback_delete), set_arg) ;
 	column = gtk_tree_view_column_new_with_attributes("Delete",
 			renderer_delete, "active", SET_DELETE, NULL);
 	gtk_tree_view_column_set_min_width(column, 80);

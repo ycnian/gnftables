@@ -30,7 +30,7 @@ static void exthdr_expr_print(const struct expr *expr)
 static int exthdr_expr_snprint(char *str, size_t size, const struct expr *expr)
 {
 	int	res;
-	res = printf(str, size, "%s %s", expr->exthdr.desc->name, expr->exthdr.tmpl->token);
+	res = snprintf(str, size, "%s %s", expr->exthdr.desc->name, expr->exthdr.tmpl->token);
 	if (str && (size_t)res >= size)
 		return -1;
 	else

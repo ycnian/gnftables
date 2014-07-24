@@ -977,3 +977,34 @@ int gui_delete_set(int family, char *table, char *set)
 
 	return res;
 }
+
+
+int gui_flush_set(int family, char *table, char *name)
+{
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	int			res;
+	struct set	*set;
+
+	LIST_HEAD(msgs);
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+	ctx.seqnum  = mnl_seqnum_alloc();
+	init_list_head(&ctx.list);
+
+	handle.family = family;
+	handle.table = table;
+	handle.set = name;
+
+	res = netlink_get_set(&ctx, &handle, &loc);
+	if (res < 0) {
+		return SET_KERNEL_ERROR;
+	}
+
+	set = list_first_entry(&ctx.list, struct set, list);
+	netlink_get_setelems(&ctx, &handle, &loc, set);
+	netlink_delete_setelems(&ctx, &handle, set->init);
+
+	return SET_SUCCESS;
+}

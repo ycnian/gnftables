@@ -78,4 +78,5 @@ int table_list_sets(struct table *table);
 int gui_add_set(struct set_create_data *gui_set);
 int gui_get_set(struct set_create_data *gui_set);
 int gui_delete_set(int family, char *table, char *set);
+int gui_flush_set(int family, char *table, char *name);
 #endif

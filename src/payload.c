@@ -40,6 +40,26 @@ static void payload_expr_print(const struct expr *expr)
 		       expr->payload.offset, expr->len);
 }
 
+static int payload_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res;
+	const struct proto_desc *desc;
+	const struct proto_hdr_template *tmpl;
+
+	desc = expr->payload.desc;
+	tmpl = expr->payload.tmpl;
+	if (desc != NULL && tmpl != NULL)
+		res = snprintf(str, size, "%s %s", desc->name, tmpl->token);
+	else
+		res = snprintf(str, size, "payload @%s,%u,%u",
+		       proto_base_tokens[expr->payload.base],
+		       expr->payload.offset, expr->len);
+	if (str && (size_t)res >= size)
+		return -1;
+	else
+		return res;
+}
+
 static bool payload_expr_cmp(const struct expr *e1, const struct expr *e2)
 {
 	return e1->payload.desc   == e2->payload.desc &&
@@ -84,6 +104,7 @@ static const struct expr_ops payload_expr_ops = {
 	.type		= EXPR_PAYLOAD,
 	.name		= "payload",
 	.print		= payload_expr_print,
+	.snprint	= payload_expr_snprint,
 	.cmp		= payload_expr_cmp,
 	.clone		= payload_expr_clone,
 	.pctx_update	= payload_expr_pctx_update,

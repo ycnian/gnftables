@@ -188,10 +188,8 @@ int symbolic_constant_snprint(char *str, size_t size,
 	if (s->identifier == NULL)
 		return expr_basetype(expr)->snprint(str, size, expr);
 
-	if (!str)
-		return strlen(s->identifier);
 	res = snprintf(str, size, "%s", s->identifier);
-	if ((size_t)res >= size)
+	if (str && (size_t)res >= size)
 		return -1;
 	else
 		return res;
@@ -213,11 +211,22 @@ static void invalid_type_print(const struct expr *expr)
 	gmp_printf("0x%Zx [invalid type]", expr->value);
 }
 
+static int invalid_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res;
+	res = gmp_snprintf(str, size, "0x%Zx [invalid type]", expr->value);
+	if (!str || (size_t)res < size)
+		return res;
+	else
+		return -1;
+}
+
 const struct datatype invalid_type = {
 	.type		= TYPE_INVALID,
 	.name		= "invalid",
 	.desc		= "invalid",
 	.print		= invalid_type_print,
+	.snprint	= invalid_type_snprint,
 };
 
 static void verdict_type_print(const struct expr *expr)
@@ -252,11 +261,49 @@ static void verdict_type_print(const struct expr *expr)
 	}
 }
 
+static int verdict_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res;
+	switch (expr->verdict) {
+	case NF_ACCEPT:
+		res = snprintf(str, size, "accept");
+		break;
+	case NF_DROP:
+		res = snprintf(str, size, "drop");
+		break;
+	case NF_QUEUE:
+		res = snprintf(str, size, "queue");
+		break;
+	case NFT_CONTINUE:
+		res = snprintf(str, size, "continue");
+		break;
+	case NFT_BREAK:
+		res = snprintf(str, size, "break");
+		break;
+	case NFT_JUMP:
+		res = snprintf(str, size, "jump %s", expr->chain);
+		break;
+	case NFT_GOTO:
+		res = snprintf(str, size, "goto %s", expr->chain);
+		break;
+	case NFT_RETURN:
+		res = snprintf(str, size, "return");
+		break;
+	default:
+		BUG("invalid verdict value %u\n", expr->verdict);
+	}
+	if (!str || (size_t)res < size)
+		return res;
+	else
+		return -1;
+}
+
 const struct datatype verdict_type = {
 	.type		= TYPE_VERDICT,
 	.name		= "verdict",
 	.desc		= "netfilter verdict",
 	.print		= verdict_type_print,
+	.snprint	= verdict_type_snprint,
 };
 
 static const struct symbol_table nfproto_tbl = {
@@ -334,6 +381,7 @@ const struct datatype integer_type = {
 	.name		= "integer",
 	.desc		= "integer",
 	.print		= integer_type_print,
+	.snprint	= integer_type_snprint,
 	.parse		= integer_type_parse,
 };
 
@@ -355,10 +403,8 @@ static int string_type_snprint(char *str, size_t size, const struct expr *expr)
 
 	mpz_export_data(data, expr->value, BYTEORDER_HOST_ENDIAN, len);
 	data[len] = '\0';
-	if (!str)
-		return snprintf(NULL, 0, "\"%s\"", data);
 	res = snprintf(str, size, "\"%s\"", data);
-	if ((size_t)res >= size)
+	if (str && (size_t)res >= size)
 		return -1;
 	else
 		return res;
@@ -397,6 +443,34 @@ static void lladdr_type_print(const struct expr *expr)
 	}
 }
 
+static int lladdr_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	unsigned int len = div_round_up(expr->len, BITS_PER_BYTE);
+	const char *delim = "";
+	uint8_t data[len];
+	unsigned int i;
+	int	res = 0;
+	int	length;
+
+	mpz_export_data(data, expr->value, BYTEORDER_HOST_ENDIAN, len);
+	if (!str) {
+		for (i = 0; i < len; i++) {
+			res += snprintf(NULL, 0, "%s%.2x", delim, data[i]);
+			delim = ":";
+		}
+		return res;
+	}
+
+	for (i = 0; i < len; i++) {
+		length = snprintf(str + res, size - res, "%s%.2x", delim, data[i]);
+		res += length;
+		if ((size_t)res >= size)
+			return -1;
+		delim = ":";
+	}
+	return res;
+}
+
 static struct error_record *lladdr_type_parse(const struct expr *sym,
 					      struct expr **res)
 {
@@ -428,6 +502,7 @@ const struct datatype lladdr_type = {
 	.byteorder	= BYTEORDER_HOST_ENDIAN,
 	.basetype	= &integer_type,
 	.print		= lladdr_type_print,
+	.snprint	= lladdr_type_snprint,
 	.parse		= lladdr_type_parse,
 };
 
@@ -463,12 +538,11 @@ static int ipaddr_type_snprint(char *str, size_t size, const struct expr *expr)
 			    sizeof(buf), NULL, 0, NI_NUMERICHOST);
 	}
 
-	if (!str)
-		return snprintf(NULL, 0, buf);
-	if (size <= strlen(buf))
-		return -1;
 	err = snprintf(str, size, "%s", buf);
-	return err;
+	if (str && (size_t)err >= size)
+		return -1;
+	else
+		return err;
 }
 
 static struct error_record *ipaddr_type_parse(const struct expr *sym,
@@ -530,6 +604,30 @@ static void ip6addr_type_print(const struct expr *expr)
 	printf("%s", buf);
 }
 
+static int ip6addr_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	struct sockaddr_in6 sin6 = { .sin6_family = AF_INET6 };
+	char buf[NI_MAXHOST];
+	int err;
+
+	mpz_export_data(&sin6.sin6_addr, expr->value, BYTEORDER_BIG_ENDIAN,
+			sizeof(sin6.sin6_addr));
+
+	err = getnameinfo((struct sockaddr *)&sin6, sizeof(sin6), buf,
+			  sizeof(buf), NULL, 0,
+			  numeric_output ? NI_NUMERICHOST : 0);
+	if (err != 0) {
+		getnameinfo((struct sockaddr *)&sin6, sizeof(sin6), buf,
+			    sizeof(buf), NULL, 0, NI_NUMERICHOST);
+	}
+
+	err = snprintf(str, size, "%s", buf);
+	if (str && (size_t)err >= size)
+		return -1;
+	else
+		return err;
+}
+
 static struct error_record *ip6addr_type_parse(const struct expr *sym,
 					       struct expr **res)
 {
@@ -565,6 +663,7 @@ const struct datatype ip6addr_type = {
 	.size		= 16 * BITS_PER_BYTE,
 	.basetype	= &integer_type,
 	.print		= ip6addr_type_print,
+	.snprint	= ip6addr_type_snprint,
 	.parse		= ip6addr_type_parse,
 	.flags		= DTYPE_F_PREFIX,
 };
@@ -591,15 +690,11 @@ static int inet_protocol_type_snprint(char *str, size_t size, const struct expr 
 	if (numeric_output < NUMERIC_ALL) {
 		p = getprotobynumber(mpz_get_uint8(expr->value));
 		if (p != NULL) {
-			if (!str)
-				return snprintf(NULL, 0, "%s", p->p_name);
-			else {
-				res = snprintf(str, size, "%s", p->p_name);
-				if ((size_t)res >= size)
-					return -1;
-				else
-					return res;
-			}
+			res = snprintf(str, size, "%s", p->p_name);
+			if (str && (size_t)res >= size)
+				return -1;
+			else
+				return res;
 		}
 	}
 	return integer_type_snprint(str, size, expr);
@@ -677,10 +772,8 @@ static int inet_service_type_snprint(char *str, size_t size, const struct expr *
 			    0, buf, sizeof(buf), NI_NUMERICSERV);
 	}
 
-	if (!str)
-		return snprintf(NULL, 0, "%s", buf);
 	err = snprintf(str, size, "%s", buf);
-	if ((size_t)err >= size)
+	if (str && (size_t)err >= size)
 		return -1;
 	else
 		return err;
@@ -805,6 +898,11 @@ static void mark_type_print(const struct expr *expr)
 	return symbolic_constant_print(mark_tbl, expr);
 }
 
+static int mark_type_snprint(char * str, size_t size, const struct expr *expr)
+{
+	return symbolic_constant_snprint(str, size, mark_tbl, expr);
+}
+
 static struct error_record *mark_type_parse(const struct expr *sym,
 					    struct expr **res)
 {
@@ -839,6 +937,7 @@ const struct datatype mark_type = {
 	.basetype	= &integer_type,
 	.basefmt	= "0x%.8Zx",
 	.print		= mark_type_print,
+	.snprint	= mark_type_snprint,
 	.parse		= mark_type_parse,
 	.flags		= DTYPE_F_PREFIX,
 };
@@ -870,6 +969,77 @@ static void time_type_print(const struct expr *expr)
 		printf("%"PRIu64"s", seconds);
 
 	printf("\"");
+}
+
+static int time_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res = 0;
+	int	len;
+	uint64_t days, hours, minutes, seconds;
+
+	seconds = mpz_get_uint64(expr->value);
+
+	days = seconds / 86400;
+	seconds %= 86400;
+
+	hours = seconds / 3600;
+	seconds %= 3600;
+
+	minutes = seconds / 60;
+	seconds %= 60;
+
+	if (!str) {
+		res += snprintf(NULL, 0, "\"");
+
+		if (days > 0)
+			res += snprintf(NULL, 0, "%"PRIu64"d", days);
+		if (hours > 0)
+			res += snprintf(NULL, 0, "%"PRIu64"h", hours);
+		if (minutes > 0)
+			res += snprintf(NULL, 0, "%"PRIu64"m", minutes);
+		if (seconds > 0)
+			res += snprintf(NULL, 0, "%"PRIu64"s", seconds);
+
+		res += snprintf(NULL, 0, "\"");
+		return res;
+	}
+
+	len = snprintf(str + res, size - res, "\"");
+	res += len;
+	if (str && (size_t)res >= size)
+		return -1;
+
+	if (days > 0) {
+		len = snprintf(str + res, size - res, "%"PRIu64"d", days);
+		res += len;
+		if ((size_t)res >= size)
+			return -1;
+	}
+	if (hours > 0) {
+		len = snprintf(str + res, size - res, "%"PRIu64"h", hours);
+		res += len;
+		if ((size_t)res >= size)
+			return -1;
+	}
+	if (minutes > 0) {
+		len = snprintf(str + res, size - res, "%"PRIu64"m", minutes);
+		res += len;
+		if ((size_t)res >= size)
+			return -1;
+	}
+	if (seconds > 0) {
+		len = snprintf(str + res, size - res, "%"PRIu64"s", seconds);
+		res += len;
+		if ((size_t)res >= size)
+			return -1;
+	}
+
+	len = snprintf(str + res, size - res, "\"");
+	res += len;
+	if ((size_t)res >= size)
+		return -1;
+
+	return res;
 }
 
 enum {
@@ -985,6 +1155,7 @@ const struct datatype time_type = {
 	.size		= 8 * BITS_PER_BYTE,
 	.basetype	= &integer_type,
 	.print		= time_type_print,
+	.snprint	= time_type_snprint,
 	.parse		= time_type_parse,
 };
 

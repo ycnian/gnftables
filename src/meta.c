@@ -46,6 +46,11 @@ static void realm_type_print(const struct expr *expr)
 	return symbolic_constant_print(realm_tbl, expr);
 }
 
+static int realm_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	return symbolic_constant_snprint(str, size, realm_tbl, expr);
+}
+
 static struct error_record *realm_type_parse(const struct expr *sym,
 					     struct expr **res)
 {
@@ -60,6 +65,7 @@ static const struct datatype realm_type = {
 	.size		= 4 * BITS_PER_BYTE,
 	.basetype	= &integer_type,
 	.print		= realm_type_print,
+	.snprint	= realm_type_snprint,
 	.parse		= realm_type_parse,
 	.flags		= DTYPE_F_PREFIX,
 };
@@ -84,6 +90,33 @@ static void tchandle_type_print(const struct expr *expr)
 		}
 		break;
 	}
+}
+
+static int tchandle_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res = 0;
+	uint32_t handle = mpz_get_uint32(expr->value);
+
+	switch(handle) {
+	case TC_H_ROOT:
+		res = snprintf(str, size, "root\n");
+	case TC_H_UNSPEC:
+		res = snprintf(str, size, "none\n");
+	default:
+		if (TC_H_MAJ(handle) == 0)
+			res = snprintf(str, size, ":%04x", TC_H_MIN(handle));
+		else if (TC_H_MIN(handle) == 0)
+			res = snprintf(str, size, "%04x:", TC_H_MAJ(handle) >> 16);
+		else {
+			res = snprintf(str, size, "%04x:%04x",
+			       TC_H_MAJ(handle) >> 16, TC_H_MIN(handle));
+		}
+		break;
+	}
+	if (str && (size_t)res >= size)
+		return -1;
+	else
+		return res;
 }
 
 static struct error_record *tchandle_type_parse(const struct expr *sym,
@@ -128,6 +161,7 @@ static const struct datatype tchandle_type = {
 	.size		= 4 * BITS_PER_BYTE,
 	.basetype	= &integer_type,
 	.print		= tchandle_type_print,
+	.snprint	= tchandle_type_snprint,
 	.parse		= tchandle_type_parse,
 };
 
@@ -141,6 +175,23 @@ static void ifindex_type_print(const struct expr *expr)
 		printf("%s", name);
 	else
 		printf("%d", ifindex);
+}
+
+static int ifindex_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	char name[IFNAMSIZ];
+	int ifindex;
+	int res;
+
+	ifindex = mpz_get_uint32(expr->value);
+	if (if_indextoname(ifindex, name))
+		res = snprintf(str, size, "%s", name);
+	else
+		res = snprintf(str, size, "%d", ifindex);
+	if (str && (size_t)res >= size)
+		return -1;
+	else
+		return res;
 }
 
 static struct error_record *ifindex_type_parse(const struct expr *sym,
@@ -166,6 +217,7 @@ static const struct datatype ifindex_type = {
 	.size		= 4 * BITS_PER_BYTE,
 	.basetype	= &integer_type,
 	.print		= ifindex_type_print,
+	.snprint	= ifindex_type_snprint,
 	.parse		= ifindex_type_parse,
 };
 
@@ -220,18 +272,14 @@ static int uid_type_snprint(char *str, size_t size, const struct expr *expr)
 
 		pw = getpwuid(uid);
 		if (pw != NULL) {
-			if (!str)
-				return snprintf(NULL, 0, "%s", pw->pw_name);
 			res = snprintf(str, size, "%s", pw->pw_name);
-			if ((size_t)res >= size)
+			if (str && (size_t)res >= size)
 				return -1;
 			else
 				return res;
 		} else {
-			if (!str)
-				return snprintf(NULL, 0, "%d", uid);
 			res = snprintf(str, size, "%d", uid);
-			if ((size_t)res >= size)
+			if (str && (size_t)res >= size)
 				return -1;
 			else
 				return res;
@@ -304,18 +352,14 @@ static int gid_type_snprint(char *str, size_t size, const struct expr *expr)
 
 		gr = getgrgid(gid);
 		if (gr != NULL) {
-			if (!str)
-				return snprintf(NULL, 0, "%s", gr->gr_name);
-			res = snprintf(NULL, 0, "%s", gr->gr_name);
-			if ((size_t)res >= size)
+			res = snprintf(str, size, "%s", gr->gr_name);
+			if (str && (size_t)res >= size)
 				return -1;
 			else
 				return res;
 		} else {
-			if (!str)
-				return snprintf(NULL, 0, "%d", gid);
 			res = snprintf(str, size, "%d", gid);
-			if ((size_t)res >= size)
+			if (str && (size_t)res >= size)
 				return -1;
 			else
 				return res;
@@ -419,6 +463,26 @@ static void meta_expr_print(const struct expr *expr)
 	}
 }
 
+static int meta_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res;
+	switch (expr->meta.key) {
+	case NFT_META_LEN:
+	case NFT_META_NFPROTO:
+	case NFT_META_L4PROTO:
+	case NFT_META_PROTOCOL:
+	case NFT_META_PRIORITY:
+		res = snprintf(str, size, "meta %s", meta_templates[expr->meta.key].token);
+		break;
+	default:
+		res = snprintf(str, size, "%s", meta_templates[expr->meta.key].token);
+		break;
+	}
+	if (str && (size_t)res >= size)
+		return -1;
+	else
+		return res;
+}
 static bool meta_expr_cmp(const struct expr *e1, const struct expr *e2)
 {
 	return e1->meta.key == e2->meta.key;
@@ -481,6 +545,7 @@ static const struct expr_ops meta_expr_ops = {
 	.type		= EXPR_META,
 	.name		= "meta",
 	.print		= meta_expr_print,
+	.snprint	= meta_expr_snprint,
 	.cmp		= meta_expr_cmp,
 	.clone		= meta_expr_clone,
 	.pctx_update	= meta_expr_pctx_update,
@@ -520,10 +585,29 @@ static void meta_stmt_print(const struct stmt *stmt)
 	expr_print(stmt->meta.expr);
 }
 
+static int meta_stmt_snprint(char *str, size_t size, const struct stmt *stmt)
+{
+	int	res;
+
+	if (!str) {
+		res = snprintf(NULL, 0, "meta %s set ", meta_templates[stmt->meta.key].token);
+		res += expr_snprint(NULL, 0, stmt->meta.expr);
+		return res;
+	}
+	res = snprintf(str, size, "meta %s set ", meta_templates[stmt->meta.key].token);
+	if ((size_t)res >= size)
+		return -1;
+	res += expr_snprint(str + res, size - res, stmt->meta.expr);
+	if ((size_t)res >= size)
+		return -1;
+	return res;
+}
+
 static const struct stmt_ops meta_stmt_ops = {
 	.type		= STMT_META,
 	.name		= "meta",
 	.print		= meta_stmt_print,
+	.snprint	= meta_stmt_snprint,
 };
 
 struct stmt *meta_stmt_alloc(const struct location *loc, enum nft_meta_keys key,

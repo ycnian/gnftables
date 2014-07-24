@@ -767,6 +767,11 @@ static void ethertype_print(const struct expr *expr)
 	return symbolic_constant_print(&ethertype_tbl, expr);
 }
 
+static int ethertype_snprint(char *str, size_t size, const struct expr *expr)
+{
+	return symbolic_constant_snprint(str, size, &ethertype_tbl, expr);
+}
+
 const struct datatype ethertype_type = {
 	.type		= TYPE_ETHERTYPE,
 	.name		= "ether_type",
@@ -776,6 +781,7 @@ const struct datatype ethertype_type = {
 	.basetype	= &integer_type,
 	.basefmt	= "0x%.4Zx",
 	.print		= ethertype_print,
+	.snprint	= ethertype_snprint,
 	.parse		= ethertype_parse,
 };
 

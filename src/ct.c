@@ -113,6 +113,41 @@ static void ct_label_type_print(const struct expr *expr)
 	gmp_printf("0x%Zx", expr->value);
 }
 
+static int ct_label_type_snprint(char *str, size_t size, const struct expr *expr)
+{
+	unsigned long bit = mpz_scan1(expr->value, 0);
+	const struct symbolic_constant *s;
+	int	res = 0;
+
+	if (!str) {
+		for (s = ct_label_tbl->symbols; s->identifier != NULL; s++) {
+			if (bit != s->value)
+				continue;
+			res = snprintf(NULL, 0, "%s", s->identifier);
+			return res;
+		}
+		/* can happen when connlabel.conf is altered after rules were added */
+		res = gmp_snprintf(NULL, 0, "0x%Zx", expr->value);
+		return res;
+	}
+
+	for (s = ct_label_tbl->symbols; s->identifier != NULL; s++) {
+		if (bit != s->value)
+			continue;
+		res = snprintf(str, size, "%s", s->identifier);
+		if ((size_t)res >= size)
+			return -1;
+		else
+			return res;
+	}
+	/* can happen when connlabel.conf is altered after rules were added */
+	res = gmp_snprintf(str, size, "0x%Zx", expr->value);
+	if ((size_t)res >= size)
+		return -1;
+	else
+		return res;
+}
+
 static struct error_record *ct_label_type_parse(const struct expr *sym,
 						struct expr **res)
 {
@@ -153,6 +188,7 @@ static const struct datatype ct_label_type = {
 	.size		= CT_LABEL_BIT_SIZE,
 	.basetype	= &bitmask_type,
 	.print		= ct_label_type_print,
+	.snprint	= ct_label_type_snprint,
 	.parse		= ct_label_type_parse,
 };
 
@@ -205,6 +241,16 @@ static void ct_expr_print(const struct expr *expr)
 	printf("ct %s", ct_templates[expr->ct.key].token);
 }
 
+static int ct_expr_snprint(char *str, size_t size, const struct expr *expr)
+{
+	int	res = 0;
+	res = snprintf(str, size, "ct %s", ct_templates[expr->ct.key].token);
+	if (str && (size_t)res >= size)
+		return -1;
+	else
+		return res;
+}
+
 static bool ct_expr_cmp(const struct expr *e1, const struct expr *e2)
 {
 	return e1->ct.key == e2->ct.key;
@@ -239,6 +285,7 @@ static const struct expr_ops ct_expr_ops = {
 	.type		= EXPR_CT,
 	.name		= "ct",
 	.print		= ct_expr_print,
+	.snprint	= ct_expr_snprint,
 	.cmp		= ct_expr_cmp,
 	.clone		= ct_expr_clone,
 	.pctx_update	= ct_expr_pctx_update,
@@ -297,10 +344,31 @@ static void ct_stmt_print(const struct stmt *stmt)
 	expr_print(stmt->ct.expr);
 }
 
+static int ct_stmt_snprint(char *str, size_t size, const struct stmt *stmt)
+{
+	int	res = 0;
+
+	if (!str) {
+		res = snprintf(NULL, 0, "ct %s set ", ct_templates[stmt->ct.key].token);
+		res += expr_snprint(NULL, 0, stmt->ct.expr);
+		return res;
+	}
+
+	res = snprintf(str, size, "ct %s set ", ct_templates[stmt->ct.key].token);
+	if ((size_t)res >= size)
+		return -1;
+	res += expr_snprint(str + res, size - res, stmt->ct.expr);
+	if ((size_t)res >= size)
+		return -1;
+	else
+		return res;
+}
+
 static const struct stmt_ops ct_stmt_ops = {
 	.type		= STMT_CT,
 	.name		= "ct",
 	.print		= ct_stmt_print,
+	.snprint	= ct_stmt_snprint,
 };
 
 struct stmt *ct_stmt_alloc(const struct location *loc, enum nft_ct_keys key,

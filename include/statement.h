@@ -121,6 +121,7 @@ struct stmt_ops {
 	const char		*name;
 	void			(*destroy)(struct stmt *stmt);
 	void			(*print)(const struct stmt *stmt);
+	int			(*snprint)(char *str, size_t size, const struct stmt *stmt);
 };
 
 enum stmt_flags {

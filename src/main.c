@@ -409,7 +409,10 @@ void begin_create_new_set(GtkButton *button, gpointer  info)
 		return;
 	}
 
-	res = gui_add_set(data);
+	if (widget->create)
+		res = gui_add_set(data);
+	else
+		res = gui_edit_set(data);
 //	xfree(data->table);
 //	xfree(data->set);
 	xfree(data);
@@ -1653,8 +1656,8 @@ static void rule_actions_add_counter(struct rule_create_widget *new_rule, struct
 	if (action) {
 		char  packets[100];
 		char  bytes[100];
-		snprintf(packets, 100, "%lu", action->packets);
-		snprintf(bytes, 100, "%lu", action->bytes);
+		snprintf(packets, 100, "%u", action->packets);
+		snprintf(bytes, 100, "%u", action->bytes);
 		gtk_entry_set_text(GTK_ENTRY(elem->widget2), packets);
 		gtk_entry_set_text(GTK_ENTRY(elem->widget4), bytes);
 	}
@@ -2006,6 +2009,8 @@ static void create_new_set(GtkButton *button, gpointer  data)
 	widgets->table = set_arg->table;
 	set_data = set_arg->data;
 
+	if (!set_data)
+		widgets->create = 1;
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
 
 	layout = gtk_layout_new(NULL, NULL);

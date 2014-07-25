@@ -102,6 +102,7 @@ struct set_create_widget {
 	GtkWidget	*msg;
 	gint		family;
 	gchar		*table;
+	int		create;
 };
 
 struct set_list_args {

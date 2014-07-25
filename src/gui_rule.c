@@ -1008,3 +1008,45 @@ int gui_flush_set(int family, char *table, char *name)
 
 	return SET_SUCCESS;
 }
+
+int gui_edit_set(struct set_create_data *gui_set)
+{
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	struct set		set;
+	int	res = SET_SUCCESS;
+
+	bool batch_supported = netlink_batch_supported();
+	LIST_HEAD(msgs);
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+	ctx.seqnum  = mnl_seqnum_alloc();
+	ctx.batch_supported = 0;
+	init_list_head(&ctx.list);
+
+	handle.family = gui_set->family;
+	handle.table = xstrdup(gui_set->table);
+	handle.set = xstrdup(gui_set->set);
+	handle.handle = 0;
+
+	set.handle = handle;
+	set.flags = 0;
+	set.keytype = gui_set->keytype;
+	set.keylen = gui_set->keylen;
+	set.init = NULL;
+
+	if (!list_empty(&(gui_set->elems)))
+		res = set_gen_expressions(&set, gui_set);
+	if (res != SET_SUCCESS)
+		return CHAIN_KERNEL_ERROR;
+
+	gui_flush_set(handle.family, handle.table, handle.set);
+	if (set.init != NULL) {
+		if (netlink_add_setelems(&ctx, &set.handle, set.init) < 0)
+			return CHAIN_KERNEL_ERROR;
+	}
+
+	return SET_SUCCESS;
+}

@@ -1991,6 +1991,7 @@ static void create_new_set(GtkButton *button, gpointer  data)
 	GtkWidget	*msg;
 	GtkWidget	*scrolledwindow;
 	GtkWidget	*elems;
+	GtkWidget	*trash;
 	GtkCellRenderer	*renderer;
 	GtkTreeViewColumn	*column;
 	GtkTreeStore	*store;
@@ -2019,7 +2020,7 @@ static void create_new_set(GtkButton *button, gpointer  data)
 
 	frame = gtk_frame_new ("Create a new set");
 	gtk_container_set_border_width (GTK_CONTAINER(frame), 0);
-	gtk_widget_set_size_request(frame, 750, 420);
+	gtk_widget_set_size_request(frame, 770, 420);
 	gtk_layout_put(GTK_LAYOUT(layout), frame, 50, 20);
 
 
@@ -2065,6 +2066,8 @@ static void create_new_set(GtkButton *button, gpointer  data)
 	widgets->add = new_value;
     	remove = gtk_button_new_with_label("<==");
 	gtk_layout_put(GTK_LAYOUT(layout_chain), remove, 370, 210);
+	trash = gtk_image_new_from_file("trash.png");
+	gtk_layout_put(GTK_LAYOUT(layout_chain), trash, 200, 180);
 
 	store = gtk_tree_store_new(1, G_TYPE_STRING);
 	widgets->store = store;
@@ -2083,7 +2086,7 @@ static void create_new_set(GtkButton *button, gpointer  data)
 
         scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
 	gtk_scrolled_window_set_min_content_width(
-			GTK_SCROLLED_WINDOW(scrolledwindow), 250);
+			GTK_SCROLLED_WINDOW(scrolledwindow), 270);
 	gtk_scrolled_window_set_min_content_height(
 			GTK_SCROLLED_WINDOW(scrolledwindow), 300);
 	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolledwindow),
@@ -2108,12 +2111,12 @@ static void create_new_set(GtkButton *button, gpointer  data)
     	cancel = gtk_button_new_with_label("Cancel");
 	gtk_widget_set_size_request(cancel, 100, 10);
 	g_signal_connect(G_OBJECT(cancel), "clicked", G_CALLBACK(back_to_set_list), widgets);
-	gtk_layout_put(GTK_LAYOUT(layout_chain), cancel, 420, 360);
+	gtk_layout_put(GTK_LAYOUT(layout_chain), cancel, 480, 360);
 
     	ok = gtk_button_new_with_label("OK");
 	gtk_widget_set_size_request(ok, 100, 10);
 	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_set), widgets);
-	gtk_layout_put(GTK_LAYOUT(layout_chain), ok, 540, 360);
+	gtk_layout_put(GTK_LAYOUT(layout_chain), ok, 600, 360);
 
 	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, title, 1);
 	gtk_widget_show_all(GTK_WIDGET(notebook));

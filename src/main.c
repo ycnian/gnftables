@@ -266,7 +266,7 @@ gint load_rules(GtkWidget *widget, GtkWidget *event, gpointer data )
 		char	*filename;
 		GtkFileChooser	*chooser = GTK_FILE_CHOOSER(dialog);
 		filename = gtk_file_chooser_get_filename(chooser);
-		printf("%s\n", filename);
+		tables_load(filename);
 		g_free(filename);
 	}
 
@@ -274,7 +274,7 @@ gint load_rules(GtkWidget *widget, GtkWidget *event, gpointer data )
 	return FALSE;
 }
 
-
+// aaaa
 gint save_rules(GtkWidget *widget, GtkWidget *event, gpointer data)
 {
 	gint		res;

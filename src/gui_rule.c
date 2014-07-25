@@ -16,6 +16,7 @@
 #include <inttypes.h>
 #include <errno.h>
 
+#include <parser.h>
 #include <statement.h>
 #include <rule.h>
 #include <utils.h>
@@ -1286,3 +1287,38 @@ int tables_fprint(char *filename)
 	return 0;
 }
 
+int tables_load(char *filename)
+{
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	struct table *iter = NULL;
+	struct table *tmp = NULL;
+
+	struct parser_state state;
+	void *scanner;
+	LIST_HEAD(msgs);
+	char *buf = NULL;
+
+	init_list_head(&ctx.list);
+
+	handle.family = NFPROTO_IPV4;
+	if (netlink_list_tables(&ctx, &handle, &loc) < 0) {
+		return -1;
+	}
+
+	list_for_each_entry_safe(iter, tmp, &ctx.list, list) {
+		gui_delete_table(iter->handle.family, iter->handle.table);
+	}
+
+	parser_init(&state, &msgs);
+	scanner = scanner_init(&state);
+	if (scanner_read_file(scanner, filename, &internal_location) < 0)
+		goto out;
+	nft_run(scanner, &state, &msgs);
+out:
+	scanner_destroy(scanner);
+//	erec_print_list(stdout, &msgs);
+	xfree(buf);
+	return 0;
+}

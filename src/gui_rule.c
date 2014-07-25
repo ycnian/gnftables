@@ -1050,3 +1050,221 @@ int gui_edit_set(struct set_create_data *gui_set)
 
 	return SET_SUCCESS;
 }
+
+
+static void rule_fprint(FILE *f, struct rule *rule)
+{
+	const struct stmt *stmt;
+
+	list_for_each_entry(stmt, &rule->stmts, list) {
+		int	size;
+		char	*buf;
+		fprintf(f, " ");
+		size = stmt_snprint(NULL, 0, stmt);
+		buf = xmalloc(size + 1);
+		stmt_snprint(buf, size + 1, stmt);
+		fprintf(f, "%s", buf);
+		xfree(buf);
+	}
+	if (handle_output > 0)
+	fprintf(f, " # handle %" PRIu64, rule->handle.handle);
+}
+
+
+static void chain_fprint(FILE *f, struct chain *chain)
+{
+	struct rule *rule;
+
+	fprintf(f, "\tchain %s {\n", chain->handle.chain);
+	if (chain->flags & CHAIN_F_BASECHAIN) {
+		fprintf(f, "\t\t type %s hook %s priority %u;\n", chain->type,
+			hooknum2str(chain->handle.family, chain->hooknum),
+			chain->priority);
+	}
+	list_for_each_entry(rule, &chain->rules, list) {
+		fprintf(f, "\t\t");
+		rule_fprint(f, rule);
+		if (rule->handle.comment)
+			fprintf(f, " comment \"%s\"\n", rule->handle.comment);
+		else
+			fprintf(f, "\n");
+	}
+	fprintf(f, "\t}\n");
+}
+
+struct print_fmt_options {
+	const char      *tab;
+	const char      *nl;
+	const char      *table;
+	const char      *family;
+	const char      *stmt_separator;
+};
+
+static void do_set_fprint(FILE *f, const struct set *set, struct print_fmt_options *opts)
+{
+	const char *delim = "";
+	const char *type;
+
+	type = set->flags & SET_F_MAP ? "map" : "set";
+	fprintf(f, "%s%s", opts->tab, type);
+
+	if (opts->family != NULL)
+		fprintf(f, " %s", opts->family);
+
+	if (opts->table != NULL)
+		fprintf(f, " %s", opts->table);
+
+	fprintf(f, " %s { %s", set->handle.set, opts->nl);
+
+	fprintf(f, "%s%stype %s", opts->tab, opts->tab, set->keytype->name);
+	if (set->flags & SET_F_MAP)
+		fprintf(f, " : %s", set->datatype->name);
+	fprintf(f, "%s", opts->stmt_separator);
+
+	if (set->flags & (SET_F_CONSTANT | SET_F_INTERVAL)) {
+		fprintf(f, "%s%sflags ", opts->tab, opts->tab);
+		if (set->flags & SET_F_CONSTANT) {
+			fprintf(f, "%sconstant", delim);
+			delim = ",";
+		}
+		if (set->flags & SET_F_INTERVAL) {
+			fprintf(f, "%sinterval", delim);
+			delim = ",";
+		}
+		fprintf(f, "%s", opts->nl);
+	}
+
+	if (set->init != NULL && set->init->size > 0) {
+		int	size;
+		char	*buf;
+		fprintf(f, "%s%selements = ", opts->tab, opts->tab);
+		size = expr_snprint(NULL, 0, set->init);
+		buf = xmalloc(size + 1);
+		expr_snprint(buf, size + 1, set->init);
+		fprintf(f, "%s", buf);
+		fprintf(f, "%s", opts->nl);
+		xfree(buf);
+	}
+	fprintf(f, "%s}%s", opts->tab, opts->nl);
+}
+
+
+static void set_fprint(FILE *f, struct set *set)
+{
+	struct print_fmt_options opts = {
+		.tab            = "\t",
+		.nl             = "\n",
+		.stmt_separator = "\n",
+	};
+
+	do_set_fprint(f, set, &opts);
+}
+
+static void table_fprint(FILE *f, struct table *table)
+{
+	struct chain *chain;
+	struct set *set;
+	const char *delim = "";
+	const char *family = family2str(table->handle.family);
+
+	fprintf(f, "table %s %s {\n", family, table->handle.table);
+	list_for_each_entry(set, &table->sets, list) {
+		if (set->flags & SET_F_ANONYMOUS)
+			continue;
+		fprintf(f, "%s", delim);
+		set_fprint(f, set);
+		delim = "\n";
+	}
+	list_for_each_entry(chain, &table->chains, list) {
+		fprintf(f, "%s", delim);
+		chain_fprint(f, chain);
+		delim = "\n";
+	}
+	fprintf(f, "}\n");
+}
+
+static int table_details(FILE *f, struct handle *handle)
+{
+	struct chain *chain;
+	struct rule *rule, *nrule;
+	struct table *table;
+	struct set *set, *nset;
+	struct netlink_ctx	ctx;
+	struct location		loc;
+
+	init_list_head(&ctx.list);
+
+	table = table_lookup(handle);
+	if (netlink_list_sets(&ctx, handle, &loc) < 0 )
+		return -1;
+        list_for_each_entry_safe(set, nset, &ctx.list, list) {
+                if (netlink_get_setelems(&ctx, &set->handle, &loc, set) < 0)
+                        return -1;
+                list_move_tail(&set->list, &table->sets);
+        }
+	if (netlink_list_chains(&ctx, handle, &loc) < 0)
+		return -1;
+	list_splice_tail_init(&ctx.list, &table->chains);
+	if (netlink_list_table(&ctx, handle, &loc) < 0)
+		return -1;
+
+	list_for_each_entry_safe(rule, nrule, &ctx.list, list) {
+		table = table_lookup(&rule->handle);
+		chain = chain_lookup(table, &rule->handle);
+		if (chain == NULL) {
+			chain = chain_alloc(rule->handle.chain);
+			chain_add_hash(chain, table);
+		}
+		list_move_tail(&rule->list, &chain->rules);
+	}
+
+	table_fprint(f, table);
+
+
+	return 0;
+}
+
+int tables_fprint(char *filename)
+{
+	FILE	*f;
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	struct location		loc;
+	struct table *table = NULL;
+	struct table *iter = NULL;
+	struct table *tmp = NULL;
+	struct chain *chain, *nchain;
+	struct set *set, *nset;
+
+	init_list_head(&ctx.list);
+	f = fopen(filename, "w+");
+	if (!f)
+		return -1;
+
+	handle.family = NFPROTO_IPV4;
+	if (netlink_list_tables(&ctx, &handle, &loc) < 0) {
+		fclose(f);
+		return -1;
+	}
+
+	list_for_each_entry_safe(iter, tmp, &ctx.list, list) {
+		table = table_lookup(&iter->handle);
+		if (table == NULL) {
+			table = table_alloc();
+			handle_merge(&table->handle, &iter->handle);
+			table_add_hash(table);
+		}
+		table_details(f, &iter->handle);
+
+		list_for_each_entry_safe(chain, nchain, &table->chains, list) {
+			list_del(&chain->list);
+			chain_free(chain);
+		}
+		list_for_each_entry_safe(set, nset, &table->sets, list) {
+			list_del(&set->list);
+			set_free(set);
+		}
+	}
+	fclose(f);
+	return 0;
+}

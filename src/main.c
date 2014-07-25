@@ -300,7 +300,7 @@ gint save_rules(GtkWidget *widget, GtkWidget *event, gpointer data)
 	if (res == GTK_RESPONSE_ACCEPT) {
 		char	*filename;
 		filename = gtk_file_chooser_get_filename(chooser);
-		printf("%s\n", filename);
+		tables_fprint(filename);
 		g_free(filename);
 	}
 

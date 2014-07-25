@@ -397,4 +397,5 @@ void rule_actions_add(GtkButton *button, gpointer data);
 void back_to_set_list(GtkButton *button, gpointer info);
 void begin_create_new_set(GtkButton *button, gpointer info);
 
+int tables_fprint(char *filename);
 #endif

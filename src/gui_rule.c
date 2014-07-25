@@ -65,6 +65,21 @@ void gui_chain_free(struct chain_list_data *chain)
 	xfree(chain);
 }
 
+void gui_set_free(struct set_list_data *set)
+{
+	if (!set)
+		return;
+	if (set->table)
+		xfree(set->table);
+	if (set->name)
+		xfree(set->name);
+	if (set->keytype)
+		xfree(set->keytype);
+	if (set->datatype)
+		xfree(set->datatype);
+	xfree(set);
+}
+
 /*
  * Get number of rules in a chain.
  * @family:  nftables family
@@ -810,9 +825,11 @@ int gui_delete_table(int family, char *name)
 	int	res;
 	bool batch_supported;
 	struct chain_list_data  *gui_chain, *gc;
+	struct set_list_data  *gui_set, *gs;
 
 	LIST_HEAD(msgs);
 	LIST_HEAD(chains_list);
+	LIST_HEAD(sets_list);
 
 	batch_supported = netlink_batch_supported();
 
@@ -835,12 +852,12 @@ int gui_delete_table(int family, char *name)
 	}
 
 	// delete all sets in the table
-	//gui_get_sets_list(&sets_list, family, name, "all");
-	//list_for_each_entry_safe(gui_set, gs, &sets_list, list) {
-	//	list_del(&gui_set->list);
-	//	gui_delete_set(gui_set->family, gui_set->table, gui_set->set);
-	//	gui_set_free(gui_set);
-	//}
+	gui_get_sets_list(&sets_list, family, name);
+	list_for_each_entry_safe(gui_set, gs, &sets_list, list) {
+		list_del(&gui_set->list);
+		gui_delete_set(gui_set->family, gui_set->table, gui_set->name);
+		gui_set_free(gui_set);
+	}
 
 	// delete table.
 	if (netlink_delete_table(&ctx, &handle, &loc) < 0) {
@@ -1268,3 +1285,4 @@ int tables_fprint(char *filename)
 	fclose(f);
 	return 0;
 }
+

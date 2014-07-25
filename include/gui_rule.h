@@ -80,4 +80,5 @@ int gui_get_set(struct set_create_data *gui_set);
 int gui_delete_set(int family, char *table, char *set);
 int gui_flush_set(int family, char *table, char *name);
 int gui_edit_set(struct set_create_data *gui_set);
+void gui_set_free(struct set_list_data *set);
 #endif

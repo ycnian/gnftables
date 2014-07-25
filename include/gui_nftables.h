@@ -308,8 +308,6 @@ struct rule_create_widget {
 
 void remove_book(GtkButton *button, GtkNotebook *notebook);
 void select_page(GtkNotebook *notebook, GtkWidget *page, guint page_num, gpointer user_data);
-gint load_rules(GtkWidget *widget, GtkWidget *event, gpointer data);
-gint save_rules(GtkWidget *widget, GtkWidget *event, gpointer data);
 GdkPixbuf  *create_pixbuf(const gchar *filename);
 void back_to_table_list (GtkButton *button, gpointer  notebook);
 void create_new_chain(GtkButton *button, gpointer  notebook);

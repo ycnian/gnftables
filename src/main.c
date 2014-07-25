@@ -251,7 +251,7 @@ void select_page(GtkNotebook *notebook, GtkWidget   *page, guint page_num, gpoin
 }
 
 
-gint load_rules(GtkWidget *widget, GtkWidget *event, gpointer data )
+static void load_rules(GtkButton *button, gpointer data)
 {
 	GtkWidget	*dialog;
 	GtkFileChooserAction	action = GTK_FILE_CHOOSER_ACTION_OPEN;
@@ -271,11 +271,10 @@ gint load_rules(GtkWidget *widget, GtkWidget *event, gpointer data )
 	}
 
 	gtk_widget_destroy(dialog);
-	return FALSE;
+	gnftables_table_init(GTK_NOTEBOOK(data));
 }
 
-// aaaa
-gint save_rules(GtkWidget *widget, GtkWidget *event, gpointer data)
+static void save_rules(GtkButton *button, gpointer data)
 {
 	gint		res;
 	GtkWidget	*dialog;
@@ -305,7 +304,7 @@ gint save_rules(GtkWidget *widget, GtkWidget *event, gpointer data)
 	}
 
 	gtk_widget_destroy(dialog);
-	return FALSE;
+	gnftables_table_init(GTK_NOTEBOOK(data));
 }
 
 
@@ -3536,7 +3535,7 @@ int main(int argc, char *argv[])
 	g_signal_connect(G_OBJECT(notebook), "switch-page", G_CALLBACK(select_page), notebook);
 
 	button = gtk_button_new_with_label("Load rules from file");
-	g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(load_rules), NULL);
+	g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(load_rules), notebook);
 	gtk_widget_set_size_request(button, 435, 10);
 	gtk_layout_put(GTK_LAYOUT(layout), button, 0, 500);
 

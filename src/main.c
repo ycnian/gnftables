@@ -1045,19 +1045,19 @@ static void rule_add_content_header_addr(struct match_header *header, struct ip_
 		header->expanded = 1;
 		switch (addr->ip_type) {
 		case ADDRESS_EXACT:
-			gtk_entry_set_text(GTK_ENTRY(addr_exact_ip), addr->iplist_str.ips);
+			gtk_entry_set_text(GTK_ENTRY(addr_exact_ip), addr->iplist);
 			gtk_widget_show(GTK_WIDGET(addr_exact_ip));
 			break;
 		case ADDRESS_SUBNET:
-			gtk_entry_set_text(GTK_ENTRY(addr_subnet_ip), addr->subnet_str.ip);
-			gtk_entry_set_text(GTK_ENTRY(addr_subnet_mask), addr->subnet_str.mask);
+			gtk_entry_set_text(GTK_ENTRY(addr_subnet_ip), addr->subnet.ip);
+			gtk_entry_set_text(GTK_ENTRY(addr_subnet_mask), addr->subnet.mask);
 			gtk_widget_show(GTK_WIDGET(addr_subnet_ip));
 			gtk_widget_show(GTK_WIDGET(addr_subnet_slash));
 			gtk_widget_show(GTK_WIDGET(addr_subnet_mask));
 			break;
 		case ADDRESS_RANGE:
-			gtk_entry_set_text(GTK_ENTRY(addr_range_from), addr->range_str.from);
-			gtk_entry_set_text(GTK_ENTRY(addr_range_to), addr->range_str.to);
+			gtk_entry_set_text(GTK_ENTRY(addr_range_from), addr->range.from);
+			gtk_entry_set_text(GTK_ENTRY(addr_range_to), addr->range.to);
 			gtk_widget_show(GTK_WIDGET(addr_range_from));
 			gtk_widget_show(GTK_WIDGET(addr_range_dash));
 			gtk_widget_show(GTK_WIDGET(addr_range_to));
@@ -1196,12 +1196,12 @@ static void rule_add_content_header_port(GtkWidget *fixed,
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(port_not), data->exclude);
 		switch (data->port_type) {
 		case PORT_EXACT:
-			gtk_entry_set_text(GTK_ENTRY(port_list), data->portlist_str.ports);
+			gtk_entry_set_text(GTK_ENTRY(port_list), data->portlist);
 			gtk_widget_show(GTK_WIDGET(port_list));
 			break;
 		case PORT_RANGE:
-			gtk_entry_set_text(GTK_ENTRY(port_range_from), data->range_str.from);
-			gtk_entry_set_text(GTK_ENTRY(port_range_to), data->range_str.to);
+			gtk_entry_set_text(GTK_ENTRY(port_range_from), data->range.from);
+			gtk_entry_set_text(GTK_ENTRY(port_range_to), data->range.to);
 			gtk_widget_show(GTK_WIDGET(port_range_from));
 			gtk_widget_show(GTK_WIDGET(port_range_dash));
 			gtk_widget_show(GTK_WIDGET(port_range_to));

@@ -7,22 +7,30 @@
 #include <netlink.h>
 #include <string.h>
 #include <net/if.h>
-
+#include <erec.h>
 
 int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
 {
-	struct expr  *payload;
-	struct expr  *constant;
-	struct expr  *rela;
-	struct expr  *elem;
-	struct expr  *se;
-	struct stmt  *stmt;
-	struct set   *set;
+	struct expr  *payload = NULL;
+	struct expr  *constant = NULL;
+	struct expr  *rela = NULL;
+	struct expr  *elem = NULL;
+	struct expr  *symbol = NULL;
+	struct expr  *se = NULL;
+	struct stmt  *stmt = NULL;
+	struct set   *set = NULL;
 	unsigned int	type;
 	enum ops	op;
 	struct ip_convert	*convert;
+	char	*ip;
+	struct error_record	*erec;
+	struct netlink_ctx      ctx;
+	struct table		*table;
+	struct set		*clone;
+	char	*iplist;
+	LIST_HEAD(msgs);
 
-	if (list_empty(&(addr->iplist.ips)))
+	if (!addr->iplist)
 		return RULE_SUCCESS;
 
 	type = source ? IPHDR_SADDR: IPHDR_DADDR;
@@ -31,25 +39,34 @@ int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *
 	payload = payload_expr_alloc(data->loc, &proto_ip, type);
 	elem = set_expr_alloc(data->loc);
 
-	list_for_each_entry(convert, &(addr->iplist.ips), list) {
-		constant = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
-			4 * 8, convert->ip);
+	iplist = xstrdup(addr->iplist);
+	ip = string_skip_space(strtok(iplist, ","));
+	while(ip) {
+		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, ip);
+		xfree(ip);
+		expr_set_type(symbol, &ipaddr_type, BYTEORDER_BIG_ENDIAN);
+		erec = symbol_parse(symbol, &constant);
+		if (erec) {
+			expr_free(payload);
+			expr_free(elem);
+			expr_free(symbol);
+			return RULE_HEADER_IP_INVALID;
+		}
+		expr_free(symbol);
 		compound_expr_add(elem, constant);
+		ip = string_skip_space(strtok(NULL, ","));
 	}
+	xfree(iplist);
 
 	set = set_alloc(data->loc);
         set->flags	= SET_F_CONSTANT | SET_F_ANONYMOUS;
         set->handle.set = xstrdup("set%d");
         set->keytype    = &ipaddr_type;
-        set->keylen     = 4 * 8;
+        set->keylen     = 4 * BITS_PER_BYTE;
         set->init       = elem;
 	set->handle.family = data->family;
 	set->handle.table = xstrdup(data->table);
 
-	struct netlink_ctx      ctx;
-	struct table		*table;
-	struct set		*clone;
-	LIST_HEAD(msgs);
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.msgs = &msgs;
 //	ctx.seqnum  = mnl_seqnum_alloc();
@@ -80,20 +97,52 @@ int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *
 
 int rule_addrsubnet_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
 {
-	struct expr  *payload;
-	struct expr  *constant;
-	struct expr  *prefix;
-	struct expr *rela;
-	struct stmt *stmt;
+	struct expr  *payload = NULL;
+	struct expr  *symbol = NULL;
+	struct expr  *base = NULL;
+	struct expr  *prefix = NULL;
+	struct expr  *rela = NULL;
+	struct stmt  *stmt = NULL;
+	int	res;
+	struct error_record	*erec;
 	unsigned int	type;
 	enum ops	op;
 	unsigned char   ip[4];
-	int	mask;
+	unsigned int	mask;
 	int	i;
-	memcpy(ip, addr->subnet.ip, 4);
-	mask = addr->subnet.mask;
+	int	tmp;
 
-	for (i = 0; i < 4; i++) {
+	if (!addr->subnet.ip && !addr->subnet.mask)
+		return RULE_SUCCESS;
+
+	res = strtouint(addr->subnet.mask, &mask);
+	if (res != 0 || mask > 32)
+		return RULE_HEADER_MASK_INVALID;
+
+	type = source ? IPHDR_SADDR: IPHDR_DADDR;
+	op = (addr->exclude) ? OP_NEQ: OP_EQ;
+	payload = payload_expr_alloc(data->loc, &proto_ip, type);
+	symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, addr->subnet.ip);
+	expr_set_type(symbol, &ipaddr_type, BYTEORDER_BIG_ENDIAN);
+	erec = symbol_parse(symbol, &base);
+	if (erec) {
+		expr_free(symbol);
+		expr_free(payload);
+		xfree(erec->msg);
+		xfree(erec);
+		return RULE_HEADER_IP_INVALID;
+	}
+	expr_free(symbol);
+
+	prefix = prefix_expr_alloc(data->loc, base, mask);
+	prefix->byteorder = base->byteorder;
+	prefix->len = base->len;
+	prefix->dtype = base->dtype;
+	prefix->flags |= EXPR_F_CONSTANT;
+
+	tmp = base->len/BITS_PER_BYTE;
+	mpz_export_data(ip, base->value, base->byteorder, tmp);
+	for (i = 0; i < tmp; i++) {
 		if (mask < 0)
 			ip[i] = 0;
 		else if (mask < 8) {
@@ -101,15 +150,8 @@ int rule_addrsubnet_gen_exprs(struct rule_create_data *data, struct ip_addr_data
 		}
 		mask -= 8;
 	}
+	mpz_import_data(base->value, ip, base->byteorder, tmp);
 
-	type = source ? IPHDR_SADDR: IPHDR_DADDR;
-	op = (addr->exclude) ? OP_NEQ: OP_EQ;
-	payload = payload_expr_alloc(data->loc, &proto_ip, type);
-	constant = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
-			4 * 8, ip);
-	prefix = prefix_expr_alloc(data->loc, constant, addr->subnet.mask);
-	prefix->byteorder = BYTEORDER_BIG_ENDIAN;
-	prefix->len = 4 * 8;
 	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, prefix);
 	rela->op = op;
 	stmt = expr_stmt_alloc(data->loc, rela);
@@ -120,39 +162,72 @@ int rule_addrsubnet_gen_exprs(struct rule_create_data *data, struct ip_addr_data
 
 int rule_addrrange_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
 {
-	struct expr  *payload;
-	struct expr  *left;
-	struct expr  *right;
-	struct expr  *range;
-	struct expr  *rela;
-	struct stmt  *stmt;
+	struct expr  *payload = NULL;
+	struct expr  *left = NULL;
+	struct expr  *right = NULL;
+	struct expr  *range = NULL;
+	struct expr  *rela = NULL;
+	struct expr  *symbol = NULL;
+	struct stmt  *stmt = NULL;
 	unsigned int	type;
 	enum ops	op;
-	unsigned int	from = *(unsigned int *)(addr->range.from);
-	unsigned int	to = *(unsigned int *)(addr->range.to);
+	struct error_record	*erec;
+	int	res = RULE_SUCCESS;
+	char	*from = addr->range.from;
+	char	*to = addr->range.to;
 
 	type = source ? IPHDR_SADDR: IPHDR_DADDR;
 	payload = payload_expr_alloc(data->loc, &proto_ip, type);
 
 	if (from && to) {
 		op = (addr->exclude) ? OP_NEQ : OP_EQ;
-		left = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
-				4 * 8, addr->range.from);
-		right = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
-				4 * 8, addr->range.to);
+		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, from);
+		expr_set_type(symbol, &ipaddr_type, BYTEORDER_BIG_ENDIAN);
+		erec = symbol_parse(symbol, &left);
+		if (erec) {
+			res = RULE_HEADER_IP_INVALID;
+			goto err;
+		}
+		expr_free(symbol);
+		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, to);
+		expr_set_type(symbol, &ipaddr_type, BYTEORDER_BIG_ENDIAN);
+		erec = symbol_parse(symbol, &right);
+		if (erec) {
+			res = RULE_HEADER_IP_INVALID;
+			goto err;
+		}
+		expr_free(symbol);
 		range = range_expr_alloc(data->loc, left, right);
+		range->dtype = left->dtype;
+		range->flags |= EXPR_F_CONSTANT;
+		if (mpz_cmp(left->value, right->value) >= 0) {
+			res = RULE_HEADER_IP_RANGE_INVALID;
+			goto err;
+		}
 		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, range);
 		rela->op = op;
 	} else if (from) {
 		op = (addr->exclude) ? OP_LT : OP_GTE;
-		left = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
-				4 * 8, addr->range.from);
+		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, from);
+		expr_set_type(symbol, &ipaddr_type, BYTEORDER_BIG_ENDIAN);
+		erec = symbol_parse(symbol, &left);
+		if (erec) {
+			res = RULE_HEADER_IP_INVALID;
+			goto err;
+		}
+		expr_free(symbol);
 		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, left);
 		rela->op = op;
 	} else if (to) {
 		op = (addr->exclude) ? OP_GT : OP_LTE;
-		right = constant_expr_alloc(data->loc, &ipaddr_type, BYTEORDER_BIG_ENDIAN,
-				4 * 8, addr->range.to);
+		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, to);
+		expr_set_type(symbol, &ipaddr_type, BYTEORDER_BIG_ENDIAN);
+		erec = symbol_parse(symbol, &right);
+		if (erec) {
+			res = RULE_HEADER_IP_INVALID;
+			goto err;
+		}
+		expr_free(symbol);
 		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, right);
 		rela->op = op;
 	} else
@@ -162,6 +237,25 @@ int rule_addrrange_gen_exprs(struct rule_create_data *data, struct ip_addr_data 
 	list_add_tail(&stmt->list, &data->exprs);
 
 	return RULE_SUCCESS;
+err:
+	if (payload)
+		expr_free(payload);
+	if (symbol)
+		expr_free(symbol);
+	if (range) {
+		expr_free(range);
+		left = NULL;
+		right = NULL;
+	}
+	if (left)
+		expr_free(left);
+	if (right)
+		expr_free(right);
+	if (erec) {
+		xfree(erec->msg);
+		xfree(erec);
+	}
+	return res;
 }
 
 
@@ -193,20 +287,28 @@ int rule_addr_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr
 int rule_portlist_gen_exprs(struct rule_create_data *data,
 		struct trans_port_data *port, enum transport_type type, int source)
 {
-	struct expr  *payload;
-	struct expr  *constant;
-	struct expr  *rela;
-	struct expr  *elem;
-	struct expr  *se;
-	struct stmt  *stmt;
-	struct set   *set;
+	struct expr  *payload = NULL;
+	struct expr  *constant = NULL;
+	struct expr  *rela = NULL;
+	struct expr  *elem = NULL;
+	struct expr  *se = NULL;
+	struct expr  *symbol = NULL;
+	struct stmt  *stmt = NULL;
+	struct set   *set = NULL;
 	unsigned int	sport;
 	const struct proto_desc *desc;
+	struct error_record	*erec;
 	enum ops	op;
 	struct unsigned_short_elem	*convert;
 	unsigned short	port_value;
+	struct netlink_ctx      ctx;
+	struct table		*table;
+	struct set		*clone;
+	char	*portlist;
+	char	*portdata;
+	LIST_HEAD(msgs);
 
-	if (list_empty(&(port->portlist.ports)))
+	if (!port->portlist)
 		return RULE_SUCCESS;
 
 	switch (type) {
@@ -226,12 +328,22 @@ int rule_portlist_gen_exprs(struct rule_create_data *data,
 	payload = payload_expr_alloc(data->loc, desc, sport);
 	elem = set_expr_alloc(data->loc);
 
-	list_for_each_entry(convert, &(port->portlist.ports), list) {
-		// bug: this works on in little-endian order.
-		port_value = ((convert->value & 0xff) << 8) + ((convert->value >> 8) & 0xff);
-		constant = constant_expr_alloc(data->loc, &inet_service_type, BYTEORDER_BIG_ENDIAN,
-				2 * 8, &port_value);
+	portlist = xstrdup(port->portlist);
+	portdata = string_skip_space(strtok(portlist, ","));
+	while (portdata) {
+		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, portdata);
+		xfree(portdata);
+		expr_set_type(symbol, &inet_service_type, BYTEORDER_BIG_ENDIAN);
+		erec = symbol_parse(symbol, &constant);
+		if (erec) {
+			expr_free(payload);
+			expr_free(elem);
+			expr_free(symbol);
+			return RULE_HEADER_PORT_INVALID;
+		}
+		expr_free(symbol);
 		compound_expr_add(elem, constant);
+		portdata = string_skip_space(strtok(NULL, ","));
 	}
 
 	set = set_alloc(data->loc);
@@ -243,10 +355,6 @@ int rule_portlist_gen_exprs(struct rule_create_data *data,
 	set->handle.family = data->family;
 	set->handle.table = xstrdup(data->table);
 
-	struct netlink_ctx      ctx;
-	struct table		*table;
-	struct set		*clone;
-	LIST_HEAD(msgs);
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.msgs = &msgs;
 //	ctx.seqnum  = mnl_seqnum_alloc();
@@ -278,19 +386,20 @@ int rule_portlist_gen_exprs(struct rule_create_data *data,
 int rule_portrange_gen_exprs(struct rule_create_data *data,
 		struct trans_port_data *port, enum transport_type type, int source)
 {
-	struct expr  *payload;
-	struct expr  *left;
-	struct expr  *right;
-	struct expr  *range;
-	struct expr  *rela;
-	struct stmt  *stmt;
+	struct expr  *payload = NULL;
+	struct expr  *left = NULL;
+	struct expr  *right = NULL;
+	struct expr  *range = NULL;
+	struct expr  *rela = NULL;
+	struct expr  *symbol = NULL;
+	struct stmt  *stmt = NULL;
 	unsigned int	sport;
 	const struct proto_desc *desc;
 	enum ops	op;
-	unsigned short	from = port->range.from;
-	unsigned short	to = port->range.to;
-	from = ((from & 0xff) << 8) + ((from >> 8) & 0xff);
-	to = ((to & 0xff) << 8) + ((to >> 8) & 0xff);
+	struct error_record	*erec;
+	int	res = RULE_SUCCESS;
+	char	*from = port->range.from;
+	char	*to = port->range.to;
 
 	switch (type) {
 	case TRANSPORT_TCP:
@@ -308,23 +417,53 @@ int rule_portrange_gen_exprs(struct rule_create_data *data,
 
 	if (from && to) {
 		op = (port->exclude) ? OP_NEQ : OP_EQ;
-		left = constant_expr_alloc(data->loc, &inet_service_type, BYTEORDER_BIG_ENDIAN,
-				2 * 8, &from);
-		right = constant_expr_alloc(data->loc, &inet_service_type, BYTEORDER_BIG_ENDIAN,
-				2 * 8, &to);
+		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, from);
+		expr_set_type(symbol, &inet_service_type, BYTEORDER_BIG_ENDIAN);
+		erec = symbol_parse(symbol, &left);
+		if (erec) {
+			res = RULE_HEADER_PORT_INVALID;
+			goto err;
+		}
+		expr_free(symbol);
+		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, to);
+		expr_set_type(symbol, &inet_service_type, BYTEORDER_BIG_ENDIAN);
+		erec = symbol_parse(symbol, &right);
+		if (erec) {
+			res = RULE_HEADER_PORT_INVALID;
+			goto err;
+		}
+		expr_free(symbol);
 		range = range_expr_alloc(data->loc, left, right);
+		range->dtype = left->dtype;
+		range->flags |= EXPR_F_CONSTANT;
+		if (mpz_cmp(left->value, right->value) >= 0) {
+			res = RULE_HEADER_PORT_RANGE_INVALID;
+			goto err;
+		}
 		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, range);
 		rela->op = op;
 	} else if (from) {
 		op = (port->exclude) ? OP_LT : OP_GTE;
-		left = constant_expr_alloc(data->loc, &inet_service_type, BYTEORDER_BIG_ENDIAN,
-				2 * 8, &from);
+		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, from);
+		expr_set_type(symbol, &inet_service_type, BYTEORDER_BIG_ENDIAN);
+		erec = symbol_parse(symbol, &left);
+		if (erec) {
+			res = RULE_HEADER_PORT_INVALID;
+			goto err;
+		}
+		expr_free(symbol);
 		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, left);
 		rela->op = op;
 	} else if (to) {
 		op = (port->exclude) ? OP_GT : OP_LTE;
-		right = constant_expr_alloc(data->loc, &inet_service_type, BYTEORDER_BIG_ENDIAN,
-				2 * 8, &to);
+		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, to);
+		expr_set_type(symbol, &inet_service_type, BYTEORDER_BIG_ENDIAN);
+		erec = symbol_parse(symbol, &right);
+		if (erec) {
+			res = RULE_HEADER_PORT_INVALID;
+			goto err;
+		}
+		expr_free(symbol);
 		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, right);
 		rela->op = op;
 	} else
@@ -334,6 +473,25 @@ int rule_portrange_gen_exprs(struct rule_create_data *data,
 	list_add_tail(&stmt->list, &data->exprs);
 
 	return RULE_SUCCESS;
+err:
+	if (payload)
+		expr_free(payload);
+	if (symbol)
+		expr_free(symbol);
+	if (range) {
+		expr_free(range);
+		left = NULL;
+		right = NULL;
+	}
+	if (left)
+		expr_free(left);
+	if (right)
+		expr_free(right);
+	if (erec) {
+		xfree(erec->msg);
+		xfree(erec);
+	}
+	return res;
 }
 
 int rule_port_gen_exprs(struct rule_create_data *data, struct trans_port_data *port, enum transport_type type, int source)
@@ -838,7 +996,7 @@ int rule_parse_ip_protocol_expr(struct expr *expr, struct pktheader *header, enu
 
 	header->transport_data = xmalloc(sizeof(struct transport_data));
 	trans = header->transport_data;
-	expr->ops->snprint(proto, 10, expr);
+	expr_snprint(proto, 10, expr);
 	if (!strcmp(proto, "tcp")) {
 		trans->tcp = xmalloc(sizeof(struct trans_tcp_data));
 		trans->trans_type = TRANSPORT_TCP;
@@ -857,7 +1015,7 @@ int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr, enum o
 		int   size;
 		char  *buf;
 		char  *ip, *mask;
-		size = expr->ops->snprint(NULL, 0, expr);
+		size = expr_snprint(NULL, 0, expr);
 		buf = xzalloc(size + 1);
 		addr->ip_type = ADDRESS_SUBNET;
 		if (op == OP_EQ)
@@ -866,11 +1024,11 @@ int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr, enum o
 			addr->exclude = 1;
 		else
 			BUG();
-		expr->ops->snprint(buf, size + 1, expr);
+		expr_snprint(buf, size + 1, expr);
 		ip = strtok(buf, "/");
-		addr->subnet_str.ip = xstrdup(ip);
+		addr->subnet.ip = xstrdup(ip);
 		mask = strtok(NULL, "/");
-		addr->subnet_str.mask = xstrdup(mask);
+		addr->subnet.mask = xstrdup(mask);
 		xfree(buf);
 	} else if (expr->ops->type == EXPR_VALUE) {
 		int	size;
@@ -878,38 +1036,38 @@ int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr, enum o
 		switch (op) {
 		case OP_LT:
 			addr->exclude = 1;
-			size = expr->ops->snprint(NULL, 0, expr);
-			addr->range_str.from = xzalloc(size + 1);
-			expr->ops->snprint(addr->range_str.from, size + 1, expr);
+			size = expr_snprint(NULL, 0, expr);
+			addr->range.from = xzalloc(size + 1);
+			expr_snprint(addr->range.from, size + 1, expr);
 			break;
 		case OP_GT:
 			addr->exclude = 1;
-			size = expr->ops->snprint(NULL, 0, expr);
-			addr->range_str.to = xzalloc(size + 1);
-			expr->ops->snprint(addr->range_str.to, size + 1, expr);
+			size = expr_snprint(NULL, 0, expr);
+			addr->range.to = xzalloc(size + 1);
+			expr_snprint(addr->range.to, size + 1, expr);
 			break;
 		case OP_LTE:
 			addr->exclude = 0;
-			size = expr->ops->snprint(NULL, 0, expr);
-			addr->range_str.to = xzalloc(size + 1);
-			expr->ops->snprint(addr->range_str.to, size + 1, expr);
+			size = expr_snprint(NULL, 0, expr);
+			addr->range.to = xzalloc(size + 1);
+			expr_snprint(addr->range.to, size + 1, expr);
 			break;
 		case OP_GTE:
 			addr->exclude = 0;
-			size = expr->ops->snprint(NULL, 0, expr);
-			addr->range_str.from = xzalloc(size + 1);
-			expr->ops->snprint(addr->range_str.from, size + 1, expr);
+			size = expr_snprint(NULL, 0, expr);
+			addr->range.from = xzalloc(size + 1);
+			expr_snprint(addr->range.from, size + 1, expr);
 			break;
 		default:
 			BUG();
 		}
 	} else if (expr->ops->type == EXPR_SET_REF) {
-		int	size = expr->ops->snprint(NULL, 0, expr);
+		int	size = expr_snprint(NULL, 0, expr);
 		char	buf[size + 1];
 		addr->ip_type = ADDRESS_EXACT;
-		addr->iplist_str.ips = xzalloc(size - 2);
-		expr->ops->snprint(buf, size + 1, expr);
-		strncpy(addr->iplist_str.ips, buf + 2, size - 3);
+		addr->iplist = xzalloc(size - 2);
+		expr_snprint(buf, size + 1, expr);
+		strncpy(addr->iplist, buf + 2, size - 3);
 	} else
 		BUG();
 	return RULE_SUCCESS;
@@ -951,39 +1109,39 @@ int rule_parse_port_expr(struct expr *expr,  struct trans_port_data *port, enum 
 		switch (op) {
 		case OP_LT:
 			port->exclude = 1;
-			size = expr->ops->snprint(NULL, 0, expr);
-			port->range_str.from = xzalloc(size + 1);
-			expr->ops->snprint(port->range_str.from, size + 1, expr);
+			size = expr_snprint(NULL, 0, expr);
+			port->range.from = xzalloc(size + 1);
+			expr_snprint(port->range.from, size + 1, expr);
 			break;
 		case OP_GT:
 			port->exclude = 1;
-			size = expr->ops->snprint(NULL, 0, expr);
-			port->range_str.to = xzalloc(size + 1);
-			expr->ops->snprint(port->range_str.to, size + 1, expr);
+			size = expr_snprint(NULL, 0, expr);
+			port->range.to = xzalloc(size + 1);
+			expr_snprint(port->range.to, size + 1, expr);
 			break;
 		case OP_LTE:
 			port->exclude = 0;
-			size = expr->ops->snprint(NULL, 0, expr);
-			port->range_str.to = xzalloc(size + 1);
-			expr->ops->snprint(port->range_str.to, size + 1, expr);
+			size = expr_snprint(NULL, 0, expr);
+			port->range.to = xzalloc(size + 1);
+			expr_snprint(port->range.to, size + 1, expr);
 			break;
 		case OP_GTE:
 			port->exclude = 0;
-			size = expr->ops->snprint(NULL, 0, expr);
-			port->range_str.from = xzalloc(size + 1);
-			expr->ops->snprint(port->range_str.from, size + 1, expr);
+			size = expr_snprint(NULL, 0, expr);
+			port->range.from = xzalloc(size + 1);
+			expr_snprint(port->range.from, size + 1, expr);
 			break;
 		default:
 			BUG();
 		}
 	} else if (expr->ops->type == EXPR_SET_REF) {
-		int	size = expr->ops->snprint(NULL, 0, expr);
+		int	size = expr_snprint(NULL, 0, expr);
 		char	buf[size + 1];
 		port->port_type = PORT_EXACT;
-		size = expr->ops->snprint(NULL, 0, expr);
-		port->portlist_str.ports = xzalloc(size - 2);
-		expr->ops->snprint(buf, size + 1, expr);
-		strncpy(port->portlist_str.ports, buf + 2, size - 3);
+		size = expr_snprint(NULL, 0, expr);
+		port->portlist = xzalloc(size - 2);
+		expr_snprint(buf, size + 1, expr);
+		strncpy(port->portlist, buf + 2, size - 3);
 	} else
 		BUG();
 
@@ -1088,33 +1246,33 @@ int rule_parse_header_expr(struct expr *expr, struct pktheader *header)
 
 static int rule_parse_ifname_expr(struct expr *expr, union ifname *ifname)
 {
-	int	len = expr->ops->snprint(NULL, 0, expr);
+	int	len = expr_snprint(NULL, 0, expr);
 	char	p[len + 1];
 
 	ifname->name_str = xzalloc(len - 1);
-	expr->ops->snprint(p, len + 1, expr);
+	expr_snprint(p, len + 1, expr);
 	strncpy(ifname->name_str, p + 1, len - 2);
 	return RULE_SUCCESS;
 }
 
 static int rule_parse_iftype_expr(struct expr *expr, union iftype *iftype)
 {
-	int	len = expr->ops->snprint(NULL, 0, expr);
+	int	len = expr_snprint(NULL, 0, expr);
 	char	p[len + 1];
 
 	iftype->type_str = xzalloc(len - 2);
-	expr->ops->snprint(p, len + 1, expr);
+	expr_snprint(p, len + 1, expr);
 	strncpy(iftype->type_str, p + 2, len - 3);
 	return RULE_SUCCESS;
 }
 
 static int rule_parse_skuid_expr(struct expr *expr, union skid *uid)
 {
-	int	len = expr->ops->snprint(NULL, 0, expr);
+	int	len = expr_snprint(NULL, 0, expr);
 	char	p[len + 1];
 
 	uid->id_str = xzalloc(len - 2);
-	expr->ops->snprint(p, len + 1, expr);
+	expr_snprint(p, len + 1, expr);
 	strncpy(uid->id_str, p + 2, len - 3);
 
 	return RULE_SUCCESS;
@@ -1122,11 +1280,11 @@ static int rule_parse_skuid_expr(struct expr *expr, union skid *uid)
 
 static int rule_parse_skgid_expr(struct expr *expr, union skid *gid)
 {
-	int	len = expr->ops->snprint(NULL, 0, expr);
+	int	len = expr_snprint(NULL, 0, expr);
 	char	p[len + 1];
 
 	gid->id_str = xzalloc(len - 2);
-	expr->ops->snprint(p, len + 1, expr);
+	expr_snprint(p, len + 1, expr);
 	strncpy(gid->id_str, p + 2, len - 3);
 
 	return RULE_SUCCESS;
@@ -1278,9 +1436,9 @@ int set_parse_expr(struct expr *expr, struct set_create_data *gui_set)
 
 	elem = xzalloc(sizeof(struct elem_create_data));
 	elem->type = gui_set->keytype->type;
-	size = expr->ops->snprint(NULL, 0, expr);
+	size = expr_snprint(NULL, 0, expr);
 	buf = xmalloc(size + 1);
-	expr->ops->snprint(buf, size + 1, expr);
+	expr_snprint(buf, size + 1, expr);
 	elem->key = buf;
 	list_add_tail(&elem->list, &gui_set->elems);
 	return SET_SUCCESS;

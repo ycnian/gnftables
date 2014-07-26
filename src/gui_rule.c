@@ -140,7 +140,7 @@ static int rule_snprint(char *str, size_t size, const struct rule *rule)
 	if (!str) {
 		list_for_each_entry(stmt, &rule->stmts, list) {
 			res += snprintf(NULL, 0, " ");
-			res += stmt->ops->snprint(NULL, 0, stmt);
+			res += stmt_snprint(NULL, 0, stmt);
 		}
 		return res;
 	}
@@ -150,7 +150,7 @@ static int rule_snprint(char *str, size_t size, const struct rule *rule)
 		res += len;
 		if ((size_t)res >= size)
 			return -1;
-		len = stmt->ops->snprint(str + res, size - res, stmt);
+		len = stmt_snprint(str + res, size - res, stmt);
 		res += len;
 		if ((size_t)res >= size)
 			return -1;

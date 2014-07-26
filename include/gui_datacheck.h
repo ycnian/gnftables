@@ -63,28 +63,15 @@ struct ip_addr_data {
 	enum address_type	ip_type;
 	int	exclude;
 	union {
-		struct {
-			struct list_head ips;
-		}iplist;
-		struct {
-			char	*ips;
-		}iplist_str;
-		struct {
-			unsigned char	ip[4];
-			int	mask;
-		}subnet;
+		char	*iplist;
 		struct {
 			char	*ip;
 			char	*mask;
-		}subnet_str;
-		struct {
-			unsigned char	from[4];
-			unsigned char	to[4];
-		}range;
+		}subnet;
 		struct {
 			char	*from;
 			char	*to;
-		}range_str;
+		}range;
 	};
 };
 
@@ -92,20 +79,11 @@ struct trans_port_data {
 	enum port_type	port_type;
 	int	exclude;
 	union {
-		struct {
-			struct list_head ports;
-		}portlist;
-		struct {
-			char	*ports;
-		}portlist_str;
-		struct {
-			unsigned short	from;
-			unsigned short	to;
-		}range;
+		char	*portlist;
 		struct {
 			char	*from;
 			char	*to;
-		}range_str;
+		}range;
 	};
 };
 

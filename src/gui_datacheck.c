@@ -32,6 +32,7 @@ char *string_skip_space(char *str)
 
 /*
  * Get data from gtk page. Skipe spaces at begin or end of data.
+ * If entry is NULL or only contains spaces, return NULL.
  * @entry: gtk entry.
  */
 char *get_data_from_entry(GtkEntry *entry)
@@ -310,195 +311,6 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 	return CHAIN_SUCCESS;
 }
 
-
-/*
- * Get ipv4 address list from rule creating page. The addresses are separated
- * by space.
- * @widget: gtk widget which contains ipv4 addresses.
- * @data:   parameter used to save ipv4 addresses.
- */
-int get_header_iplist_from_page(struct ip_address  *widget,
-		struct ip_addr_data *data)
-{
-	char	*ip;
-	char	*iplist;
-	struct ip_convert  *ipnet;
-	iplist = get_data_from_entry(GTK_ENTRY(widget->exact_ip.ip));
-	if (!iplist)
-		return RULE_SUCCESS;
-	ip = string_skip_space(strtok(iplist, ","));
-	while (ip) {
-		ipnet = xmalloc(sizeof(struct ip_convert));
-		if (!inet_pton(AF_INET, ip, ipnet->ip)) {
-			xfree(ipnet);
-			xfree(iplist);
-			return RULE_HEADER_IP_INVALID;
-		}
-		list_add_tail(&ipnet->list, &data->iplist.ips);
-		ip = string_skip_space(strtok(NULL, ","));
-	}
-	xfree(iplist);
-	return RULE_SUCCESS;
-}
-
-
-/*
- * Check whether an unsigned char variable is apart of ipv4 network mask.
- * Return number of set bits in this variable.
- * For example， 11111000 is apart of network mask, 11101000 isn't a part
- * of network mask.
- * @token: variable to be checked.
- */
-int ipv4_addr_mask_sub(unsigned char token)
-{
-	unsigned char  tmp = token;
-	int shift = 0;
-
-	for (shift = 0; shift < 8; shift++) {
-		token >>= 1;
-		if (token * 2 + 1 == tmp)
-			break;
-		tmp = token;
-	}
-
-	if (tmp == 255 >> shift)
-		return 8 - shift;
-	else
-		return -1;
-}
-
-/*
- * Check the validation of ipv4 network mask, and convert to a interger.
- * 24 ==> 24
- * 255.255.0.0 ==> 16
- * 33 is not a valid ipv4 network mask
- * 255.255.7.0 is not a valid ipv4 network mask
- * @str: ipv4 network mask in string format.
- * @integer: parameter used to save converted mask.
- */
-int ipv4_addr_mask(char *str, int *integer)
-{
-	int	res;
-	int	mask;
-	unsigned char	ip[4];
-
-	res = unsigned_int_check(str);
-	if (!res) {
-		mask = atoi(str);
-		if (mask >= 0 && mask <= 32) {
-			*integer = mask;
-			return RULE_SUCCESS;
-		} else
-			return RULE_HEADER_MASK_INVALID;
-	}
-	if (!inet_pton(AF_INET, str, ip)) {
-		return RULE_HEADER_MASK_INVALID;
-	}
-
-	if (ip[0] != 255) {
-		if (ip[1] != 0 || ip[2] != 0 || ip[3] != 0)
-			return RULE_HEADER_MASK_INVALID;
-		mask = ipv4_addr_mask_sub(ip[0]);
-		if (mask != 0)
-			return RULE_HEADER_MASK_INVALID;
-		else {
-			*integer = mask;
-			return RULE_SUCCESS;
-		}
-	}
-	else if (ip[1] != 255) {
-		if (ip[2] != 0 || ip[3] != 0)
-			return RULE_HEADER_MASK_INVALID;
-		mask = ipv4_addr_mask_sub(ip[1]);
-		if (mask != 0)
-			return RULE_HEADER_MASK_INVALID;
-		else {
-			*integer = 8 + mask;
-			return RULE_SUCCESS;
-		}
-	} else if (ip[2] != 255) {
-		if (ip[3] != 0)
-			return RULE_HEADER_MASK_INVALID;
-		mask = ipv4_addr_mask_sub(ip[2]);
-		if (mask != 0)
-			return RULE_HEADER_MASK_INVALID;
-		else {
-			*integer = 16 + mask;
-			return RULE_SUCCESS;
-		}
-	} else {
-		mask = ipv4_addr_mask_sub(ip[3]);
-		if (mask != 0)
-			return RULE_HEADER_MASK_INVALID;
-		else {
-			*integer = 24 + mask;
-			return RULE_SUCCESS;
-		}
-	}
-}
-
-/*
- * get ipv4 address and subnet mask from rule creating page.
- * @widget:  gtk widget which contains ipv4 address and mask.
- * @data:    parameter used to save ipv4 address and mask.
- */
-int get_header_ipsubnet_from_page(struct ip_address  *widget,
-		struct ip_addr_data *data)
-{
-	char	*ip;
-	char	*mask;
-	int	res = RULE_SUCCESS;
-
-	ip = get_data_from_entry(GTK_ENTRY(widget->subnet.ip));
-	mask = get_data_from_entry(GTK_ENTRY(widget->subnet.mask));
-
-	if (!ip && !mask)
-		goto out;
-	if (!ip) {
-		memset(data->subnet.ip, 0, 4);
-		res = RULE_HEADER_IP_EMPTY;
-		goto out;
-	}
-	if (!mask) {
-		data->subnet.mask = 0;
-		res = RULE_HEADER_MASK_EMPTY;
-		goto out;
-	}
-
-	if (!inet_pton(AF_INET, ip, data->subnet.ip)) {
-		res = RULE_HEADER_IP_INVALID;
-		goto out;
-	}
-	res = ipv4_addr_mask(mask, &data->subnet.mask);
-
-out:
-	xfree(ip);
-	xfree(mask);
-	return res;
-}
-
-/*
- * Compare two ipv4 address.
- * @ip1: the first ipv4 address
- * @ip2: the second ipv4 address
- * Result:
- *   -1: ip1 < ip2
- *    0: ip1 = ip2
- *    1: ip1 > ip2
- */
-int ipv4_addr_cmp(unsigned char *ip1, unsigned char *ip2)
-{
-	int i = 0;
-	for (i = 0; i < 4; i++) {
-		if (ip1[i] > ip2[i])
-			return 1;
-		else if (ip1[i] < ip2[i])
-			return -1;
-	}
-	return 0;
-}
-
-
 /*
  * Check whether a string is empty or contains only space.
  */
@@ -517,42 +329,6 @@ int string_is_null(char *str)
 	return 1;
 }
 
-
-/*
- * Get the start and end ipv4 address of a ipv4 range from rule creating page.
- *
- */
-int get_header_iprange_from_page(struct ip_address  *widget,
-		struct ip_addr_data *data)
-{
-	char	*from;
-	char	*to;
-	int	res = RULE_SUCCESS;
-
-	from = get_data_from_entry(GTK_ENTRY(widget->range.from));
-	to = get_data_from_entry(GTK_ENTRY(widget->range.to));
-
-	if (!from)
-		memset(data->range.from, 0, 4);
-	else if (!inet_pton(AF_INET, from, data->range.from)) {
-		res = RULE_HEADER_IP_INVALID;
-		goto out;
-	}
-	if (!to)
-		memset(data->range.to, 0, 4);
-	else if (!inet_pton(AF_INET, to, data->range.to)) {
-		res = RULE_HEADER_IP_INVALID;
-		goto out;
-	}
-	if (from && to && ipv4_addr_cmp(data->range.from, data->range.to) >= 0)
-		res = RULE_HEADER_IP_RANGE_INVALID;
-out:
-	xfree(from);
-	xfree(to);
-	return res;
-
-}
-
 /*
  * Get ip address information from rule creating page. It's maybe ip address
  * list or a subnet or an ip address range.
@@ -561,23 +337,24 @@ out:
 int get_header_addr_from_page(struct ip_address  *widget,
 		struct ip_addr_data *data)
 {
-	enum address_type       type;
-	int	exclude;
 	int	res = RULE_SUCCESS;
-
-	type = widget->type;
-	exclude = widget->exclude;
-	data->ip_type = type;
-	data->exclude = exclude;
-	switch (type) {
+	data->ip_type = widget->type;
+	data->exclude = widget->exclude;
+	switch (widget->type) {
 	case ADDRESS_EXACT:
-		res = get_header_iplist_from_page(widget, data);
+		data->iplist = get_data_from_entry(GTK_ENTRY(widget->exact_ip.ip));
 		break;
 	case ADDRESS_SUBNET:
-		res = get_header_ipsubnet_from_page(widget, data);
+		data->subnet.ip = get_data_from_entry(GTK_ENTRY(widget->subnet.ip));
+		data->subnet.mask = get_data_from_entry(GTK_ENTRY(widget->subnet.mask));
+		if (data->subnet.ip && !data->subnet.mask)
+			res = RULE_HEADER_MASK_EMPTY;
+		if (!data->subnet.ip && data->subnet.mask)
+			res = RULE_HEADER_IP_EMPTY;
 		break;
 	case ADDRESS_RANGE:
-		res = get_header_iprange_from_page(widget, data);
+		data->range.from = get_data_from_entry(GTK_ENTRY(widget->range.from));
+		data->range.to = get_data_from_entry(GTK_ENTRY(widget->range.to));
 		break;
 	case ADDRESS_SET:
 		break;
@@ -588,90 +365,6 @@ int get_header_addr_from_page(struct ip_address  *widget,
 	return res;
 }
 
-/*
- * Get (tcp or udp) port list from rule creating page.
- *
- */
-int get_header_portlist_from_page(struct transport_port_details *widget,
-		struct trans_port_data *data)
-{
-	unsigned short pt;
-	char	*port;
-	char	*portlist;
-	struct unsigned_short_elem  *portnet;
-
-	init_list_head(&data->portlist.ports);
-	portlist = get_data_from_entry(GTK_ENTRY(widget->portlist.port));
-	if(!portlist)
-		return RULE_SUCCESS;
-	port = string_skip_space(strtok(portlist, ","));
-	while (port) {
-		if (unsigned_int_check(port) == -1) {
-			xfree(portlist);
-			return RULE_HEADER_PORT_INVALID;
-		}
-		if (str2unshort(port, &pt) == -1) {
-			xfree(portlist);
-			return RULE_HEADER_PORT_OVERFLOW;
-		}
-		portnet = xmalloc(sizeof(struct unsigned_short_elem));
-		portnet->value = pt;
-		list_add_tail(&portnet->list, &data->portlist.ports);
-		port = string_skip_space(strtok(NULL, ","));
-	}
-	xfree(portlist);
-	return RULE_SUCCESS;
-}
-
-/*
- * Get port range from rule creating page.
- */
-int get_header_portrange_from_page(struct transport_port_details *widget,
-		struct trans_port_data *data)
-{
-	unsigned short pt;
-	char	*from;
-	char	*to;
-	int	res = RULE_SUCCESS;
-
-	from = get_data_from_entry(GTK_ENTRY(widget->range.from));
-	to = get_data_from_entry(GTK_ENTRY(widget->range.to));
-
-	if (!from)
-		data->range.from = 0;
-	else {
-		if (unsigned_int_check(from) == -1) {
-			res = RULE_HEADER_PORT_INVALID;
-			goto out;
-		}
-		if (str2unshort(from, &pt) == -1) {
-			res = RULE_HEADER_PORT_OVERFLOW;
-			goto out;
-		}
-		data->range.from = pt;
-	}
-
-	if (!to)
-		data->range.to = 0;
-	else {
-		if (unsigned_int_check(to) == -1) {
-			res = RULE_HEADER_PORT_INVALID;
-			goto out;
-		}
-		if (str2unshort(to, &pt) == -1) {
-			res = RULE_HEADER_PORT_OVERFLOW;
-			goto out;
-		}
-		data->range.to = pt;
-	}
-
-	if (from && to && (data->range.from >= data->range.to))
-		res = RULE_HEADER_PORT_RANGE_INVALID;
-out:
-	xfree(from);
-	xfree(to);
-	return res;
-}
 
 /*
  * Get port information from rule creating page. It's maybe a port list or
@@ -681,20 +374,15 @@ out:
 int get_header_port_from_page(struct transport_port_info *widget,
 		struct trans_port_data *data)
 {
-	enum port_type	type;
-	int	exclude;
-	int	res = RULE_SUCCESS;
-
-	type = widget->value->type;
-	exclude = widget->value->exclude;
-	data->port_type = type;
-	data->exclude = exclude;
-	switch (type) {
+	data->port_type = widget->value->type;
+	data->exclude = widget->value->exclude;
+	switch (widget->value->type) {
 	case PORT_EXACT:
-		res = get_header_portlist_from_page(widget->value, data);
+		data->portlist = get_data_from_entry(GTK_ENTRY(widget->value->portlist.port));
 		break;
 	case PORT_RANGE:
-		res = get_header_portrange_from_page(widget->value, data);
+		data->range.from = get_data_from_entry(GTK_ENTRY(widget->value->range.from));
+		data->range.to = get_data_from_entry(GTK_ENTRY(widget->value->range.to));
 		break;
 	case PORT_SET:
 		break;
@@ -702,7 +390,7 @@ int get_header_port_from_page(struct transport_port_info *widget,
 		break;
 	}
 
-	return res;
+	return RULE_SUCCESS;
 }
 
 /*
@@ -794,12 +482,18 @@ int get_header_data_from_page(struct match_header *widget, struct pktheader *dat
 {
 	int	res;
 
+	if (data->saddr)
+		data->saddr = xzalloc(sizeof(struct ip_addr_data));
 	res = get_header_addr_from_page(widget->saddr.value, data->saddr);
 	if (res != RULE_SUCCESS)
 		return res;
+	if (data->daddr)
+		data->daddr = xzalloc(sizeof(struct ip_addr_data));
 	res = get_header_addr_from_page(widget->daddr.value, data->daddr);
 	if (res != RULE_SUCCESS)
 		return res;
+	if (data->transport_data)
+		data->transport_data = xzalloc(sizeof(struct transport_data));
 	res = get_header_trans_from_page(widget->transport.value, data->transport_data);
 	return res;
 }
@@ -1136,8 +830,6 @@ int rule_create_getdata(struct rule_create_widget  *widget,
 	p->header->saddr = xmalloc(sizeof(struct ip_addr_data));
 	p->header->daddr = xmalloc(sizeof(struct ip_addr_data));
 	p->header->transport_data = xmalloc(sizeof(struct transport_data));
-	init_list_head(&p->header->saddr->iplist.ips);
-	init_list_head(&p->header->daddr->iplist.ips);
 	p->loc = xzalloc(sizeof(struct location));
 
 	p->family = widget->family;

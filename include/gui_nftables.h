@@ -160,12 +160,13 @@ struct transport_port_details {
 		}range;
 		struct {
 			GtkWidget	*set;
-			GtkWidget	*value;
 		}sets;
 	};
 };
 
 struct transport_port_info {
+	int	family;
+	char	*table;
 	GtkWidget	*label;
 	GtkWidget	*type;
 	struct transport_port_details	*value;
@@ -216,12 +217,13 @@ struct ip_address {
 		}range;
 		struct {
 			GtkWidget	*set;
-			GtkWidget	*value;
 		}sets;
 	};
 };
 
 struct  match_header {
+	int		family;
+	char		*table;
 	int		offset;
 	int		len;
 	GtkWidget	*expander;

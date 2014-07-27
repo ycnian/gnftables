@@ -258,6 +258,74 @@ err:
 	return res;
 }
 
+int rule_addrset_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
+{
+	struct expr  *payload = NULL;
+	struct expr  *constant = NULL;
+	struct expr  *rela = NULL;
+	struct expr  *elem = NULL;
+	struct expr  *symbol = NULL;
+	struct expr  *se = NULL;
+	struct stmt  *stmt = NULL;
+	struct set   *set = NULL;
+	unsigned int	type;
+	enum ops	op;
+	struct ip_convert	*convert;
+	char	*ip;
+	struct error_record	*erec;
+	struct netlink_ctx      ctx;
+	struct table		*table;
+	struct set		*clone;
+	char	*iplist;
+	struct handle		*handle;
+	int	res;
+	LIST_HEAD(msgs);
+
+	if (!addr->iplist)
+		return RULE_SUCCESS;
+
+	type = source ? IPHDR_SADDR: IPHDR_DADDR;
+//	op = (addr->exclude) ? OP_NEQ: OP_EQ;
+	op = OP_LOOKUP;
+
+	handle = xzalloc(sizeof(struct handle));
+	handle->family = data->family;
+	handle->table = xstrdup(data->table);
+	handle->set = xstrdup(addr->set);
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+	init_list_head(&ctx.list);
+	res = netlink_get_set(&ctx, handle, data->loc);
+	handle_free(handle);
+	if (res < 0)
+		return RULE_HEADER_SET_NOT_EXIST;
+	set = list_first_entry(&ctx.list, struct set, list);
+
+	payload = payload_expr_alloc(data->loc, &proto_ip, type);
+	elem = set_expr_alloc(data->loc);
+
+	table = table_lookup(&set->handle);
+	if (table == NULL) {
+		table = table_alloc();
+		init_list_head(&table->sets);
+		handle_merge(&table->handle, &set->handle);
+		table_add_hash(table);
+	}
+	if (!set_lookup(table, set->handle.set)) {
+		clone = set_clone(set);
+		set_add_hash(clone, table);
+	}
+
+	se = set_ref_expr_alloc(data->loc, set);
+
+	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, se);
+	rela->op = op;
+	stmt = expr_stmt_alloc(data->loc, rela);
+	list_add_tail(&stmt->list, &data->exprs);
+
+	return RULE_SUCCESS;
+}
 
 int rule_addr_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
 {
@@ -276,6 +344,7 @@ int rule_addr_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr
 		res = rule_addrrange_gen_exprs(data, addr, source);
 		break;
 	case ADDRESS_SET:
+		res = rule_addrset_gen_exprs(data, addr, source);
 		break;
 	default:
 		break;
@@ -494,6 +563,89 @@ err:
 	return res;
 }
 
+int rule_portset_gen_exprs(struct rule_create_data *data,
+		struct trans_port_data *port, enum transport_type type, int source)
+{
+	struct expr  *payload = NULL;
+	struct expr  *constant = NULL;
+	struct expr  *rela = NULL;
+	struct expr  *elem = NULL;
+	struct expr  *se = NULL;
+	struct expr  *symbol = NULL;
+	struct stmt  *stmt = NULL;
+	struct set   *set = NULL;
+	unsigned int	sport;
+	const struct proto_desc *desc;
+	struct error_record	*erec;
+	enum ops	op;
+	struct unsigned_short_elem	*convert;
+	unsigned short	port_value;
+	struct netlink_ctx      ctx;
+	struct table		*table;
+	struct set		*clone;
+	char	*portlist;
+	char	*portdata;
+	struct handle	*handle;
+	int	res;
+	LIST_HEAD(msgs);
+
+	if (!port->set)
+		return RULE_SUCCESS;
+
+	switch (type) {
+	case TRANSPORT_TCP:
+		sport = source ? TCPHDR_SPORT : TCPHDR_DPORT;
+		desc = &proto_tcp;
+		break;
+	case TRANSPORT_UDP:
+		sport = source ? UDPHDR_SPORT : UDPHDR_DPORT;
+		desc = &proto_udp;
+		break;
+	default:
+		BUG("invalid transport protocol.");
+	}
+//	op = (addr->exclude) ? OP_NEQ: OP_EQ;
+	op = OP_LOOKUP;
+
+	handle = xzalloc(sizeof(struct handle));
+	handle->family = data->family;
+	handle->table = xstrdup(data->table);
+	handle->set = xstrdup(port->set);
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+	init_list_head(&ctx.list);
+	res = netlink_get_set(&ctx, handle, data->loc);
+	handle_free(handle);
+	if (res < 0)
+		return RULE_HEADER_SET_NOT_EXIST;
+	set = list_first_entry(&ctx.list, struct set, list);
+
+	payload = payload_expr_alloc(data->loc, desc, sport);
+	elem = set_expr_alloc(data->loc);
+
+	table = table_lookup(&set->handle);
+	if (table == NULL) {
+		table = table_alloc();
+		init_list_head(&table->sets);
+		handle_merge(&table->handle, &set->handle);
+		table_add_hash(table);
+	}
+	if (!set_lookup(table, set->handle.set)) {
+		clone = set_clone(set);
+		set_add_hash(clone, table);
+	}
+
+	se = set_ref_expr_alloc(data->loc, set);
+
+	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, se);
+	rela->op = op;
+	stmt = expr_stmt_alloc(data->loc, rela);
+	list_add_tail(&stmt->list, &data->exprs);
+
+	return RULE_SUCCESS;
+}
+
 int rule_port_gen_exprs(struct rule_create_data *data, struct trans_port_data *port, enum transport_type type, int source)
 {
 	enum port_type	port_type;
@@ -508,13 +660,13 @@ int rule_port_gen_exprs(struct rule_create_data *data, struct trans_port_data *p
 		res = rule_portrange_gen_exprs(data, port, type, source);
 		break;
 	case PORT_SET:
+		res = rule_portset_gen_exprs(data, port, type, source);
 		break;
 	default:
 		break;
 	}
 
 	return res;
-
 }
 
 int rule_transall_gen_exprs(struct rule_create_data *data, struct trans_all_data *all)
@@ -1064,10 +1216,17 @@ int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr, enum o
 	} else if (expr->ops->type == EXPR_SET_REF) {
 		int	size = expr_snprint(NULL, 0, expr);
 		char	buf[size + 1];
-		addr->ip_type = ADDRESS_EXACT;
-		addr->iplist = xzalloc(size - 2);
 		expr_snprint(buf, size + 1, expr);
-		strncpy(addr->iplist, buf + 2, size - 3);
+		if (expr->set->flags & SET_F_ANONYMOUS) {
+			addr->ip_type = ADDRESS_EXACT;
+			addr->iplist = xzalloc(size - 2);
+			strncpy(addr->iplist, buf + 2, size - 3);
+		} else {
+			addr->ip_type = ADDRESS_SET;
+			addr->set = xzalloc(size);
+			strncpy(addr->set, buf + 1, size - 1);
+		}
+
 	} else
 		BUG();
 	return RULE_SUCCESS;
@@ -1137,11 +1296,16 @@ int rule_parse_port_expr(struct expr *expr,  struct trans_port_data *port, enum 
 	} else if (expr->ops->type == EXPR_SET_REF) {
 		int	size = expr_snprint(NULL, 0, expr);
 		char	buf[size + 1];
-		port->port_type = PORT_EXACT;
-		size = expr_snprint(NULL, 0, expr);
-		port->portlist = xzalloc(size - 2);
 		expr_snprint(buf, size + 1, expr);
-		strncpy(port->portlist, buf + 2, size - 3);
+		if (expr->set->flags & SET_F_ANONYMOUS) {
+			port->port_type = PORT_EXACT;
+			port->portlist = xzalloc(size - 2);
+			strncpy(port->portlist, buf + 2, size - 3);
+		} else {
+			port->port_type = PORT_SET;
+			port->portlist = xzalloc(size);
+			strncpy(port->portlist, buf + 1, size - 1);
+		}
 	} else
 		BUG();
 

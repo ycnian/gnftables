@@ -403,7 +403,7 @@ int table_list_sets(struct table *table)
         return 0;
 }
 
-int gui_get_sets_list(struct list_head *head, int family, char *table)
+int gui_get_sets_list(struct list_head *head, int family, char *table, char *desc)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
@@ -426,6 +426,8 @@ int gui_get_sets_list(struct list_head *head, int family, char *table)
 
 	list_for_each_entry_safe(set, s, &ctx.list, list) {
 		if (set->flags & SET_F_ANONYMOUS)
+			goto skipe;
+		if (strcmp(desc, "all") && strcmp(desc, set->keytype->desc))
 			goto skipe;
 		gui_set = (struct set_list_data *)xzalloc(sizeof(struct set_list_data));
 		gui_set->family = set->handle.family;
@@ -853,7 +855,7 @@ int gui_delete_table(int family, char *name)
 	}
 
 	// delete all sets in the table
-	gui_get_sets_list(&sets_list, family, name);
+	gui_get_sets_list(&sets_list, family, name, "all");
 	list_for_each_entry_safe(gui_set, gs, &sets_list, list) {
 		list_del(&gui_set->list);
 		gui_delete_set(gui_set->family, gui_set->table, gui_set->name);

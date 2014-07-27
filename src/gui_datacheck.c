@@ -357,6 +357,9 @@ int get_header_addr_from_page(struct ip_address  *widget,
 		data->range.to = get_data_from_entry(GTK_ENTRY(widget->range.to));
 		break;
 	case ADDRESS_SET:
+		data->set = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget->sets.set));
+		if (!data->set)
+			res = RULE_HEADER_SET_EMPTY;
 		break;
 	default:
 		break;
@@ -374,6 +377,7 @@ int get_header_addr_from_page(struct ip_address  *widget,
 int get_header_port_from_page(struct transport_port_info *widget,
 		struct trans_port_data *data)
 {
+	int	res = RULE_SUCCESS;
 	data->port_type = widget->value->type;
 	data->exclude = widget->value->exclude;
 	switch (widget->value->type) {
@@ -385,12 +389,15 @@ int get_header_port_from_page(struct transport_port_info *widget,
 		data->range.to = get_data_from_entry(GTK_ENTRY(widget->value->range.to));
 		break;
 	case PORT_SET:
+		data->set = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget->value->sets.set));
+		if (!data->set)
+			res = RULE_HEADER_SET_EMPTY;
 		break;
 	default:
 		break;
 	}
 
-	return RULE_SUCCESS;
+	return res;
 }
 
 /*

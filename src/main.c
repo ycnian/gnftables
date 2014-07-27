@@ -767,6 +767,43 @@ static void header_addr_range_hide(struct ip_address *addr)
 	gtk_widget_hide(addr->range.to);
 }
 
+static void header_addr_set_show(struct ip_address *addr, int family, char *table, char *setname)
+{
+	int	res;
+	GtkWidget	*addr_set = addr->sets.set;
+	struct set_list_data   *set, *s;
+	int	index = 0;
+	int	selected = 0;
+
+	LIST_HEAD(set_list);
+	res = gui_get_sets_list(&set_list, family, table, "IPv4 address");
+	if (res != SET_SUCCESS)
+		// error;
+		;
+	gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(addr_set));
+	list_for_each_entry_safe(set, s, &set_list, list) {
+		list_del(&set->list);
+		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(addr_set),
+			xstrdup(set->name), xstrdup(set->name));
+		if (setname) {
+			if (!strcmp(setname, set->name))
+				selected = index;
+		}
+		index++;
+		xfree(set->table);
+		xfree(set->name);
+		xfree(set);
+	}
+	
+	gtk_combo_box_set_active(GTK_COMBO_BOX(addr_set), selected);
+	gtk_widget_show(addr->sets.set);
+}
+
+static void header_addr_set_hide(struct ip_address *addr)
+{
+	gtk_widget_hide(addr->sets.set);
+}
+
 static void header_addr_callback(GtkComboBoxText *widget, gpointer data)
 {
 	struct ip_address	*addr;
@@ -783,17 +820,26 @@ static void header_addr_callback(GtkComboBoxText *widget, gpointer data)
 		addr->type = ADDRESS_EXACT;
 		header_addr_subnet_hide(addr);
 		header_addr_range_hide(addr);
+		header_addr_set_hide(addr);
 		header_addr_exactip_show(addr);
 	} else if (!(strcmp(type, "subnet"))) {
 		addr->type = ADDRESS_SUBNET;
 		header_addr_exactip_hide(addr);
 		header_addr_range_hide(addr);
+		header_addr_set_hide(addr);
 		header_addr_subnet_show(addr);
 	} else if (!(strcmp(type, "range"))) {
 		addr->type = ADDRESS_RANGE;
 		header_addr_exactip_hide(addr);
 		header_addr_subnet_hide(addr);
+		header_addr_set_hide(addr);
 		header_addr_range_show(addr);
+	}else if (!(strcmp(type, "sets"))) {
+		addr->type = ADDRESS_SET;
+		header_addr_exactip_hide(addr);
+		header_addr_subnet_hide(addr);
+		header_addr_range_hide(addr);
+		header_addr_set_show(addr, args->family, args->table, NULL);
 	}
 	// else
 	// 	bug();
@@ -810,61 +856,6 @@ void header_daddr_exclude(GtkWidget *check_button, gpointer data)
 		daddr->exclude = 1;
 	else
 		daddr->exclude = 0;
-}
-
-void header_trans_port_init(const char *string, GtkWidget *fixed, int vertical,
-		struct transport_port_info *port,
-		void (* porttype_callback)(GtkComboBoxText *widget, gpointer data),
-		void (* port_exclude)(GtkWidget *check_button, gpointer data))
-{
-	GtkWidget	*label;
-	GtkWidget	*type;
-	GtkWidget	*exclude;
-	GtkWidget	*protlist;
-	GtkWidget	*range_from;
-	GtkWidget	*range_dash;
-	GtkWidget	*range_to;
-
-	label = gtk_label_new(string);
-	gtk_fixed_put(GTK_FIXED(fixed), label, 40, vertical);
-	port->label = label;
-
-	type = gtk_combo_box_text_new();
-	gtk_widget_set_size_request(type, 100, 10);
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(type),
-			"port list", "port list");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(type),
-			"range", "range");
-//	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(type),
-//			"sets", "sets");
-	gtk_combo_box_set_active(GTK_COMBO_BOX(type), 0);
-	g_signal_connect(type, "changed", G_CALLBACK(porttype_callback), port);
-	gtk_fixed_put(GTK_FIXED(fixed), type, 150, vertical);
-	port->type = type;
-
-	exclude = gtk_check_button_new_with_label("Exclude");
-	g_signal_connect(exclude, "toggled", G_CALLBACK(port_exclude), port);
-	gtk_fixed_put(GTK_FIXED(fixed), exclude, 700, vertical);
-	port->exclude = exclude;
-	port->value->exclude = 0;
-
-	protlist = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(protlist), 47);
-	gtk_fixed_put(GTK_FIXED(fixed), protlist, 280, vertical);
-	port->value->type = PORT_EXACT;
-	port->value->portlist.port = protlist;
-
-	range_from = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(range_from), 20);
-	gtk_fixed_put(GTK_FIXED(fixed), range_from, 280, vertical);
-	port->value->range.from = range_from;
-	range_dash = gtk_label_new("-");
-	gtk_fixed_put(GTK_FIXED(fixed), range_dash, 470, vertical);
-	port->value->range.dash = range_dash;
-	range_to = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(range_to), 20);
-	gtk_fixed_put(GTK_FIXED(fixed), range_to, 500, vertical);
-	port->value->range.to = range_to;
 }
 
 void header_trans_all_init()
@@ -897,23 +888,6 @@ void transport_port_exclude(GtkWidget *check_button, gpointer data)
 		port_info->value->exclude = 1;
 	else
 		port_info->value->exclude = 0;
-}
-
-// zzzzz
-void header_trans_tcp_init(GtkWidget *fixed, struct transport_port_info *sport, struct transport_port_info *dport)
-{
-	header_trans_port_init("source port:", fixed, 0, sport,
-		transport_port_callback, transport_port_exclude);
-	header_trans_port_init("dest port:", fixed, 40, dport,
-		transport_port_callback, transport_port_exclude);
-}
-
-void header_trans_udp_init(GtkWidget *fixed, struct transport_port_info *sport, struct transport_port_info *dport)
-{
-	header_trans_port_init("source port:", fixed, 0, sport,
-		transport_port_callback, transport_port_exclude);
-	header_trans_port_init("dest port:", fixed, 40, dport,
-		transport_port_callback, transport_port_exclude);
 }
 
 void create_new_rule(GtkButton *button, gpointer  data)
@@ -970,6 +944,7 @@ static void rule_add_content_header_addr(struct match_header *header, struct ip_
 	GtkWidget	*addr_range_from;
 	GtkWidget	*addr_range_dash;
 	GtkWidget	*addr_range_to;
+	GtkWidget	*addr_set;
 	int		offset;
 	char		*label;
 	struct ip_address	*ipaddr;
@@ -995,14 +970,13 @@ static void rule_add_content_header_addr(struct match_header *header, struct ip_
 			"subnet", "subnet");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(addr_type),
 			"range", "range");
-//	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(addr_type),
-//			"sets", "sets");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(addr_type),
+			"sets", "sets");
 	gtk_fixed_put(GTK_FIXED(fixed), addr_type, 150, offset);
 	if (source)
 		header->saddr.type = addr_type;
 	else
 		header->daddr.type = addr_type;
-	g_signal_connect(addr_type, "changed", G_CALLBACK(header_addr_callback), header);
 	
 	addr_not = gtk_check_button_new_with_label("Exclude");
 	gtk_fixed_put(GTK_FIXED(fixed), addr_not, 700, offset);
@@ -1036,6 +1010,13 @@ static void rule_add_content_header_addr(struct match_header *header, struct ip_
 	gtk_fixed_put(GTK_FIXED(fixed), addr_range_to, 500, offset);
 	ipaddr->range.to = addr_range_to;
 
+	addr_set =  gtk_combo_box_text_new();
+	gtk_widget_set_size_request(addr_set, 200, 10);
+	gtk_fixed_put(GTK_FIXED(fixed), addr_set, 280, offset);
+	ipaddr->sets.set = addr_set;
+	gtk_combo_box_set_active(GTK_COMBO_BOX(addr_type), 0);
+	g_signal_connect(addr_type, "changed", G_CALLBACK(header_addr_callback), header);
+
 	if (!addr) {
 		gtk_combo_box_set_active(GTK_COMBO_BOX(addr_type), 0);
 		gtk_widget_show(GTK_WIDGET(addr_exact_ip));
@@ -1061,6 +1042,10 @@ static void rule_add_content_header_addr(struct match_header *header, struct ip_
 			gtk_widget_show(GTK_WIDGET(addr_range_from));
 			gtk_widget_show(GTK_WIDGET(addr_range_dash));
 			gtk_widget_show(GTK_WIDGET(addr_range_to));
+			break;
+		case ADDRESS_SET:
+			header_addr_set_show(ipaddr, header->family, header->table, addr->set);
+			gtk_widget_show(GTK_WIDGET(addr_set));
 			break;
 		}
 	}
@@ -1112,6 +1097,47 @@ static void header_port_range_hide(struct transport_port_info *port)
 	gtk_widget_hide(port->value->range.to);
 }
 
+static void header_port_set_show(struct transport_port_info *port, char *setname)
+{
+	int	res;
+	GtkWidget	*port_set = port->value->sets.set;
+	struct set_list_data   *set, *s;
+	int	index = 0;
+	int	selected = 0;
+	int	family = port->family;
+	char	*table = port->table;
+
+	LIST_HEAD(set_list);
+	res = gui_get_sets_list(&set_list, family, table, "internet network service");
+	if (res != SET_SUCCESS)
+		// error;
+		;
+
+	gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(port_set));
+	list_for_each_entry_safe(set, s, &set_list, list) {
+		list_del(&set->list);
+		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(port_set),
+			xstrdup(set->name), xstrdup(set->name));
+		if (setname) {
+			if (!strcmp(setname, set->name))
+				selected = index;
+		}
+		index++;
+		xfree(set->table);
+		xfree(set->name);
+		xfree(set);
+	}
+	
+	gtk_combo_box_set_active(GTK_COMBO_BOX(port_set), selected);
+	gtk_widget_show(port_set);
+}
+
+static void header_port_set_hide(struct transport_port_info *port)
+{
+	if (port->value->sets.set)
+		gtk_widget_hide(port->value->sets.set);
+}
+
 static void header_port_callback(GtkComboBoxText *widget, gpointer data)
 {
 	struct transport_port_info *port;
@@ -1121,10 +1147,17 @@ static void header_port_callback(GtkComboBoxText *widget, gpointer data)
 	if (!(strcmp(type, "port list"))) {
 		port->value->type = PORT_EXACT;
 		header_port_range_hide(port);
+		header_port_set_hide(port);
 		header_port_list_show(port);
 	} else if (!(strcmp(type, "range"))) {
 		port->value->type = PORT_RANGE;
 		header_port_range_show(port);
+		header_port_set_hide(port);
+		header_port_list_hide(port);
+	} else if (!(strcmp(type, "sets"))) {
+		port->value->type = PORT_SET;
+		header_port_set_show(port, NULL);
+		header_port_range_hide(port);
 		header_port_list_hide(port);
 	}
 	// else
@@ -1142,6 +1175,7 @@ static void rule_add_content_header_port(GtkWidget *fixed,
 	GtkWidget	*port_range_from;
 	GtkWidget	*port_range_dash;
 	GtkWidget	*port_range_to;
+	GtkWidget	*port_set;
 	int		offset;
 	char		*label;
 
@@ -1161,8 +1195,8 @@ static void rule_add_content_header_port(GtkWidget *fixed,
 			"port list", "port list");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(port_type),
 			"range", "range");
-//	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(port_type),
-//			"sets", "sets");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(port_type),
+			"sets", "sets");
 	gtk_fixed_put(GTK_FIXED(fixed), port_type, 150, offset);
 	port->type = port_type;
 	g_signal_connect(port_type, "changed", G_CALLBACK(callback), port);
@@ -1188,6 +1222,11 @@ static void rule_add_content_header_port(GtkWidget *fixed,
 	gtk_fixed_put(GTK_FIXED(fixed), port_range_to, 500, offset);
 	port->value->range.to = port_range_to;
 
+	port_set = gtk_combo_box_text_new();
+	gtk_widget_set_size_request(port_set, 200, 10);
+	gtk_fixed_put(GTK_FIXED(fixed), port_set, 280, offset);
+	port->value->sets.set = port_set;
+
 	if (!data) {
 		gtk_combo_box_set_active(GTK_COMBO_BOX(port_type), 0);
 		gtk_widget_show(GTK_WIDGET(port_list));
@@ -1207,6 +1246,7 @@ static void rule_add_content_header_port(GtkWidget *fixed,
 			gtk_widget_show(GTK_WIDGET(port_range_to));
 			break;
 		case PORT_SET:
+			header_port_set_show(port, data->set);
 			break;
 		}
 	}
@@ -1251,6 +1291,10 @@ static void rule_add_content_header_tcp(struct match_header *header, struct tran
 	gtk_fixed_put(GTK_FIXED(header->fixed), fixed, 0, 120);
 	gtk_widget_show(GTK_WIDGET(fixed));
 	widget->fixed = fixed;
+	widget->tcp->sport->family = header->family;
+	widget->tcp->sport->table = header->table;
+	widget->tcp->dport->family = header->family;
+	widget->tcp->dport->table = header->table;
 	rule_add_content_header_port(fixed, widget->tcp->sport, data ? data->sport : NULL, header_port_callback, 1);
 	rule_add_content_header_port(fixed, widget->tcp->dport, data ? data->dport : NULL, header_port_callback, 0);
 }
@@ -1271,6 +1315,10 @@ static void rule_add_content_header_udp(struct match_header *header, struct tran
 	gtk_fixed_put(GTK_FIXED(header->fixed), fixed, 0, 120);
 	gtk_widget_show(GTK_WIDGET(fixed));
 	widget->fixed = fixed;
+	widget->udp->sport->family = header->family;
+	widget->udp->sport->table = header->table;
+	widget->udp->dport->family = header->family;
+	widget->udp->dport->table = header->table;
 	rule_add_content_header_port(fixed, widget->udp->sport, data ? data->sport : NULL, header_port_callback, 1);
 	rule_add_content_header_port(fixed, widget->udp->dport, data ? data->dport : NULL, header_port_callback, 0);
 }
@@ -1350,6 +1398,8 @@ static void rule_add_content_header_trans(struct rule_create_widget *new_rule, s
 
 static void rule_add_content_header_data(struct rule_create_widget *new_rule, struct pktheader *header_data)
 {
+	new_rule->header->family = new_rule->family;
+	new_rule->header->table = new_rule->table;
 	rule_add_content_header_saddr(new_rule->header, header_data);
 	rule_add_content_header_daddr(new_rule->header, header_data);
 	rule_add_content_header_trans(new_rule, header_data);
@@ -2749,7 +2799,7 @@ void set_update_data(struct set_list_args *args)
 
 	LIST_HEAD(set_list);
 
-	res = gui_get_sets_list(&set_list, family, table_name);
+	res = gui_get_sets_list(&set_list, family, table_name, "all");
 	if (res != SET_SUCCESS) {
 		GtkWidget *dialog;
 		dialog = gtk_message_dialog_new(GTK_WINDOW(window),

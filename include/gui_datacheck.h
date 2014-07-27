@@ -72,6 +72,7 @@ struct ip_addr_data {
 			char	*from;
 			char	*to;
 		}range;
+		char	*set;
 	};
 };
 
@@ -84,6 +85,7 @@ struct trans_port_data {
 			char	*from;
 			char	*to;
 		}range;
+		char	*set;
 	};
 };
 

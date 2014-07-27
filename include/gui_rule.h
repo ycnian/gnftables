@@ -71,7 +71,7 @@ int gui_add_table(struct table_create_data *data);
 int gui_get_rules_number(int family, char *table, char *chain, int *nrules);
 int gui_check_chain_exist(int family, char *table, char *chain);
 
-int gui_get_sets_list(struct list_head *head, int family, char *table);
+int gui_get_sets_list(struct list_head *head, int family, char *table, char *desc);
 
 int table_list_sets(struct table *table);
 

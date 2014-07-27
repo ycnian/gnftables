@@ -302,6 +302,8 @@ struct rule_create_widget {
 	struct match_pktmeta	*meta;
 	struct match_trackmeta	*track;
 	struct actions_all	*actions;
+	GtkWidget	*index;
+	GtkWidget	*index_value;
 	GtkWidget	*cancel;
 	GtkWidget	*ok;
 	GtkWidget	*msg;

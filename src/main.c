@@ -582,6 +582,7 @@ static void expander_callback (GObject    *object,
 			widget->header->expanded = 0;
 		update_pktmeta_position(widget);
 		update_actions_position(widget);
+		update_index_position(widget);
 		update_cancel_ok_position(widget);
 	} else if ((void *)expander == (void *)(widget->meta->expander)) {
 		if (gtk_expander_get_expanded(expander))
@@ -589,12 +590,14 @@ static void expander_callback (GObject    *object,
 		else
 			widget->meta->expanded = 0;
 		update_actions_position(widget);
+		update_index_position(widget);
 		update_cancel_ok_position(widget);
 	} else if ((void *)expander == (void *)(widget->actions->expander)) {
 		if (gtk_expander_get_expanded(expander))
 			widget->actions->expanded = 1;
 		else
 			widget->actions->expanded = 0;
+		update_index_position(widget);
 		update_cancel_ok_position(widget);
 	}
 }
@@ -692,6 +695,24 @@ void update_actions_position(struct rule_create_widget  *widget)
 	gtk_fixed_move(GTK_FIXED(fixed), expander, 0, len);
 }
 
+void update_index_position(struct rule_create_widget  *widget)
+{
+	GtkWidget  *fixed = widget->fixed;
+	GtkWidget  *index = widget->index;
+	GtkWidget  *index_value = widget->index_value;
+	int	len = 0;
+	if (widget->header->expanded)
+		len +=  widget->header->len;
+	if (widget->meta->expanded)
+		len +=  widget->meta->len;
+	if (widget->actions->expanded)
+		len +=  widget->actions->len;
+	len += 120;
+
+	gtk_fixed_move(GTK_FIXED(fixed), index, 20, len);
+	gtk_fixed_move(GTK_FIXED(fixed), index_value, 80, len);
+}
+
 void update_cancel_ok_position(struct rule_create_widget  *widget)
 {
 	GtkWidget  *fixed = widget->fixed;
@@ -705,7 +726,7 @@ void update_cancel_ok_position(struct rule_create_widget  *widget)
 		len +=  widget->meta->len;
 	if (widget->actions->expanded)
 		len +=  widget->actions->len;
-	len += 120;
+	len += 160;
 	if (len < 360)
 		len = 360;
 	gtk_fixed_move(GTK_FIXED(fixed), msg, 40, len);
@@ -721,6 +742,7 @@ void transport_callback_do(struct rule_create_widget  *widget)
 	update_header_transport_widgets(fixed_header, transport);
 	update_pktmeta_position(widget);
 	update_actions_position(widget);
+	update_index_position(widget);
 	update_cancel_ok_position(widget);
 }
 
@@ -1341,6 +1363,7 @@ static void header_transport_callback(GtkComboBoxText *widget, gpointer data)
 
 	update_pktmeta_position(rule);
 	update_actions_position(rule);
+	update_index_position(rule);
 	update_cancel_ok_position(rule);
 }
 
@@ -1618,6 +1641,7 @@ static void rule_actions_remove(GtkButton *button, gpointer data)
 		}
 	}
 
+	update_index_position(rule);
 	update_cancel_ok_position(rule);
 }
 
@@ -1788,6 +1812,7 @@ void rule_actions_add(GtkButton *button, gpointer data)
 		rule_actions_add_counter(new_rule, NULL);
 	else
 		BUG();
+	update_index_position(new_rule);
 	update_cancel_ok_position(new_rule);
 }
 
@@ -1872,6 +1897,35 @@ void rule_add_content_actions(struct rule_create_widget *new_rule, struct rule_l
 
 }
 
+static void rule_add_content_index(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg)
+{
+	GtkWidget	*fixed;
+	GtkWidget	*index;
+	GtkWidget	*index_value;
+	int		offset = 0;
+	int		header_expanded;
+	int		pktmeta_expanded;
+
+	fixed = new_rule->fixed;
+	header_expanded = new_rule->header->expanded;
+	pktmeta_expanded = new_rule->meta->expanded;
+	offset = new_rule->header->len * header_expanded + new_rule->meta->len * pktmeta_expanded;
+	offset += 120;
+
+	index = gtk_label_new("Index:");
+	gtk_fixed_put(GTK_FIXED(fixed), index, 20, offset);
+	new_rule->index = index;
+	index_value = gtk_entry_new();
+	gtk_fixed_put(GTK_FIXED(fixed), index_value, 80, offset);
+	if (rule_arg->data)
+		gtk_widget_set_sensitive(index_value, FALSE);
+		
+	new_rule->index = index;
+	new_rule->index_value = index_value;
+	gtk_widget_show(GTK_WIDGET(index));
+	gtk_widget_show(GTK_WIDGET(index_value));
+}
+
 void rule_add_content_submit(struct rule_create_widget *new_rule)
 {
 	GtkWidget	*fixed;
@@ -1915,6 +1969,7 @@ void rule_add_content(struct rule_create_widget *new_rule, struct rule_list_args
 	rule_add_content_header(new_rule, rule_arg);
 	rule_add_content_pktmeta(new_rule, rule_arg);
 	rule_add_content_actions(new_rule, rule_arg);
+	rule_add_content_index(new_rule, rule_arg);
 	rule_add_content_submit(new_rule);
 	gtk_expander_set_expanded(GTK_EXPANDER(new_rule->header->expander), new_rule->header->expanded);
 	gtk_expander_set_expanded(GTK_EXPANDER(new_rule->meta->expander), new_rule->meta->expanded);

@@ -303,7 +303,7 @@ int gui_add_rule(struct rule_create_data *data)
 	int	res = TABLE_SUCCESS;
 	bool batch_supported;
 	struct  rule	rule;
-	uint32_t flags = NLM_F_APPEND | NLM_F_EXCL;
+	uint32_t flags = 0;
 
 	LIST_HEAD(msgs);
 	LIST_HEAD(err_list);
@@ -324,10 +324,13 @@ int gui_add_rule(struct rule_create_data *data)
 	handle.handle = data->handle;
 	handle.position = 0;
 	handle.comment = NULL;
-	rule.handle = handle;
-	if (handle.handle) {
+	if (handle.handle)
 		flags = NLM_F_REPLACE;
+	else if (!data->insert) {
+		flags |= NLM_F_APPEND;
+		handle.position = data->position;
 	}
+	rule.handle = handle;
 
 	list_splice_tail(&data->exprs, &rule.stmts);
 

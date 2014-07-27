@@ -44,6 +44,7 @@ const char *rule_error[RULE_ERROR_NUM] = {
 	[RULE_PKTMETA_SKGID_INVALID]	= "Group id invalid.",
 	[RULE_HEADER_SET_EMPTY]		= "Network address set is empty",
 	[RULE_HEADER_SET_NOT_EXIST]	= "Network address set doesn't exist",
+	[RULE_INDEX_INVALID]		= "Index error.",
 };
 
 

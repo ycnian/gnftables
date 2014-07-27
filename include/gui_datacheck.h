@@ -167,6 +167,8 @@ struct rule_create_data {
 	char		*table;
 	char		*chain;
 	uint64_t	handle;
+	uint64_t	position;
+	int		insert;
 	struct pktheader	*header;
 	struct pktmeta	*pktmeta;
 	struct actions	*actions;

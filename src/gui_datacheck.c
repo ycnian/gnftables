@@ -791,6 +791,48 @@ out:
 	return res;
 }
 
+static int get_position_from_page(struct rule_create_widget  *widget,
+		struct rule_create_data *data)
+{
+	char	*index;
+	int	res;
+	unsigned int	value;
+	unsigned int	i = 0;
+	struct gui_rule   *rule, *r;
+	LIST_HEAD(rule_list);
+
+	if (data->handle)
+		return RULE_SUCCESS;
+	index = get_data_from_entry(GTK_ENTRY(widget->index_value));
+	if (!index) {
+		data->position = 0;
+		return RULE_SUCCESS;
+	}
+	res = strtouint(index, &value);
+	if (res != 0 || value == 0)
+		return RULE_INDEX_INVALID;
+	gui_get_rules_list(&rule_list, data->family, data->table, data->chain);
+
+	if (value == 1) {
+		data->position = 0;
+		data->insert = 1;
+	}
+	list_for_each_entry_safe(rule, r, &rule_list, list) {
+		if (i == value - 2) {
+			data->position = rule->handle;
+			break;
+		}
+		i++;
+	}
+	if (!rule)
+		data->position = 0;
+	list_for_each_entry_safe(rule, r, &rule_list, list) {
+		list_del(&rule->list);
+		gui_rule_free(rule);
+	}
+	return RULE_SUCCESS;
+}
+
 /*
  * Get all informations from rule creating page.
  */
@@ -806,6 +848,9 @@ int get_data_from_page(struct rule_create_widget  *widget,
 	if (res != RULE_SUCCESS)
 		return res;
 	res = get_actions_data_from_page(widget->actions, data->actions);
+	if (res != RULE_SUCCESS)
+		return res;
+	res = get_position_from_page(widget, data);
 
 	return res;
 }

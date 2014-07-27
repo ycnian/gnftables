@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=gnftables
+Name[zh_CN]=gnftables
+Comment=gnftables firewall
+Comment[zh_CN]=gnftables firewall
+Exec=gnftables %U
+Terminal=false
+Type=Application
+Icon=gnftables
+Categories=GNOME;GTK;Utility;

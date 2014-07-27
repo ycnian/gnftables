@@ -103,5 +103,5 @@ AC_TYPE_UINT64_T
 AC_CHECK_FUNCS([memmove memset strchr strdup strerror strtoull])
 
 AC_CONFIG_FILES([Makefile Makefile.defs Makefile.rules])
-AC_CONFIG_FILES([src/Makefile doc/Makefile files/Makefile])
+AC_CONFIG_FILES([src/Makefile data/Makefile])
 AC_OUTPUT

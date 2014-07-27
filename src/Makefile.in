@@ -1,36 +1,36 @@
-PROGRAMS		+= nft
+PROGRAMS		+= gnftables
 
-nft-destdir		:= @sbindir@
+gnftables-destdir		:= @sbindir@
 
-nft-obj			+= main.o
-nft-obj			+= cli.o
-nft-obj			+= rule.o
-nft-obj			+= gui_rule.o
-nft-obj			+= statement.o
-nft-obj			+= datatype.o
-nft-obj			+= expression.o
-nft-obj			+= evaluate.o
-nft-obj			+= proto.o
-nft-obj			+= payload.o
-nft-obj			+= exthdr.o
-nft-obj			+= meta.o
-nft-obj			+= ct.o
-nft-obj			+= netlink.o
-nft-obj			+= netlink_linearize.o
-nft-obj			+= netlink_delinearize.o
-nft-obj			+= segtree.o
-nft-obj			+= rbtree.o
-nft-obj			+= gmputil.o
-nft-obj			+= utils.o
-nft-obj			+= erec.o
-nft-obj			+= mnl.o
-nft-obj			+= gui_error.o
-nft-obj			+= gui_expression.o
-nft-obj			+= gui_datacheck.o
+gnftables-obj			+= main.o
+gnftables-obj			+= cli.o
+gnftables-obj			+= rule.o
+gnftables-obj			+= gui_rule.o
+gnftables-obj			+= statement.o
+gnftables-obj			+= datatype.o
+gnftables-obj			+= expression.o
+gnftables-obj			+= evaluate.o
+gnftables-obj			+= proto.o
+gnftables-obj			+= payload.o
+gnftables-obj			+= exthdr.o
+gnftables-obj			+= meta.o
+gnftables-obj			+= ct.o
+gnftables-obj			+= netlink.o
+gnftables-obj			+= netlink_linearize.o
+gnftables-obj			+= netlink_delinearize.o
+gnftables-obj			+= segtree.o
+gnftables-obj			+= rbtree.o
+gnftables-obj			+= gmputil.o
+gnftables-obj			+= utils.o
+gnftables-obj			+= erec.o
+gnftables-obj			+= mnl.o
+gnftables-obj			+= gui_error.o
+gnftables-obj			+= gui_expression.o
+gnftables-obj			+= gui_datacheck.o
 
-nft-obj			+= parser.o
-nft-extra-clean-files	+= parser.c parser.h
+gnftables-obj			+= parser.o
+gnftables-extra-clean-files	+= parser.c parser.h
 
-nft-obj			+= scanner.o
-nft-extra-clean-files	+= scanner.c scanner.h
+gnftables-obj			+= scanner.o
+gnftables-extra-clean-files	+= scanner.c scanner.h
 

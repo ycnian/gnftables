@@ -27,6 +27,7 @@
 #include <string.h>
 #include <net/if.h>
 #include <erec.h>
+#include <gmputil.h>
 
 int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
 {
@@ -40,7 +41,6 @@ int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *
 	struct set   *set = NULL;
 	unsigned int	type;
 	enum ops	op;
-	struct ip_convert	*convert;
 	char	*ip;
 	struct error_record	*erec;
 	struct netlink_ctx      ctx;
@@ -277,25 +277,18 @@ err:
 	return res;
 }
 
-int rule_addrset_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
+static int rule_addrset_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
 {
 	struct expr  *payload = NULL;
-	struct expr  *constant = NULL;
 	struct expr  *rela = NULL;
-	struct expr  *elem = NULL;
-	struct expr  *symbol = NULL;
 	struct expr  *se = NULL;
 	struct stmt  *stmt = NULL;
 	struct set   *set = NULL;
 	unsigned int	type;
 	enum ops	op;
-	struct ip_convert	*convert;
-	char	*ip;
-	struct error_record	*erec;
 	struct netlink_ctx      ctx;
 	struct table		*table;
 	struct set		*clone;
-	char	*iplist;
 	struct handle		*handle;
 	int	res;
 	LIST_HEAD(msgs);
@@ -322,7 +315,6 @@ int rule_addrset_gen_exprs(struct rule_create_data *data, struct ip_addr_data *a
 	set = list_first_entry(&ctx.list, struct set, list);
 
 	payload = payload_expr_alloc(data->loc, &proto_ip, type);
-	elem = set_expr_alloc(data->loc);
 
 	table = table_lookup(&set->handle);
 	if (table == NULL) {
@@ -387,8 +379,6 @@ int rule_portlist_gen_exprs(struct rule_create_data *data,
 	const struct proto_desc *desc;
 	struct error_record	*erec;
 	enum ops	op;
-	struct unsigned_short_elem	*convert;
-	unsigned short	port_value;
 	struct netlink_ctx      ctx;
 	struct table		*table;
 	struct set		*clone;
@@ -582,28 +572,20 @@ err:
 	return res;
 }
 
-int rule_portset_gen_exprs(struct rule_create_data *data,
+static int rule_portset_gen_exprs(struct rule_create_data *data,
 		struct trans_port_data *port, enum transport_type type, int source)
 {
 	struct expr  *payload = NULL;
-	struct expr  *constant = NULL;
 	struct expr  *rela = NULL;
-	struct expr  *elem = NULL;
 	struct expr  *se = NULL;
-	struct expr  *symbol = NULL;
 	struct stmt  *stmt = NULL;
 	struct set   *set = NULL;
 	unsigned int	sport;
 	const struct proto_desc *desc;
-	struct error_record	*erec;
 	enum ops	op;
-	struct unsigned_short_elem	*convert;
-	unsigned short	port_value;
 	struct netlink_ctx      ctx;
 	struct table		*table;
 	struct set		*clone;
-	char	*portlist;
-	char	*portdata;
 	struct handle	*handle;
 	int	res;
 	LIST_HEAD(msgs);
@@ -641,7 +623,6 @@ int rule_portset_gen_exprs(struct rule_create_data *data,
 	set = list_first_entry(&ctx.list, struct set, list);
 
 	payload = payload_expr_alloc(data->loc, desc, sport);
-	elem = set_expr_alloc(data->loc);
 
 	table = table_lookup(&set->handle);
 	if (table == NULL) {
@@ -847,6 +828,10 @@ int rule_iftype_gen_exprs(struct rule_create_data *data, struct list_head *head,
 	struct unsigned_short_elem	*s_elem;
 	enum nft_meta_keys key;
 	unsigned short	type;
+	struct netlink_ctx      ctx;
+	struct table		*table;
+	struct set		*clone;
+	LIST_HEAD(msgs);
 
 	if (list_empty(head))
 		return RULE_SUCCESS;
@@ -874,10 +859,6 @@ int rule_iftype_gen_exprs(struct rule_create_data *data, struct list_head *head,
 	set->handle.family = data->family;
 	set->handle.table = xstrdup(data->table);
 
-	struct netlink_ctx      ctx;
-	struct table		*table;
-	struct set		*clone;
-	LIST_HEAD(msgs);
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.msgs = &msgs;
 //	ctx.seqnum  = mnl_seqnum_alloc();
@@ -919,6 +900,10 @@ int rule_skid_gen_exprs(struct rule_create_data *data, struct list_head *head, i
 	unsigned int	id;
 	int	keylen;
 	const struct datatype  *keytype;
+	struct netlink_ctx      ctx;
+	struct table		*table;
+	struct set		*clone;
+	LIST_HEAD(msgs);
 
 	if (list_empty(head))
 		return RULE_SUCCESS;
@@ -951,10 +936,6 @@ int rule_skid_gen_exprs(struct rule_create_data *data, struct list_head *head, i
 	set->handle.family = data->family;
 	set->handle.table = xstrdup(data->table);
 
-	struct netlink_ctx      ctx;
-	struct table		*table;
-	struct set		*clone;
-	LIST_HEAD(msgs);
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.msgs = &msgs;
 //	ctx.seqnum  = mnl_seqnum_alloc();
@@ -1161,7 +1142,6 @@ struct header_parse header_ip_parsers[IPHDR_DADDR + 1] = {
 
 int rule_parse_ip_protocol_expr(struct expr *expr, struct pktheader *header, enum ops op)
 {
-	int	res;
 	char	proto[10];
 	struct transport_data   *trans;
 
@@ -1402,8 +1382,8 @@ int rule_parse_header_expr(struct expr *expr, struct pktheader *header)
 	op = expr->op;
 	left = expr->left;
 	right = expr->right;
-	desc = left->payload.desc;
-	tmpl = left->payload.tmpl;
+	desc = (struct proto_desc *)left->payload.desc;
+	tmpl = (struct proto_hdr_template *)left->payload.tmpl;
 
 	if (!(strcmp(desc->name, "ip"))) {
 		parse = header_ip_parsers;
@@ -1592,7 +1572,6 @@ int rule_parse_stmt(struct stmt *stmt, struct rule_create_data *p)
 
 int rule_de_expressions(struct rule *rule, struct rule_create_data **data)
 {
-	int	res;
 	struct  stmt	*stmt;
 	struct rule_create_data *p;
 
@@ -1629,7 +1608,6 @@ int set_parse_expr(struct expr *expr, struct set_create_data *gui_set)
 
 int set_de_expressions(struct set *set, struct set_create_data *gui_set)
 {
-	int	res;
 	struct expr	*expr;
 
 	list_for_each_entry(expr, &set->init->expressions, list) {

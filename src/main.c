@@ -3360,8 +3360,8 @@ void gnftables_table_init(GtkWidget *notebook)
 {
 	GtkWidget	*title;
 	GtkWidget	*layout;
-	GtkWidget	*family;
-	GtkWidget	*combo;
+//	GtkWidget	*family;
+//	GtkWidget	*combo;
 	GtkWidget	*create_table;
 	GtkWidget	*list_tables;
 	GtkWidget	*scrolledwindow;
@@ -3383,11 +3383,12 @@ void gnftables_table_init(GtkWidget *notebook)
 	gtk_widget_set_size_request(title, 200, 10);
 	layout = gtk_layout_new(NULL, NULL);
 
+	/* family and combo are hidden for only ipv4 is supported now */
 	// only show talbes in selected family.
-	family = gtk_label_new("Family");
-	gtk_layout_put(GTK_LAYOUT(layout), family, 30, 10);
-	combo = create_family_list(1, select_family, store);
-	gtk_layout_put(GTK_LAYOUT(layout), combo, 90, 10);
+//	family = gtk_label_new("Family");
+//	gtk_layout_put(GTK_LAYOUT(layout), family, 30, 10);
+//	combo = create_family_list(1, select_family, store);
+//	gtk_layout_put(GTK_LAYOUT(layout), combo, 90, 10);
 
 	// create a new table.
     	create_table = gtk_button_new_with_label("Create Table");
@@ -3396,11 +3397,8 @@ void gnftables_table_init(GtkWidget *notebook)
 			G_CALLBACK(create_new_table), notebook);
 	gtk_layout_put(GTK_LAYOUT(layout), create_table, 700, 10);
 
-
 	// treeview style
 	list_tables = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
-//	g_signal_connect(list_tables, "button-press-event",
-//			G_CALLBACK(show_treeview_menu), NULL); 
 	renderer = gtk_cell_renderer_text_new();
 	column = gtk_tree_view_column_new_with_attributes("Id", renderer, 
 			"text", TABLE_ID, NULL);

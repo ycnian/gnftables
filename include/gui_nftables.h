@@ -5,7 +5,6 @@
 #include <gtk/gtk.h>
 #include <list.h>
 
-
 #define   TABLE_ID		0
 #define   TABLE_NAME		1
 #define   TABLE_FAMILY		2
@@ -14,7 +13,6 @@
 #define   TABLE_DETAIL		5
 #define   TABLE_DELETE		6
 #define   TABLE_TOTAL		7
-
 
 #define   CHAIN_ID		0
 #define   CHAIN_NAME		1
@@ -36,7 +34,6 @@
 #define   SET_DELETE		6
 #define   SET_TOTAL		7
 
-
 #define   RULE_ID		0
 #define   RULE_HANDLE		1
 #define   RULE_TABLE		2
@@ -47,7 +44,13 @@
 #define   RULE_TOTAL		7
 
 
-
+/**
+ * widgets containg values used in table creating procedure
+ * @notebook: the notebook, used to jump to table list page.
+ * @name: table name
+ * @family: table family
+ * @msg:  error message is displayed here if values are invalid.
+ */
 struct table_create_widget {
 	GtkWidget       *notebook;
 	GtkWidget       *name;

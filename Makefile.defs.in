@@ -26,6 +26,7 @@ CPPFLAGS	+= @CPPFLAGS@
 
 CFLAGS		+= @CFLAGS@ @DEFS@
 CFLAGS		+= -DDEFAULT_INCLUDE_PATH="\"$(confdir)\""
+CFLAGS		+= -DDEFAULT_DATAROOT_PATH="\"$(datarootdir)\""
 CFLAGS		+= -include config.h
 CFLAGS		+= -Iinclude
 CFLAGS		+= -fno-strict-aliasing

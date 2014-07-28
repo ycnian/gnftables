@@ -2,5 +2,6 @@ install:
 	@echo -e "  INSTALL\tdata"
 	$(MKDIR_P) ${datarootdir}/pixmaps/
 	$(MKDIR_P) ${datarootdir}/applications/
-	$(INSTALL) -m 755 -p data/gnftables.png ${datarootdir}/pixmaps/
+	$(INSTALL) -m 444 -p data/gnftables.png ${datarootdir}/pixmaps/
+	$(INSTALL) -m 444 -p data/gnftables_trash.png ${datarootdir}/pixmaps/
 	$(INSTALL) -m 644 -p data/gnftables.desktop ${datarootdir}/applications/

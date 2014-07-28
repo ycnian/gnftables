@@ -2170,7 +2170,7 @@ static void create_new_set(GtkButton *button, gpointer  data)
 	widgets->add = new_value;
     	remove = gtk_button_new_with_label("<==");
 	gtk_layout_put(GTK_LAYOUT(layout_chain), remove, 370, 210);
-	trash = gtk_image_new_from_file("trash.png");
+	trash = gtk_image_new_from_file(DEFAULT_DATAROOT_PATH"/pixmaps/gnftables_trash.png");
 	gtk_layout_put(GTK_LAYOUT(layout_chain), trash, 200, 180);
 
 	store = gtk_tree_store_new(1, G_TYPE_STRING);
@@ -3617,7 +3617,7 @@ int main(int argc, char *argv[])
         gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
 	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
 	gtk_widget_set_size_request(window, 900, 556);
-	gtk_window_set_icon(GTK_WINDOW(window), create_pixbuf("gnftables.png"));
+	gtk_window_set_icon(GTK_WINDOW(window), create_pixbuf(DEFAULT_DATAROOT_PATH"/pixmaps/gnftables.png"));
 
 	g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 	gtk_container_set_border_width(GTK_CONTAINER (window), 10);

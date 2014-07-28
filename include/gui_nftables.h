@@ -87,8 +87,8 @@ struct chain_create_widget {
 
 struct chain_list_args {
 	GtkWidget	*notebook;
-	GtkWidget	*model;
-	GtkWidget	*store;
+	GtkTreeModel	*model;
+	GtkTreeStore	*store;
 	gint		family;
 	gchar		*table;
 	gchar		*chain;
@@ -100,7 +100,7 @@ struct set_create_widget {
 	GtkWidget	*name;
 	GtkWidget	*type;
 	GtkWidget	*add;
-	GtkWidget	*store;
+	GtkTreeStore	*store;
 	GtkWidget	*treeview;
 	GtkWidget	*msg;
 	gint		family;
@@ -110,8 +110,8 @@ struct set_create_widget {
 
 struct set_list_args {
 	GtkWidget	*notebook;
-	GtkWidget	*model;
-	GtkWidget	*store;
+	GtkTreeModel	*model;
+	GtkTreeStore	*store;
 	gint		family;
 	gchar		*table;
 	gchar		*set;
@@ -122,7 +122,7 @@ struct set_list_args {
 struct rule_list_args {
 	GtkWidget	*notebook;
 	GtkWidget	*list_rules;
-	GtkWidget	*store;
+	GtkTreeStore	*store;
 	gint		family;
 	gchar		*table;
 	gchar		*chain;

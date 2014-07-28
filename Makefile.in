@@ -1,4 +1,5 @@
 SUBDIRS		+= src
 SUBDIRS		+= data
+SUBDIRS		+= doc
 
 include Makefile.rules

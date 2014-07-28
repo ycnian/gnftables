@@ -3,8 +3,8 @@
 
 AC_PREREQ(2.61)
 
-AC_COPYRIGHT([Copyright (c) 2008 Patrick McHardy <kaber@trash.net>])
-AC_INIT([nftables], [0.2], [netfilter-devel@vger.kernel.org])
+AC_COPYRIGHT([Copyright (c) 2014 Yanchuan Nian <ycnian@gmail.com>])
+AC_INIT([gnftables], [0.1], [ycnian@gmail.com])
 AC_DEFINE([RELEASE_NAME], ["Support Edward Snowden"], [Release name])
 
 AC_CONFIG_SRCDIR([src/rule.c])
@@ -103,5 +103,5 @@ AC_TYPE_UINT64_T
 AC_CHECK_FUNCS([memmove memset strchr strdup strerror strtoull])
 
 AC_CONFIG_FILES([Makefile Makefile.defs Makefile.rules])
-AC_CONFIG_FILES([src/Makefile data/Makefile])
+AC_CONFIG_FILES([src/Makefile data/Makefile doc/Makefile])
 AC_OUTPUT

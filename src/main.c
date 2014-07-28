@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2008 Patrick McHardy <kaber@trash.net>
+ * Copyright (c) 2014 Yanchuan Nian <ycnian@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -52,109 +53,6 @@ unsigned int debug_level;
 #endif
 
 const char *include_paths[INCLUDE_PATHS_MAX] = { DEFAULT_INCLUDE_PATH };
-
-enum opt_vals {
-	OPT_HELP		= 'h',
-	OPT_VERSION		= 'v',
-	OPT_FILE		= 'f',
-	OPT_INTERACTIVE		= 'i',
-	OPT_INCLUDEPATH		= 'I',
-	OPT_NUMERIC		= 'n',
-	OPT_DEBUG		= 'd',
-	OPT_HANDLE_OUTPUT	= 'a',
-	OPT_INVALID		= '?',
-};
-
-#define OPTSTRING	"hvf:iI:vna"
-
-static const struct option options[] = {
-	{
-		.name		= "help",
-		.val		= OPT_HELP,
-	},
-	{
-		.name		= "version",
-		.val		= OPT_VERSION,
-	},
-	{
-		.name		= "file",
-		.val		= OPT_FILE,
-		.has_arg	= 1,
-	},
-	{
-		.name		= "interactive",
-		.val		= OPT_INTERACTIVE,
-	},
-	{
-		.name		= "numeric",
-		.val		= OPT_NUMERIC,
-	},
-	{
-		.name		= "includepath",
-		.val		= OPT_INCLUDEPATH,
-		.has_arg	= 1,
-	},
-#ifdef DEBUG
-	{
-		.name		= "debug",
-		.val		= OPT_DEBUG,
-		.has_arg	= 1,
-	},
-#endif
-	{
-		.name		= "handle",
-		.val		= OPT_HANDLE_OUTPUT,
-	},
-	{
-		.name		= NULL
-	}
-};
-
-
-#ifdef DEBUG
-static const struct {
-	const char		*name;
-	enum debug_level	level;
-} debug_param[] = {
-	{
-		.name		= "scanner",
-		.level		= DEBUG_SCANNER,
-	},
-	{
-		.name		= "parser",
-		.level		= DEBUG_PARSER,
-	},
-	{
-		.name		= "eval",
-		.level		= DEBUG_EVALUATION,
-	},
-	{
-		.name		= "netlink",
-		.level		= DEBUG_NETLINK,
-	},
-	{
-		.name		= "mnl",
-		.level		= DEBUG_MNL,
-	},
-	{
-		.name		= "proto-ctx",
-		.level		= DEBUG_PROTO_CTX,
-	},
-	{
-		.name		= "segtree",
-		.level		= DEBUG_SEGTREE,
-	},
-	{
-		.name		= "all",
-		.level		= ~0,
-	},
-};
-#endif
-
-static const struct input_descriptor indesc_cmdline = {
-	.type	= INDESC_BUFFER,
-	.name	= "<cmdline>",
-};
 
 static int nft_netlink(struct parser_state *state, struct list_head *msgs)
 {

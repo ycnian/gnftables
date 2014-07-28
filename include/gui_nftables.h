@@ -368,6 +368,7 @@ void chain_create_type_changed(GtkComboBoxText *widget, gpointer data);
 void transport_callback_do(struct rule_create_widget  *widget);
 void update_pktmeta_position(struct rule_create_widget  *widget);
 void update_actions_position(struct rule_create_widget  *widget);
+void update_index_position(struct rule_create_widget  *widget);
 void update_cancel_ok_position(struct rule_create_widget  *widget);
 void update_header_transport_widgets(GtkWidget *fixed, struct transport_info *transport);
 void header_transport_show_all(GtkWidget *fixed, struct transport_info *transport);

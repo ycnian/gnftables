@@ -9,6 +9,7 @@
  * Development of this code funded by Astaro AG (http://www.astaro.com/)
  */
 
+#include <inttypes.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <unistd.h>
@@ -169,7 +170,7 @@ static void load_rules(GtkButton *button, gpointer data)
 	}
 
 	gtk_widget_destroy(dialog);
-	gnftables_table_init(GTK_NOTEBOOK(data));
+	gnftables_table_init(GTK_WIDGET(data));
 }
 
 static void save_rules(GtkButton *button, gpointer data)
@@ -202,7 +203,7 @@ static void save_rules(GtkButton *button, gpointer data)
 	}
 
 	gtk_widget_destroy(dialog);
-	gnftables_table_init(GTK_NOTEBOOK(data));
+	gnftables_table_init(GTK_WIDGET(data));
 }
 
 
@@ -429,9 +430,10 @@ void back_to_set_list(GtkButton *button, gpointer info)
 {
 	struct chain_list_args *data;
 	struct set_create_widget  *args;
+	GtkWidget	*notebook;
 	args = (struct set_create_widget *)info;
 	data = xzalloc(sizeof(struct chain_list_args));
-	GtkWidget	*notebook = args->notebook;
+	notebook = args->notebook;
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
 
 	data->notebook = args->notebook;
@@ -696,7 +698,7 @@ static void header_addr_set_show(struct ip_address *addr, int family, char *tabl
 	int	selected = 0;
 
 	LIST_HEAD(set_list);
-	res = gui_get_sets_list(&set_list, family, table, "IPv4 address");
+	res = gui_get_sets_list(&set_list, family, table, (char *)"IPv4 address");
 	if (res != SET_SUCCESS)
 		// error;
 		;
@@ -728,6 +730,7 @@ static void header_addr_callback(GtkComboBoxText *widget, gpointer data)
 {
 	struct ip_address	*addr;
 	struct match_header	*args;
+	char	*type;
 	args = (struct match_header *)data;
 
 	if ((void *)widget == (void *)args->saddr.type)
@@ -735,7 +738,7 @@ static void header_addr_callback(GtkComboBoxText *widget, gpointer data)
 	else
 		addr = args->daddr.value;
 
-	char	*type = gtk_combo_box_text_get_active_text(widget);
+	type = gtk_combo_box_text_get_active_text(widget);
 	if (!(strcmp(type, "exact ip"))) {
 		addr->type = ADDRESS_EXACT;
 		header_addr_subnet_hide(addr);
@@ -785,10 +788,11 @@ void header_trans_all_init()
 
 void transport_port_callback(GtkComboBoxText *widget, gpointer data)
 {
+	char	*type;
 	struct transport_port_info  *port_info;
-	port_info = (struct transport_port_info *)data;
 
-	char	*type = gtk_combo_box_text_get_active_text(widget);
+	port_info = (struct transport_port_info *)data;
+	type = gtk_combo_box_text_get_active_text(widget);
 	if (!(strcmp(type, "port list")))
 		port_info->value->type = PORT_EXACT;
 	else if (!(strcmp(type, "range")))
@@ -866,7 +870,7 @@ static void rule_add_content_header_addr(struct match_header *header, struct ip_
 	GtkWidget	*addr_range_to;
 	GtkWidget	*addr_set;
 	int		offset;
-	char		*label;
+	const char	*label;
 	struct ip_address	*ipaddr;
 
 	fixed = header->fixed;
@@ -1028,7 +1032,7 @@ static void header_port_set_show(struct transport_port_info *port, char *setname
 	char	*table = port->table;
 
 	LIST_HEAD(set_list);
-	res = gui_get_sets_list(&set_list, family, table, "internet network service");
+	res = gui_get_sets_list(&set_list, family, table, (char *)"internet network service");
 	if (res != SET_SUCCESS)
 		// error;
 		;
@@ -1060,9 +1064,10 @@ static void header_port_set_hide(struct transport_port_info *port)
 
 static void header_port_callback(GtkComboBoxText *widget, gpointer data)
 {
+	char	*type;
 	struct transport_port_info *port;
 	port = (struct transport_port_info *)data;
-	char	*type = gtk_combo_box_text_get_active_text(widget);
+	type = gtk_combo_box_text_get_active_text(widget);
 
 	if (!(strcmp(type, "port list"))) {
 		port->value->type = PORT_EXACT;
@@ -1097,7 +1102,7 @@ static void rule_add_content_header_port(GtkWidget *fixed,
 	GtkWidget	*port_range_to;
 	GtkWidget	*port_set;
 	int		offset;
-	char		*label;
+	const char	*label;
 
 	if (source) {
 		offset = 0;
@@ -1248,7 +1253,7 @@ static void header_transport_callback(GtkComboBoxText *widget, gpointer data)
 	char	*type;
 	struct rule_create_widget *rule;
 	
-	rule = (struct match_header *)data;
+	rule = (struct rule_create_widget *)data;
 	type = gtk_combo_box_text_get_active_text(widget);
 	if (!(strcmp(type, "all")))
 		rule_add_content_header_all(rule->header);
@@ -1332,12 +1337,10 @@ void rule_add_content_header(struct rule_create_widget *new_rule, struct rule_li
 	GtkWidget	*fixed;
 	GtkWidget	*fixed_header;
 	GtkWidget	*expander_header;
-	struct match_header	*header;
 	struct rule_create_data	*data = rule_arg->data;
 	struct pktheader	*header_data = NULL;
 
 	fixed = new_rule->fixed;
-	header = new_rule->header;
 	if (data)
 		header_data = data->header;
 
@@ -1553,15 +1556,16 @@ static void rule_actions_add_jump(struct rule_create_widget *new_rule, struct ac
 	int	index = 0;
 	int	selected = 0;
 
-	res = gui_get_chains_list(&chain_list, new_rule->family, new_rule->table, "user");
+	res = gui_get_chains_list(&chain_list, new_rule->family, new_rule->table, (char *)"user");
 	if (res != CHAIN_SUCCESS) {
 		GtkWidget *dialog;
 		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
-                                 0,
-                                 GTK_MESSAGE_ERROR,
-                                 GTK_BUTTONS_OK,
-                                 chain_error[res]
-                                 );
+				0,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_OK,
+				"%s",
+				chain_error[res]
+				);
 
 		gtk_dialog_run(GTK_DIALOG(dialog));
 		gtk_widget_destroy(dialog);
@@ -1627,8 +1631,8 @@ static void rule_actions_add_counter(struct rule_create_widget *new_rule, struct
 	if (action) {
 		char  packets[100];
 		char  bytes[100];
-		snprintf(packets, 100, "%u", action->packets);
-		snprintf(bytes, 100, "%u", action->bytes);
+		snprintf(packets, 100, "%"PRIu64, action->packets);
+		snprintf(bytes, 100, "%"PRIu64, action->bytes);
 		gtk_entry_set_text(GTK_ENTRY(elem->widget2), packets);
 		gtk_entry_set_text(GTK_ENTRY(elem->widget4), bytes);
 	}
@@ -1923,7 +1927,7 @@ static void set_element_type_changed(GtkComboBoxText *widget, gpointer data)
 	GtkTreeStore	*store;
 	struct set_create_widget *widgets;
 
-	widgets = (struct GtkTreeStore *)data;
+	widgets = (struct set_create_widget *)data;
 	store = GTK_TREE_STORE(widgets->store);
 	gtk_tree_store_clear(store);
 }
@@ -1936,7 +1940,7 @@ static void set_add_element(GtkButton *button, gpointer  info)
 	GtkTreeStore	*store;
 	struct set_create_widget *widgets;
 
-	widgets = (struct GtkTreeStore *)info;
+	widgets = (struct set_create_widget *)info;
 	store = GTK_TREE_STORE(widgets->store);
 	add = GTK_ENTRY(widgets->add);
 	value = get_data_from_entry(add);
@@ -1956,7 +1960,7 @@ static void set_remove_element(GtkButton *button, gpointer  info)
 	GtkTreeSelection *selection;
 	struct set_create_widget *widgets;
 
-	widgets = (struct GtkTreeStore *)info;
+	widgets = (struct set_create_widget *)info;
 	store = GTK_TREE_STORE(widgets->store);
 	treeview = GTK_TREE_VIEW(widgets->treeview);
 	selection  = gtk_tree_view_get_selection(treeview);
@@ -1984,11 +1988,6 @@ static void create_new_set(GtkButton *button, gpointer  data)
 	GtkWidget	*new;
 	GtkWidget	*new_value;
 	GtkWidget	*remove;
-	GtkWidget	*remove_value;
-	GtkWidget	*hook;
-	GtkWidget	*hook_value;
-	GtkWidget	*priority;
-	GtkWidget	*priority_value;
 	GtkWidget	*notebook;
 	GtkWidget	*msg;
 	GtkWidget	*scrolledwindow;
@@ -2072,7 +2071,7 @@ static void create_new_set(GtkButton *button, gpointer  data)
 	gtk_layout_put(GTK_LAYOUT(layout_chain), trash, 200, 180);
 
 	store = gtk_tree_store_new(1, G_TYPE_STRING);
-	widgets->store = store;
+	widgets->store = GTK_WIDGET(store);
 	elems = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
 	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(elems), FALSE);
 	renderer = gtk_cell_renderer_text_new();
@@ -2386,7 +2385,7 @@ void gnftables_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkW
 	store = gtk_tree_store_new(RULE_TOTAL, G_TYPE_INT, G_TYPE_INT,
 			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
 			G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
-	rule_arg->store = store;
+	rule_arg->store = GTK_WIDGET(store);
 
 	title = gtk_label_new("Rules");
 	gtk_widget_set_size_request(title, 200, 10);
@@ -2479,18 +2478,11 @@ void gnftables_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkW
 static void set_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
 {
 	GtkTreeIter		iter;
-	int			family;
-	gchar			*table;
 	gchar			*set;
 	GtkTreeModel		*model;
-	GtkWidget		*notebook;
 	struct set_list_args  *set_args;
 
 	set_args = (struct set_list_args *)data;
-
-	table = set_args->table;
-	family = set_args->family;
-	notebook = set_args->notebook;
 
 	model = GTK_TREE_MODEL(set_args->model);
 	gtk_tree_model_get_iter_from_string(model, &iter, path_str);
@@ -2572,7 +2564,6 @@ void rule_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer
 	GtkTreeModel		*model;
 	GtkTreeView		*treeview;
 	struct rule_list_args	*rule_args = (struct rule_list_args *)data;
-	gint	res;
 
 	treeview = GTK_TREE_VIEW(rule_args->list_rules);
 	table = rule_args->table;
@@ -2752,15 +2743,16 @@ void set_update_data(struct set_list_args *args)
 
 	LIST_HEAD(set_list);
 
-	res = gui_get_sets_list(&set_list, family, table_name, "all");
+	res = gui_get_sets_list(&set_list, family, table_name, (char *)"all");
 	if (res != SET_SUCCESS) {
 		GtkWidget *dialog;
 		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
-                                 0,
-                                 GTK_MESSAGE_ERROR,
-                                 GTK_BUTTONS_OK,
-                                 set_error[res]
-                                 );
+				0,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_OK,
+				"%s",
+				set_error[res]
+				);
 
 		gtk_dialog_run(GTK_DIALOG(dialog));
 		gtk_widget_destroy(dialog);
@@ -2807,11 +2799,12 @@ void chain_update_data(struct chain_list_args *args)
 	if (res != CHAIN_SUCCESS) {
 		GtkWidget *dialog;
 		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
-                                 0,
-                                 GTK_MESSAGE_ERROR,
-                                 GTK_BUTTONS_OK,
-                                 chain_error[res]
-                                 );
+				0,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_OK,
+				"%s",
+				chain_error[res]
+				);
 
 		gtk_dialog_run(GTK_DIALOG(dialog));
 		gtk_widget_destroy(dialog);
@@ -2948,14 +2941,14 @@ void gnftables_set_init(GtkButton *button, gpointer  data)
 	g_signal_connect(G_OBJECT(create_set), "clicked",
 			G_CALLBACK(create_new_set), set_arg);
 	gtk_layout_put(GTK_LAYOUT(layout), create_set, 700, 10);
-	set_arg->store = store;
+	set_arg->store = GTK_WIDGET(store);
 
 	set_update_data(set_arg);
 
 	// treeview style
 	list_sets = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
 	renderer = gtk_cell_renderer_text_new();
-	set_arg->model = gtk_tree_view_get_model(GTK_TREE_VIEW(list_sets));
+	set_arg->model = GTK_WIDGET(gtk_tree_view_get_model(GTK_TREE_VIEW(list_sets)));
 
 	column = gtk_tree_view_column_new_with_attributes("Id", renderer,
 			"text", SET_ID, NULL);
@@ -3087,14 +3080,14 @@ void gnftables_set_chain_init(gint family, gchar *table_name, GtkWidget *noteboo
 	g_signal_connect(G_OBJECT(create_chain), "clicked",
 			G_CALLBACK(create_new_chain), chain_arg);
 	gtk_layout_put(GTK_LAYOUT(layout), create_chain, 700, 10);
-	chain_arg->store = store;
+	chain_arg->store = GTK_WIDGET(store);
 
 	chain_update_data(chain_arg);
 
 	// treeview style
 	list_chains = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
 	renderer = gtk_cell_renderer_text_new();
-	chain_arg->model = gtk_tree_view_get_model(GTK_TREE_VIEW(list_chains));
+	chain_arg->model = GTK_WIDGET(gtk_tree_view_get_model(GTK_TREE_VIEW(list_chains)));
 	g_signal_connect(combo_type, "changed",
 			G_CALLBACK(chain_list_type_changed), chain_arg);
 
@@ -3191,11 +3184,12 @@ void table_update_data(gint family, GtkTreeStore *store)
 	if (res != TABLE_SUCCESS) {
 		GtkWidget *dialog;
 		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
-                                 0,
-                                 GTK_MESSAGE_ERROR,
-                                 GTK_BUTTONS_OK,
-                                 table_error[res]
-                                 );
+				0,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_OK,
+				"%s",
+				table_error[res]
+				);
 
 		gtk_dialog_run(GTK_DIALOG(dialog));
 		gtk_widget_destroy(dialog);
@@ -3300,11 +3294,12 @@ void table_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 	else {
 		GtkWidget *dialog;
 		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
-                                 0,
-                                 GTK_MESSAGE_ERROR,
-                                 GTK_BUTTONS_OK,
-                                 table_error[res]
-                                 );
+				0,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_OK,
+				"%s",
+				table_error[res]
+				);
 
 		gtk_dialog_run(GTK_DIALOG(dialog));
 		gtk_widget_destroy(dialog);
@@ -3486,21 +3481,31 @@ void gnftables_about_init(GtkWidget *notebook)
 	GtkWidget	*content;
 	GtkWidget	*label;
 
-	const gchar *text = "gnftables 0.1.0\n\ngnftables is a gui tool aimed to simplify the configuration of nftables from command line. It's in heavy develpment now. If you need more help, please visit the project's home site (http://ycnian.org/projects/gnftables.php).\n\nCopyright (c) 2014  Yanchuan Nian <ycnian@gmail.com>\n\nThis program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License version 2 as published by the Free Software Foundation. Note that *only* version 2 of the GPL applies, not any later version.\n\nThis program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License along with this program. You may also obtain a copy of the GNU General Public License from the Free Software Foundation by visiting their web site (http://www.fsf.org/) or by writing to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA";
+	const gchar *text = "gnftables 0.1\n\n"
+		"gnftables is a gui tool aimed to simplify the configuration "
+		"of nftables from command line. It's in heavy develpment now. "
+		"If you need more help, please visit the project's home site "
+		"(http://ycnian.org/projects/gnftables.php).\n\n"
+		"Copyright (c) 2014  Yanchuan Nian (ycnian at gmail dot com)\n\n"
+		"This program is free software; you can redistribute it and/or "
+		"modify it under the terms of the GNU General Public License "
+		"version 2 as published by the Free Software Foundation.\n\n"
+		"This program is distributed in the hope that it will be useful,"
+		" but WITHOUT ANY WARRANTY; without even the implied warranty "
+		"of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. "
+		"See the <a href=\"http://www.gnu.org/licenses/gpl-2.0.html\">"
+		"GNU General Public License version 2</a> for more details.\n\n";
 	content = gtk_label_new(NULL);
 	gtk_label_set_width_chars(GTK_LABEL(content), 100);
-	gtk_label_set_justify(GTK_LABEL(content), GTK_JUSTIFY_LEFT);
+	gtk_misc_set_alignment(GTK_MISC(content), 0.0, 0.2);
 	gtk_label_set_line_wrap(GTK_LABEL(content), TRUE);
-	gtk_label_set_selectable (GTK_LABEL(content), FALSE);
-	gtk_label_set_text(GTK_LABEL(content), text);
+	gtk_label_set_selectable (GTK_LABEL(content), TRUE);
+	gtk_label_set_markup(GTK_LABEL(content), text);
 
 	label = gtk_label_new ("About gnftables");
 	gtk_widget_set_size_request(label, 200, 10);
 	gtk_notebook_append_page (GTK_NOTEBOOK (notebook), content, label);      
 }
-
-
-
 
 int main(int argc, char *argv[])
 {

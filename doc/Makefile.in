@@ -3,6 +3,10 @@ install:
 	@echo -e "  $(MKDIR_P) ${docdir}"
 	@echo -e "  $(INSTALL) -m 644 -p COPYING  ${docdir}"
 	@echo -e "  $(INSTALL) -m 644 -p README.md  ${docdir}"
+	@echo -e "  $(INSTALL) -m 644 -p AUTHORS  ${docdir}"
+	@echo -e "  $(INSTALL) -m 644 -p ChangeLog  ${docdir}"
 	$(MKDIR_P) ${docdir}
 	$(INSTALL) -m 644 -p COPYING  ${docdir}
 	$(INSTALL) -m 644 -p README.md  ${docdir}
+	$(INSTALL) -m 644 -p AUTHORS  ${docdir}
+	$(INSTALL) -m 644 -p ChangeLog  ${docdir}

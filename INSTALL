@@ -1,4 +1,4 @@
-Installation instructions for nftables
+Installation instructions for gnftables
 ======================================
 
  Prerequisites
@@ -9,6 +9,8 @@ Installation instructions for nftables
   - libmnl: git://git.netfilter.org/libmnl.git
 
   - libnftnl: git://git.netfilter.org/libnftnl.git
+
+  - gtk3+
 
   - flex
 
@@ -46,7 +48,7 @@ Installation instructions for nftables
 
  Suggested configuration options: --prefix=/ --datarootdir=/usr/share
 
- Run "make" to compile nftables, "make install" to install it in the
+ Run "make" to compile gnftables, "make install" to install it in the
  configured paths.
 
  Other notes
@@ -58,4 +60,4 @@ Installation instructions for nftables
 
  The latest version of this code can be found at:
 
- git://git.netfilter.org/nftables.git
+ https://github.com/ycnian/gnftables.git

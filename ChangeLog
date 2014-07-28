@@ -1,0 +1,3 @@
+gnftables 0.1
+- initial public release, only ipv4 supported, only filter supported.
+

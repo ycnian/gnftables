@@ -3515,13 +3515,14 @@ int main(int argc, char *argv[])
 
 	gtk_init(&argc, &argv);
 
+	/* Create toplevel window. */
         window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
         gtk_window_set_title(GTK_WINDOW(window), "gnftables");
         gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
 	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
 	gtk_widget_set_size_request(window, 900, 556);
-	gtk_window_set_icon(GTK_WINDOW(window), create_pixbuf(DEFAULT_DATAROOT_PATH"/pixmaps/gnftables.png"));
-
+	gtk_window_set_icon(GTK_WINDOW(window),
+		create_pixbuf(DEFAULT_DATAROOT_PATH"/pixmaps/gnftables.png"));
 	g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 	gtk_container_set_border_width(GTK_CONTAINER (window), 10);
 
@@ -3536,19 +3537,25 @@ int main(int argc, char *argv[])
 	gtk_widget_show(notebook);
 	gtk_layout_put(GTK_LAYOUT(layout), notebook, 0, 0);
 
+	/* At the beginning, there are only two tabs: table tab and about tab,
+	 * other tabs are added and deleted dynamicly.
+	 */
 	gnftables_table_init(notebook);
 	gnftables_about_init(notebook);
 
 	gtk_notebook_set_current_page (GTK_NOTEBOOK (notebook), 0);
-	g_signal_connect(G_OBJECT(notebook), "switch-page", G_CALLBACK(select_page), notebook);
+	g_signal_connect(G_OBJECT(notebook), "switch-page",
+		G_CALLBACK(select_page), notebook);
 
 	button = gtk_button_new_with_label("Load rules from file");
-	g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(load_rules), notebook);
+	g_signal_connect(G_OBJECT(button), "clicked", 
+		G_CALLBACK(load_rules), notebook);
 	gtk_widget_set_size_request(button, 435, 10);
 	gtk_layout_put(GTK_LAYOUT(layout), button, 0, 500);
 
 	button = gtk_button_new_with_label("Save rules to file");
-	g_signal_connect(G_OBJECT (button), "clicked", G_CALLBACK(save_rules), notebook);
+	g_signal_connect(G_OBJECT (button), "clicked", 
+		G_CALLBACK(save_rules), notebook);
 	gtk_widget_set_size_request(button, 435, 10);
 	gtk_layout_put(GTK_LAYOUT(layout), button, 445, 500);
 

@@ -224,7 +224,6 @@ int gui_get_rule(int family, const char *table, const char *chain, int handle_no
 	struct location		loc;
 	int	res = TABLE_SUCCESS;
 	struct rule	*rule;
-	struct stmt	*stmt;
 	struct rule_create_data  *data;
 
 	LIST_HEAD(msgs);
@@ -422,7 +421,6 @@ int gui_get_sets_list(struct list_head *head, int family, char *table, char *des
 	struct location		loc;
 	struct set		*set, *s;
 	struct set_list_data  *gui_set, *gs;
-	int	nelems;
 	int	res;
 
 	memset(&ctx, 0, sizeof(ctx));
@@ -448,7 +446,14 @@ int gui_get_sets_list(struct list_head *head, int family, char *table, char *des
 		gui_set->keytype = xstrdup(set->keytype->desc);
 		if (set->flags & SET_F_MAP)
 			gui_set->datatype = xstrdup(set->datatype->desc);
-		netlink_get_setelems(&ctx, &set->handle, &loc, set);
+		res = netlink_get_setelems(&ctx, &set->handle, &loc, set);
+		if (res < 0) {
+			res = SET_KERNEL_ERROR;
+			xfree(gui_set->table);
+			xfree(gui_set->name);
+			xfree(gui_set);
+			goto error;
+		}
 		gui_set->nelems = set->init->size;
 		list_add_tail(&gui_set->list, head);
 skipe:
@@ -867,7 +872,7 @@ int gui_delete_table(int family, char *name)
 	}
 
 	// delete all sets in the table
-	gui_get_sets_list(&sets_list, family, name, "all");
+	gui_get_sets_list(&sets_list, family, name, (char *)"all");
 	list_for_each_entry_safe(gui_set, gs, &sets_list, list) {
 		list_del(&gui_set->list);
 		gui_delete_set(gui_set->family, gui_set->table, gui_set->name);
@@ -908,11 +913,9 @@ int gui_add_set(struct set_create_data *gui_set)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	struct location		loc;
 	struct set		set;
 	int	res = SET_SUCCESS;
 
-	bool batch_supported = netlink_batch_supported();
 	LIST_HEAD(msgs);
 
 	memset(&ctx, 0, sizeof(ctx));
@@ -1045,11 +1048,9 @@ int gui_edit_set(struct set_create_data *gui_set)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	struct location		loc;
 	struct set		set;
 	int	res = SET_SUCCESS;
 
-	bool batch_supported = netlink_batch_supported();
 	LIST_HEAD(msgs);
 
 	memset(&ctx, 0, sizeof(ctx));
@@ -1074,7 +1075,7 @@ int gui_edit_set(struct set_create_data *gui_set)
 	if (res != SET_SUCCESS)
 		return CHAIN_KERNEL_ERROR;
 
-	gui_flush_set(handle.family, handle.table, handle.set);
+	gui_flush_set(handle.family, (char *)handle.table, (char *)handle.set);
 	if (set.init != NULL) {
 		if (netlink_add_setelems(&ctx, &set.handle, set.init) < 0)
 			return CHAIN_KERNEL_ERROR;
@@ -1322,7 +1323,7 @@ int tables_load(char *filename)
 	}
 
 	list_for_each_entry_safe(iter, tmp, &ctx.list, list) {
-		gui_delete_table(iter->handle.family, iter->handle.table);
+		gui_delete_table(iter->handle.family, (char*)iter->handle.table);
 	}
 
 	parser_init(&state, &msgs);

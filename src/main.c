@@ -2660,10 +2660,11 @@ void chain_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 	gchar			*table;
 	gchar			*chain;
 	GtkTreeModel		*model;
-	struct chain_list_args	*chain_args = (struct chain_list_args *)data;
-
+	struct chain_list_args	*chain_args;
+	gint	err;
 	gint	res;
 	GtkWidget *dialog;
+	chain_args = (struct chain_list_args *)data;
 
 	dialog = gtk_message_dialog_new(GTK_WINDOW(window),
                                  0,
@@ -2681,7 +2682,14 @@ void chain_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 		gtk_tree_model_get_iter_from_string(model, &iter, path_str);
 		gtk_tree_model_get(model, &iter, CHAIN_NAME, &chain, -1);
 
-		gui_delete_chain(family, table, chain);
+		err = gui_delete_chain(family, table, chain);
+		if (err != CHAIN_SUCCESS) {
+			gtk_widget_destroy(dialog);
+			dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+				0, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
+				"%s", chain_error[err]);
+			gtk_dialog_run(GTK_DIALOG(dialog));
+		}
 		chain_update_data(chain_args);
 	}
 

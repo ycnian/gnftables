@@ -102,42 +102,52 @@ int gui_get_rules_number(int family, char *table, char *chain, int *nrules)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	struct location		loc;
-	struct table		*tablee = NULL;
-	struct rule		*rulee;
-	int			res;
+	struct table		*tmp = NULL;
+	struct rule		*rule, *next;
+	int	res;
+	int	num = 0;
 
-	memset(&ctx, 0, sizeof(ctx));
+	LIST_HEAD(msgs);
+	ctx.msgs = &msgs;
 	ctx.seqnum  = mnl_seqnum_alloc();
 	init_list_head(&ctx.list);
 
 	handle.family = family;
 	handle.table = table;
 	handle.chain = chain;
-	handle.set = NULL;
 	handle.handle = 0;
-	handle.position = 0;
-	handle.comment = NULL;
 
-	tablee = table_lookup(&handle);
-	if (tablee == NULL) {
-		tablee = table_alloc();
-		init_list_head(&tablee->sets);
-		handle_merge(&tablee->handle, &handle);
-		table_add_hash(tablee);
+	/*
+	 * netlink_delinearize_rule() will look up table in table_list.
+	 * We have to add it first. Maybe I will remove table_list totally
+	 * someday.
+	 */
+	tmp = table_lookup(&handle);
+	if (tmp == NULL) {
+		tmp = table_alloc();
+		handle_merge(&tmp->handle, &handle);
+		table_add_hash(tmp);
 	}
 
-	table_list_sets(tablee);
-	res = netlink_list_chain(&ctx, &handle, &loc);
-	if (res < 0)
+	/*
+ 	 * Get rules from kernel.
+ 	 */
+	res = netlink_list_chain(&ctx, &handle, &internal_location);
+	if (res < 0) {
+		struct  error_record *erec, *next;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
 		return RULE_KERNEL_ERROR;
-
-	res = 0;
-	list_for_each_entry(rulee, &ctx.list, list) {
-		res++;
 	}
-	*nrules = res;
 
+	list_for_each_entry_safe(rule, next, &ctx.list, list) {
+		list_del(&rule->list);
+		rule_free(rule);
+		num++;
+	}
+	*nrules = num;
 	return RULE_SUCCESS;
 }
 
@@ -266,7 +276,6 @@ int gui_delete_rule(int family, const char *table, const char *chain, int handle
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	struct location		loc;
 	int	res = TABLE_SUCCESS;
 	bool batch_supported;
 
@@ -294,7 +303,7 @@ int gui_delete_rule(int family, const char *table, const char *chain, int handle
 
 	 mnl_batch_begin();
 	// delete rule.
-	if (netlink_del_rule_batch(&ctx, &handle, &loc) < 0) {
+	if (netlink_del_rule_batch(&ctx, &handle, &internal_location) < 0) {
 			res = TABLE_KERNEL_ERROR;
 	}
 	mnl_batch_end();
@@ -392,27 +401,6 @@ int gui_get_sets_number(int family, char *table, int *nsets)
 		set_free(set);
 	}
 	return SET_SUCCESS;
-}
-
-int table_list_sets(struct table *table)
-{
-	struct netlink_ctx	ctx;
-	struct location		loc;
-        struct set *set, *nset;
-
-	memset(&ctx, 0, sizeof(ctx));
-	ctx.seqnum  = mnl_seqnum_alloc();
-	init_list_head(&ctx.list);
-
-        if (netlink_list_sets(&ctx, &table->handle, &loc) < 0)
-                return -1;
-
-        list_for_each_entry_safe(set, nset, &ctx.list, list) {
-                if (netlink_get_setelems(&ctx, &set->handle, &loc, set) < 0)
-                        return -1;
-                list_move_tail(&set->list, &table->sets);
-        }
-        return 0;
 }
 
 /*
@@ -636,20 +624,17 @@ int gui_add_chain(struct chain_create_data *gui_chain)
 
 /*
  * Check whether a chain exists.
- * @family:  nftables family
+ * @family:  protocol family
  * @table:   table name
  * @chain:   chain name
  */
-int gui_check_chain_exist(int family, char *table, char *chain)
+int gui_check_chain_exist(int family, const char *table, const char *chain)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	struct location		loc;
 	int			res;
 
 	LIST_HEAD(msgs);
-
-	memset(&ctx, 0, sizeof(ctx));
 	ctx.msgs = &msgs;
 	ctx.seqnum  = mnl_seqnum_alloc();
 	init_list_head(&ctx.list);
@@ -658,12 +643,18 @@ int gui_check_chain_exist(int family, char *table, char *chain)
 	handle.table = table;
 	handle.chain = chain;
 
-	res = netlink_get_chain(&ctx, &handle, &loc);
+	res = netlink_get_chain(&ctx, &handle, &internal_location);
 	if (res < 0) {
+		struct  error_record *erec, *next;
 		if (errno == ENOENT)
-			return CHAIN_NOT_EXIST;
+			res = CHAIN_NOT_EXIST;
 		else
-			return CHAIN_KERNEL_ERROR;
+			res =  CHAIN_KERNEL_ERROR;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
+		return res;
 	}
 	return CHAIN_SUCCESS;
 }
@@ -810,19 +801,15 @@ int gui_delete_chain(int family, const char *table, const char *chain)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	struct location		loc;
+	struct mnl_err *err, *tmp;
 	int	res = CHAIN_SUCCESS;
-	bool batch_supported;
 
 	LIST_HEAD(msgs);
 	LIST_HEAD(err_list);
 
-	batch_supported = netlink_batch_supported();
-
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.msgs = &msgs;
 	ctx.seqnum  = mnl_seqnum_alloc();
-	ctx.batch_supported = batch_supported;
 	init_list_head(&ctx.list);
 
 	handle.family = family;
@@ -830,53 +817,44 @@ int gui_delete_chain(int family, const char *table, const char *chain)
 	handle.chain = chain;
 	handle.handle = 0;
 
-	mnl_batch_begin();
+	res = gui_check_chain_exist(family, table, chain);
+	if (res == CHAIN_NOT_EXIST)
+		return CHAIN_SUCCESS;
+	if (res != CHAIN_SUCCESS)
+		return res;
+
 	// delete all rules in the chain.
-	if (netlink_del_rule_batch(&ctx, &handle, &loc) < 0) {
+	mnl_batch_begin();
+	if (netlink_del_rule_batch(&ctx, &handle, &internal_location) < 0) {
+		struct  error_record *erec, *next;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
 		return CHAIN_KERNEL_ERROR;
 	}
 	mnl_batch_end();
 
 	if (mnl_batch_ready()) {
 		res = netlink_batch_send(&err_list);
-		if (res < 0)
+		if (res < 0) {
+			list_for_each_entry_safe(err, tmp, &err_list, head)
+				mnl_err_list_free(err);
 			return CHAIN_KERNEL_ERROR;
-	}
+		}
+	} else
+		mnl_batch_reset();
 
-	if (netlink_delete_chain(&ctx, &handle, &loc) < 0) {
-		res = CHAIN_KERNEL_ERROR;
+	if (netlink_delete_chain(&ctx, &handle, &internal_location) < 0) {
+		struct  error_record *erec, *next;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
+		return CHAIN_KERNEL_ERROR;
 	}
 
 	return CHAIN_SUCCESS;
-}
-
-
-
-int gui_flush_table(int family, char *name)
-{
-	struct netlink_ctx	ctx;
-	struct handle		handle;
-	struct location		loc;
-	int	res;
-	bool batch_supported;
-
-	LIST_HEAD(msgs);
-	batch_supported = netlink_batch_supported();
-
-	memset(&ctx, 0, sizeof(ctx));
-	ctx.msgs = &msgs;
-	ctx.seqnum  = mnl_seqnum_alloc();
-	ctx.batch_supported = batch_supported;
-	init_list_head(&ctx.list);
-
-	handle.family = family;
-	handle.table = name;
-
-	res = netlink_flush_table(&ctx, &handle, &loc);
-	if (res != 0)
-		return TABLE_KERNEL_ERROR;
-	else
-		return TABLE_SUCCESS;
 }
 
 /*

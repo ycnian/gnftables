@@ -37,7 +37,7 @@ const char *chain_error[CHAIN_ERROR_NUM] = {
 	[CHAIN_PRIORITY_INVALID]= "Invalid priority, only +, -, 0-9 allowed",
 	[CHAIN_TABLE_NOT_EXIST] = "Table doesn't exist.",
         [CHAIN_EXIST]           = "Chain with the same name exists.",
-	[CHAIN_NOT_EXIST]	= "Chain doesn;t exist.",
+	[CHAIN_NOT_EXIST]	= "Chain doesn't exist.",
 	[CHAIN_PRIORITY_OVERFLOW]="Priority is out of range, it must be between -2147483648 and 2147483647.",
 };
 

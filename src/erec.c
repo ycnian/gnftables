@@ -37,7 +37,7 @@ void erec_add_location(struct error_record *erec, const struct location *loc)
 	erec->locations[erec->num_locations++] = *loc;
 }
 
-static void erec_destroy(struct error_record *erec)
+void erec_destroy(struct error_record *erec)
 {
 	xfree(erec->msg);
 	xfree(erec);

@@ -46,13 +46,10 @@ struct gui_rule {
 	struct list_head	list;
 };
 
-
-
 int gui_get_tables_list(struct list_head *head, int family);
 
-
 void gui_chain_free(struct chain_list_data *chain);
-int gui_get_chains_list(struct list_head *head, int family, char *table, char *type);
+int gui_get_chains_list(struct list_head *head, int family, char *table, const char *type, int rules);
 int gui_add_chain(struct chain_create_data *gui_chain);
 int gui_delete_chain(int family, const char *table, const char *chain);
 
@@ -70,8 +67,7 @@ int gui_get_sets_number(int family, char *table, int *nsets);
 int gui_add_table(struct table_create_data *data);
 int gui_get_rules_number(int family, char *table, char *chain, int *nrules);
 int gui_check_chain_exist(int family, char *table, char *chain);
-
-int gui_get_sets_list(struct list_head *head, int family, char *table, char *desc);
+int gui_get_sets_list(struct list_head *head, int family, char *table, const char *desc, int elements);
 
 int table_list_sets(struct table *table);
 

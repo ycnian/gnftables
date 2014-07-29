@@ -48,6 +48,7 @@
 #include <gui_error.h>
 #include <gui_datacheck.h>
 #include <gui_expression.h>
+#include <erec.h>
 
 void gui_rule_free(struct gui_rule *rule)
 {
@@ -414,16 +415,26 @@ int table_list_sets(struct table *table)
         return 0;
 }
 
-int gui_get_sets_list(struct list_head *head, int family, char *table, char *desc)
+/*
+ * Get sets from kernel. 
+ * @head: a list used to store sets
+ * @family: protocol family
+ * @table:  table name
+ * @desc:   set type, only get this type from kernel. such as: IPv4 address,
+ *          internet network service, all. 
+ * Actually，kernel doesn't support to get sets in certain types. We have to
+ * get all sets and filter sets in a certain type.
+ */
+int gui_get_sets_list(struct list_head *head, int family, char *table, const char *desc, int elements)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	struct location		loc;
 	struct set		*set, *s;
 	struct set_list_data  *gui_set, *gs;
 	int	res;
 
-	memset(&ctx, 0, sizeof(ctx));
+	LIST_HEAD(msgs);
+	ctx.msgs = &msgs;
 	ctx.seqnum  = mnl_seqnum_alloc();
 	init_list_head(&ctx.list);
 
@@ -431,51 +442,69 @@ int gui_get_sets_list(struct list_head *head, int family, char *table, char *des
 	handle.table = table;
 	handle.set = NULL;
 
-	if (netlink_list_sets(&ctx, &handle, &loc) < 0)
+	if (netlink_list_sets(&ctx, &handle, &internal_location) < 0) {
+		struct  error_record *erec, *next;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
 		return SET_KERNEL_ERROR;
+	}
 
 	list_for_each_entry_safe(set, s, &ctx.list, list) {
 		if (set->flags & SET_F_ANONYMOUS)
 			goto skipe;
 		if (strcmp(desc, "all") && strcmp(desc, set->keytype->desc))
 			goto skipe;
-		gui_set = (struct set_list_data *)xzalloc(sizeof(struct set_list_data));
+		gui_set = xzalloc(sizeof(struct set_list_data));
 		gui_set->family = set->handle.family;
 		gui_set->table = xstrdup(set->handle.table);
 		gui_set->name = xstrdup(set->handle.set);
 		gui_set->keytype = xstrdup(set->keytype->desc);
 		if (set->flags & SET_F_MAP)
 			gui_set->datatype = xstrdup(set->datatype->desc);
-		res = netlink_get_setelems(&ctx, &set->handle, &loc, set);
-		if (res < 0) {
-			res = SET_KERNEL_ERROR;
-			xfree(gui_set->table);
-			xfree(gui_set->name);
-			xfree(gui_set);
-			goto error;
+		if (elements) {
+			res = netlink_get_setelems(&ctx, &set->handle,
+					&internal_location, set);
+			if (res < 0) {
+				struct  error_record *erec, *next;
+				res = SET_KERNEL_ERROR;
+				list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+					list_del(&erec->list);
+					erec_destroy(erec);
+				}
+				xfree(gui_set->table);
+				xfree(gui_set->name);
+				xfree(gui_set->keytype);
+				xfree(gui_set->datatype);
+				xfree(gui_set);
+				goto error;
+			}
+			gui_set->nelems = set->init->size;
 		}
-		gui_set->nelems = set->init->size;
 		list_add_tail(&gui_set->list, head);
 skipe:
 		list_del(&set->list);
+		expr_free(set->init);
 		set_free(set);
 	}
-
 	return SET_SUCCESS;
+
 error:
 	list_for_each_entry_safe(set, s, &ctx.list, list) {
 		list_del(&set->list);
+		expr_free(set->init);
 		set_free(set);
 	}
 	list_for_each_entry_safe(gui_set, gs, head, list) {
 		list_del(&gui_set->list);
 		xfree(gui_set->table);
 		xfree(gui_set->name);
+		xfree(gui_set->keytype);
+		xfree(gui_set->datatype);
 		xfree(gui_set);
 	}
 	return SET_KERNEL_ERROR;
-
-	return 0;
 }
 
 
@@ -486,17 +515,17 @@ error:
  * @table:  table name
  * @type:   chain type, only show chains in this type
  */
-int gui_get_chains_list(struct list_head *head, int family, char *table, char *type)
+int gui_get_chains_list(struct list_head *head, int family, char *table, const char *type, int rules)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	struct location		loc;
 	struct chain		*chain, *c;
 	struct chain_list_data  *gui_chain, *gc;
 	int	nrules;
 	int	res;
 
-	memset(&ctx, 0, sizeof(ctx));
+	LIST_HEAD(msgs);
+	ctx.msgs = &msgs;
 	ctx.seqnum  = mnl_seqnum_alloc();
 	init_list_head(&ctx.list);
 
@@ -504,14 +533,20 @@ int gui_get_chains_list(struct list_head *head, int family, char *table, char *t
 	handle.table = table;
 	handle.chain = NULL;
 
-	if (netlink_list_chains(&ctx, &handle, &loc) < 0)
+	if (netlink_list_chains(&ctx, &handle, &internal_location) < 0) {
+		struct  error_record *erec, *next;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
 		return CHAIN_KERNEL_ERROR;
+	}
 
 	list_for_each_entry_safe(chain, c, &ctx.list, list) {
 		if (!strcmp(type, "all") ||
 			(!(chain->flags & CHAIN_F_BASECHAIN) && !strcmp(type, "user")) ||
 			((chain->flags & CHAIN_F_BASECHAIN) && !strcmp(type, chain->type))) {
-			gui_chain = (struct chain_list_data *)xmalloc(sizeof(struct chain_list_data));
+			gui_chain = xmalloc(sizeof(struct chain_list_data));
 			gui_chain->family = chain->handle.family;
 			gui_chain->table = xstrdup(chain->handle.table);
 			gui_chain->chain = xstrdup(chain->handle.chain);
@@ -525,19 +560,21 @@ int gui_get_chains_list(struct list_head *head, int family, char *table, char *t
 				gui_chain->basechain = 0;
 				gui_chain->type = NULL;
 			}
-			res = gui_get_rules_number(gui_chain->family, gui_chain->table, gui_chain->chain, &nrules);
-			if (res != RULE_SUCCESS) {
-				gui_chain_free(gui_chain);
-				goto error;
+			if (rules) {
+				res = gui_get_rules_number(family, table, gui_chain->chain, &nrules);
+				if (res != RULE_SUCCESS) {
+					gui_chain_free(gui_chain);
+					goto error;
+				}
+				gui_chain->nrules = nrules;
 			}
-			gui_chain->nrules = nrules;
 			list_add_tail(&gui_chain->list, head);
 		}
 		list_del(&chain->list);
 		chain_free(chain);
 	}
-
 	return CHAIN_SUCCESS;
+
 error:
 	list_for_each_entry_safe(chain, c, &ctx.list, list) {
 		list_del(&chain->list);
@@ -639,27 +676,36 @@ int gui_check_chain_exist(int family, char *table, char *chain)
  */
 int gui_get_tables_list(struct list_head *head, int family)
 {
-	int		nsets = 0;
+	int	res;
+	int	nsets = 0;
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	struct location		loc;
 	struct table		*table, *t;
 	struct table_list_data	*gui_table, *gt;
 
+	LIST_HEAD(msgs);
 	memset(&ctx, 0, sizeof(ctx));
-	ctx.seqnum  = mnl_seqnum_alloc();
+	ctx.seqnum = mnl_seqnum_alloc();
 	init_list_head(&ctx.list);
-
+	ctx.msgs = &msgs;
 	handle.family = family;
-	if (netlink_list_tables(&ctx, &handle, &loc) < 0)
+
+	if (netlink_list_tables(&ctx, &handle, &internal_location) < 0) {
+		struct  error_record *erec, *next;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
 		return TABLE_KERNEL_ERROR;
+	}
 
 	list_for_each_entry_safe(table, t, &ctx.list, list) {
-		gui_table = (struct table_list_data  *)xmalloc(sizeof(struct table_list_data));
+		gui_table = xzalloc(sizeof(struct table_list_data));
 		gui_table->family = table->handle.family;
 		gui_table->table = xstrdup(table->handle.table);
 		gui_table->nchains = table->nchains;
-		if (gui_get_sets_number(family, gui_table->table, &nsets) != SET_SUCCESS) {
+		res = gui_get_sets_number(family, gui_table->table, &nsets);
+		if (res != SET_SUCCESS) {
 			xfree(gui_table->table);
 			xfree(gui_table);
 			goto error;
@@ -683,7 +729,6 @@ error:
 	}
 	return TABLE_KERNEL_ERROR;
 }
-
 
 
 /*
@@ -729,27 +774,28 @@ int gui_check_table_exist(int family, char *name)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	struct location		loc;
 	int			res;
 
 	LIST_HEAD(msgs);
-
-	memset(&ctx, 0, sizeof(ctx));
 	ctx.msgs = &msgs;
-	ctx.seqnum  = mnl_seqnum_alloc();
 	init_list_head(&ctx.list);
-
 	handle.family = family;
 	handle.table = name;
 
-	res = netlink_get_table(&ctx, &handle, &loc);
+	res = netlink_get_table(&ctx, &handle, &internal_location);
 	if (res < 0) {
+		struct  error_record *erec, *next;
 		if (errno == ENOENT)
-			return TABLE_NOT_EXIST;
+			res = TABLE_NOT_EXIST;
 		else
-			return TABLE_KERNEL_ERROR;
-	}
-	return TABLE_SUCCESS;
+			res = TABLE_KERNEL_ERROR;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
+	} else
+		res = TABLE_SUCCESS;
+	return res;
 }
 
 
@@ -837,57 +883,76 @@ int gui_flush_table(int family, char *name)
  * Delete a table and all rules in it.
  *
  */
-int gui_delete_table(int family, char *name)
+int gui_delete_table(int family, char *table)
 {
+	int	res;
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	struct location		loc;
-	int	res;
-	bool batch_supported;
-	struct chain_list_data  *gui_chain, *gc;
-	struct set_list_data  *gui_set, *gs;
+	struct chain_list_data	*gui_chain, *gc;
+	struct set_list_data	*gui_set, *gs;
 
 	LIST_HEAD(msgs);
 	LIST_HEAD(chains_list);
 	LIST_HEAD(sets_list);
 
-	batch_supported = netlink_batch_supported();
+	res = gui_check_table_exist(family, table);
+	if (res == TABLE_NOT_EXIST)
+		return TABLE_SUCCESS;
+	if (res != TABLE_SUCCESS)
+		return res;
 
-	memset(&ctx, 0, sizeof(ctx));
-	ctx.msgs = &msgs;
-	ctx.seqnum  = mnl_seqnum_alloc();
-	ctx.batch_supported = batch_supported;
-	init_list_head(&ctx.list);
-
-	handle.family = family;
-	handle.table = name;
-
-	res = gui_get_chains_list(&chains_list, family, name, (char *)"all");
+	// delete all chains in the table
+	res = gui_get_chains_list(&chains_list, family, table, "all", 0);
 	if (res != CHAIN_SUCCESS)
-		return TABLE_KERNEL_ERROR;
+		goto error;
 	list_for_each_entry_safe(gui_chain, gc, &chains_list, list) {
+		res = gui_delete_chain(family, table, gui_chain->chain);
+		if (res != CHAIN_SUCCESS)
+			goto error;
 		list_del(&gui_chain->list);
-		gui_delete_chain(gui_chain->family, gui_chain->table, gui_chain->chain);
 		gui_chain_free(gui_chain);
 	}
 
 	// delete all sets in the table
-	gui_get_sets_list(&sets_list, family, name, (char *)"all");
+	res = gui_get_sets_list(&sets_list, family, table, "all", 0);
+	if (res != SET_SUCCESS)
+		goto error;
 	list_for_each_entry_safe(gui_set, gs, &sets_list, list) {
+		res = gui_delete_set(family, table, gui_set->name);
+		if (res != SET_SUCCESS)
+			goto error;
 		list_del(&gui_set->list);
-		gui_delete_set(gui_set->family, gui_set->table, gui_set->name);
 		gui_set_free(gui_set);
 	}
 
+	ctx.msgs = &msgs;
+	ctx.seqnum  = mnl_seqnum_alloc();
+	init_list_head(&ctx.list);
+	handle.family = family;
+	handle.table = table;
+
 	// delete table.
-	if (netlink_delete_table(&ctx, &handle, &loc) < 0) {
+	if (netlink_delete_table(&ctx, &handle, &internal_location) < 0) {
+		struct  error_record *erec, *next;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
 		return TABLE_KERNEL_ERROR;
 	}
 	return TABLE_SUCCESS;
+
+error:
+	list_for_each_entry_safe(gui_chain, gc, &chains_list, list) {
+		list_del(&gui_chain->list);
+		gui_chain_free(gui_chain);
+	}
+	list_for_each_entry_safe(gui_set, gs, &sets_list, list) {
+		list_del(&gui_set->list);
+		gui_set_free(gui_set);
+	}
+	return TABLE_KERNEL_ERROR;
 }
-
-
-
 
 int str2family(const char *family)
 {

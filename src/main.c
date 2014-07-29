@@ -689,7 +689,7 @@ static void header_addr_set_show(struct ip_address *addr, int family, char *tabl
 	int	selected = 0;
 
 	LIST_HEAD(set_list);
-	res = gui_get_sets_list(&set_list, family, table, (char *)"IPv4 address");
+	res = gui_get_sets_list(&set_list, family, table, (char *)"IPv4 address", 0);
 	if (res != SET_SUCCESS)
 		// error;
 		;
@@ -1023,7 +1023,7 @@ static void header_port_set_show(struct transport_port_info *port, char *setname
 	char	*table = port->table;
 
 	LIST_HEAD(set_list);
-	res = gui_get_sets_list(&set_list, family, table, (char *)"internet network service");
+	res = gui_get_sets_list(&set_list, family, table, (char *)"internet network service", 0);
 	if (res != SET_SUCCESS)
 		// error;
 		;
@@ -1549,7 +1549,7 @@ static void rule_actions_add_jump(struct rule_create_widget *new_rule, struct ac
 	int	index = 0;
 	int	selected = 0;
 
-	res = gui_get_chains_list(&chain_list, new_rule->family, new_rule->table, (char *)"user");
+	res = gui_get_chains_list(&chain_list, new_rule->family, new_rule->table, (char *)"user", 0);
 	if (res != CHAIN_SUCCESS) {
 		GtkWidget *dialog;
 		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
@@ -2735,7 +2735,7 @@ void set_update_data(struct set_list_args *args)
 
 	LIST_HEAD(set_list);
 
-	res = gui_get_sets_list(&set_list, family, table_name, (char *)"all");
+	res = gui_get_sets_list(&set_list, family, table_name, (char *)"all", 1);
 	if (res != SET_SUCCESS) {
 		GtkWidget *dialog;
 		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
@@ -2787,7 +2787,7 @@ void chain_update_data(struct chain_list_args *args)
 
 	LIST_HEAD(chain_list);
 
-	res = gui_get_chains_list(&chain_list, family, table_name, type);
+	res = gui_get_chains_list(&chain_list, family, table_name, type, 1);
 	if (res != CHAIN_SUCCESS) {
 		GtkWidget *dialog;
 		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
@@ -3303,7 +3303,8 @@ void table_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 /*
  * Delete a table,
  */
-void table_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
+void table_callback_delete(GtkCellRendererToggle *cell,
+			gchar *path_str, gpointer data)
 {
 	GtkTreeIter		iter;
 	gchar			*name;
@@ -3312,13 +3313,14 @@ void table_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 	GtkTreeModel		*model;
 
 	gint	res;
+	gint	err = RULE_SUCCESS;
 	GtkWidget *dialog;
 
-	dialog = gtk_message_dialog_new (GTK_WINDOW(window),
+	dialog = gtk_message_dialog_new(GTK_WINDOW(window),
 		0, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK_CANCEL,
-		"The table and all rules in the table will be deleted. Are you sure?"
+		"The table and all rules in the table will be deleted."
+		" Are you sure?"
 		);
-
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 	if (res == GTK_RESPONSE_OK) {
 		model = gtk_tree_view_get_model(GTK_TREE_VIEW(data));
@@ -3326,10 +3328,18 @@ void table_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 		gtk_tree_model_get(model, &iter, TABLE_NAME, &name,
 				TABLE_FAMILY, &family_str, -1);
 		family = str2family(family_str);
-		gui_delete_table(family, name);
+		err = gui_delete_table(family, name);
+		xfree(name);
+		xfree(family_str);
+		if (err != TABLE_SUCCESS) {
+			gtk_widget_destroy(dialog);
+			dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+				0, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
+				"%s", table_error[err]);
+			gtk_dialog_run(GTK_DIALOG(dialog));
+		}
 		table_update_data(NFPROTO_UNSPEC, GTK_TREE_STORE(model));
 	}
-
 	gtk_widget_destroy(dialog);
 	return;
 }

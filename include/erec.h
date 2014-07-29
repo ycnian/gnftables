@@ -60,5 +60,6 @@ static inline void erec_queue(struct error_record *erec,
 
 extern void erec_print(FILE *f, const struct error_record *erec);
 extern void erec_print_list(FILE *f, struct list_head *list);
+extern void erec_destroy(struct error_record *erec);
 
 #endif /* NFTABLES_EREC_H */

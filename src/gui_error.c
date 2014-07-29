@@ -64,13 +64,15 @@ const char *rule_error[RULE_ERROR_NUM] = {
 	[RULE_HEADER_SET_EMPTY]		= "Network address set is empty",
 	[RULE_HEADER_SET_NOT_EXIST]	= "Network address set doesn't exist",
 	[RULE_INDEX_INVALID]		= "Index error.",
+	[RULE_NOT_EXIST]		= "Rule doesn't exist.",
 };
 
 
 const char *set_error[SET_ERROR_NUM]  = {
 	[SET_SUCCESS]		= "OK",
 	[SET_KERNEL_ERROR]	= "Could not receive data from kernel.",
-	[SET_TABLE_NOT_EXIST] = "Table doesn't exist.",
+	[SET_TABLE_NOT_EXIST]	= "Table doesn't exist.",
+	[SET_NOT_EXIST]		= "Set doesn't exist.",
 };
 
 

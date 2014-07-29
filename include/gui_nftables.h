@@ -357,8 +357,6 @@ void rule_update_data(struct rule_list_args *args);
 
 void rule_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer data);
 void rule_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data);
-int gui_check_table_exist(int family, char *name);
-
 
 void create_new_rule(GtkButton *button, gpointer  data);
 void create_new_rule_begin(gpointer  data);

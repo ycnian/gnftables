@@ -187,7 +187,8 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 	int			res;
 	struct gui_rule		*gui_rule;
 
-	memset(&ctx, 0, sizeof(ctx));
+	LIST_HEAD(msgs);
+	ctx.msgs = &msgs;
 	ctx.seqnum  = mnl_seqnum_alloc();
 	init_list_head(&ctx.list);
 
@@ -238,20 +239,13 @@ int gui_get_rule(int family, const char *table, const char *chain, int handle_no
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	struct location		loc;
-	int	res = TABLE_SUCCESS;
-	struct rule	*rule;
+	int	res = RULE_SUCCESS;
+	struct rule	*rule, *next;
 	struct rule_create_data  *data;
 
 	LIST_HEAD(msgs);
-	LIST_HEAD(err_list);
-
-//	res = gui_check_chain_exist(family, table, chain);
-//	if (res != TABLE_SUCCESS)
-//		return res;
-
-	memset(&ctx, 0, sizeof(ctx));
 	ctx.msgs = &msgs;
+	ctx.seqnum  = mnl_seqnum_alloc();
 	init_list_head(&ctx.list);
 
 	handle.family = family;
@@ -262,18 +256,33 @@ int gui_get_rule(int family, const char *table, const char *chain, int handle_no
 	handle.comment = NULL;
 
 	// get rule.
-	if (netlink_get_rule(&ctx, &handle, &loc) < 0) {
+	if (netlink_get_rule(&ctx, &handle, &internal_location) < 0) {
+		struct  error_record *erec, *next;
+		if (errno == ENOENT)
+			res = RULE_NOT_EXIST;
+		else
 			res = RULE_KERNEL_ERROR;
-			return res;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
+		return res;
 	}
 
 	rule = list_first_entry(&ctx.list, struct rule, list);
-	rule_de_expressions(rule, &data);
-	data->family = rule->handle.family;
-	data->table = xstrdup(rule->handle.table);
-	data->chain = xstrdup(rule->handle.chain);
-	data->handle = rule->handle.handle;
-	*content = data;
+	res = rule_de_expressions(rule, &data);
+	if (res == RULE_SUCCESS) {
+		data->family = rule->handle.family;
+		data->table = xstrdup(rule->handle.table);
+		data->chain = xstrdup(rule->handle.chain);
+		data->handle = rule->handle.handle;
+		*content = data;
+	}
+
+	list_for_each_entry_safe(rule, next, &ctx.list, list) {
+		list_del(&rule->list);
+		rule_free(rule);
+	}
 
 	return res;
 }
@@ -288,7 +297,7 @@ int gui_delete_rule(int family, const char *table, const char *chain, int handle
 	LIST_HEAD(msgs);
 	LIST_HEAD(err_list);
 
-//	res = gui_check_chain_exist(family, table, chain);
+//	res = gui_check_rule_exist(family, table, chain);
 //	if (res != TABLE_SUCCESS)
 //		return res;
 
@@ -649,13 +658,19 @@ int gui_check_chain_exist(int family, const char *table, const char *chain)
 	handle.table = table;
 	handle.chain = chain;
 
+	res = gui_check_table_exist(family, table);
+	if (res == TABLE_NOT_EXIST)
+		return CHAIN_TABLE_NOT_EXIST;
+	if (res != TABLE_SUCCESS)
+		return CHAIN_KERNEL_ERROR;
+
 	res = netlink_get_chain(&ctx, &handle, &internal_location);
 	if (res < 0) {
 		struct  error_record *erec, *next;
 		if (errno == ENOENT)
 			res = CHAIN_NOT_EXIST;
 		else
-			res =  CHAIN_KERNEL_ERROR;
+			res = CHAIN_KERNEL_ERROR;
 		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
 			list_del(&erec->list);
 			erec_destroy(erec);
@@ -767,7 +782,7 @@ int gui_add_table(struct table_create_data *data)
  * @family:  nftables family
  * @name:    table name
  */
-int gui_check_table_exist(int family, char *name)
+int gui_check_table_exist(int family, const char *name)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
@@ -1018,6 +1033,12 @@ int gui_get_set(struct set_create_data *gui_set)
 	handle.family = gui_set->family;
 	handle.table = gui_set->table;
 	handle.set = gui_set->set;
+
+	res = gui_check_table_exist(handle.family, handle.table);
+	if (res == TABLE_NOT_EXIST)
+		return SET_TABLE_NOT_EXIST;
+	if (res != TABLE_SUCCESS)
+		return SET_KERNEL_ERROR;
 
 	res = netlink_get_set(&ctx, &handle, &loc);
 	if (res < 0) {

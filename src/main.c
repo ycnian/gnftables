@@ -2464,12 +2464,15 @@ void gnftables_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkW
 
 static void set_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
 {
+	int			res;
 	GtkTreeIter		iter;
 	gchar			*set;
 	GtkTreeModel		*model;
+	GtkWidget		*notebook;
 	struct set_list_args  *set_args;
 
 	set_args = (struct set_list_args *)data;
+	notebook = set_args->notebook;
 
 	model = GTK_TREE_MODEL(set_args->model);
 	gtk_tree_model_get_iter_from_string(model, &iter, path_str);
@@ -2480,19 +2483,34 @@ static void set_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gp
 	set_args->data->family = set_args->family;
 	set_args->data->table = xstrdup(set_args->table);
 	set_args->data->set = xstrdup(set_args->set);
-	gui_get_set(set_args->data);
-	// check set exists
-	// if ((!set exists) && !(table exits))
-	// 	show tables list page
-	// else (!(set exists))
-	// 	set_update_data(family, table, GTK_TREE_STORE(model));
-	// else
-	// 	show set's details
-	create_new_set(NULL, set_args);
+
+	res = gui_get_set(set_args->data);
+	if (res != SET_SUCCESS) {
+		GtkWidget *dialog;
+		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+				0,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_OK,
+				"%s",
+				set_error[res]
+				);
+
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		if (res == SET_NOT_EXIST)
+			set_update_data(set_args);
+		else {
+			gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 0);
+			gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
+			gnftables_table_init(notebook);
+		}
+	} else
+		create_new_set(NULL, set_args);
 }
 
 void chain_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
 {
+	int	res;
 	GtkTreeIter		iter;
 	int			family;
 	gchar			*table;
@@ -2509,15 +2527,30 @@ void chain_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 	gtk_tree_model_get_iter_from_string(model, &iter, path_str);
 	gtk_tree_model_get(model, &iter, CHAIN_NAME, &chain, -1);
 
-	// check chain exists
-	// if ((!chain exists) && !(table exits))
-	// 	show tables list page
-	// else (!(chain exists))
-	// 	chain_update_data(family, table, GTK_TREE_STORE(model));
-	// else
-	// 	show rule list page
+	res = gui_check_chain_exist(family, table, chain);
+	if (res != CHAIN_SUCCESS) {
+		GtkWidget *dialog;
+		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+				0,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_OK,
+				"%s",
+				chain_error[res]
+				);
+
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		if (res == CHAIN_NOT_EXIST)
+			chain_update_data(chain_args);
+		else {
+			gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 0);
+			gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
+			gnftables_table_init(notebook);
+		}
+	} else
 		gnftables_rule_init(family, table, chain, notebook);
 
+	xfree(chain);
 	return;
 }
 
@@ -2543,6 +2576,7 @@ void basechain_selected(GtkWidget *check_button, gpointer data)
 
 void rule_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
 {
+	int			res;
 	GtkTreeIter		iter;
 	int			family;
 	gchar			*table;
@@ -2562,7 +2596,22 @@ void rule_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer
 	gtk_tree_model_get(model, &iter, RULE_HANDLE, &handle, -1);
 	rule_args->handle = handle;
 
-	gui_get_rule(family, table, chain, handle, &rule_args->data);
+	res = gui_get_rule(family, table, chain, handle, &rule_args->data);
+	if (res != RULE_SUCCESS) {
+		GtkWidget *dialog;
+		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+				0,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_OK,
+				"%s",
+				rule_error[res]
+				);
+
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		rule_update_data(rule_args);
+		return;
+	}
 
 	// goto rule edit page
 	create_new_rule_begin(data);

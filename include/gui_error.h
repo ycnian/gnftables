@@ -43,12 +43,14 @@
 #define  RULE_HEADER_SET_EMPTY		18
 #define  RULE_HEADER_SET_NOT_EXIST	19
 #define  RULE_INDEX_INVALID		20
-#define  RULE_ERROR_NUM		21
+#define  RULE_NOT_EXIST			21
+#define  RULE_ERROR_NUM		22
 
 #define  SET_SUCCESS		0
 #define  SET_KERNEL_ERROR	1
 #define  SET_TABLE_NOT_EXIST	2
-#define  SET_ERROR_NUM		3
+#define  SET_NOT_EXIST		3
+#define  SET_ERROR_NUM		4
 
 #define  ELEMENT_SUCCESS	0
 #define  ELEMENT_KERNEL_ERROR	1

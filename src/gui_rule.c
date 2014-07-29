@@ -182,9 +182,8 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	struct location		loc;
-	struct table		*tablee = NULL;
-	struct rule		*rulee;
+	struct table		*tmp = NULL;
+	struct rule		*rule, *r;
 	int			res;
 	struct gui_rule		*gui_rule;
 
@@ -200,31 +199,38 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 	handle.position = 0;
 	handle.comment = NULL;
 
-	tablee = table_lookup(&handle);
-	if (tablee == NULL) {
-		tablee = table_alloc();
-		handle_merge(&tablee->handle, &handle);
-		table_add_hash(tablee);
+	tmp = table_lookup(&handle);
+	if (tmp == NULL) {
+		tmp = table_alloc();
+		handle_merge(&tmp->handle, &handle);
+		table_add_hash(tmp);
 	}
 
-	res = netlink_list_chain(&ctx, &handle, &loc);
-	if (res < 0)
-		return -1;
+	res = netlink_list_chain(&ctx, &handle, &internal_location);
+	if (res < 0) {
+		struct  error_record *erec, *next;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
+		return RULE_KERNEL_ERROR;
+	}
 
-	list_for_each_entry(rulee, &ctx.list, list) {
+	list_for_each_entry_safe(rule, r, &ctx.list, list) {
 		int	rule_len;
 		gui_rule = (struct gui_rule  *)malloc(sizeof(*gui_rule));
-		gui_rule->handle = rulee->handle.handle;
-		gui_rule->family = rulee->handle.family;
-		gui_rule->table = strdup(rulee->handle.table);
-		gui_rule->chain = strdup(rulee->handle.chain);
-		rule_len = rule_snprint(NULL, 0, rulee);
+		gui_rule->handle = rule->handle.handle;
+		gui_rule->family = rule->handle.family;
+		gui_rule->table = strdup(rule->handle.table);
+		gui_rule->chain = strdup(rule->handle.chain);
+		rule_len = rule_snprint(NULL, 0, rule);
 		gui_rule->stmt = xmalloc(rule_len + 1);
-		rule_snprint(gui_rule->stmt, rule_len + 1, rulee);
+		rule_snprint(gui_rule->stmt, rule_len + 1, rule);
+		list_del(&rule->list);
 		list_add_tail(&gui_rule->list, head);
 	}
 
-	return 0;
+	return RULE_SUCCESS;
 }
 
 

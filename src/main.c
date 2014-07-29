@@ -2134,7 +2134,6 @@ void create_new_chain(GtkButton *button, gpointer  data)
 	GtkWidget	*layout_chain;
 	GtkWidget	*name;
 	GtkWidget	*name_value;
-	GtkWidget	*name_desc;
 	GtkWidget	*family;
 	GtkWidget	*family_valuee;
 	GtkWidget	*type;
@@ -2175,8 +2174,6 @@ void create_new_chain(GtkButton *button, gpointer  data)
 	gtk_entry_set_width_chars(GTK_ENTRY(name_value), 30);
 	gtk_entry_set_max_length(GTK_ENTRY(name_value), 32);
 	gtk_layout_put(GTK_LAYOUT(layout_chain), name_value, 100, 30);
-	name_desc = gtk_label_new("(no more than 32 characters)");
-	gtk_layout_put(GTK_LAYOUT(layout_chain), name_desc, 360, 30);
 	widgets->name = name_value;
 
 	family = gtk_label_new("basechain:");
@@ -2290,7 +2287,6 @@ void create_new_table(GtkButton *button, gpointer  notebook)
 	GtkWidget	*layout_info;
 	GtkWidget	*name;
 	GtkWidget	*name_value;
-	GtkWidget	*name_desc;
 	GtkWidget	*family;
 	GtkWidget	*family_value;
 	GtkWidget	*msg;
@@ -2319,8 +2315,6 @@ void create_new_table(GtkButton *button, gpointer  notebook)
 	gtk_entry_set_width_chars(GTK_ENTRY(name_value), 30);
 	gtk_entry_set_max_length(GTK_ENTRY(name_value), 32);
 	gtk_layout_put(GTK_LAYOUT(layout_info), name_value, 100, 60);
-	name_desc = gtk_label_new("(no more than 32 characters)");
-	gtk_layout_put(GTK_LAYOUT(layout_info), name_desc, 360, 60);
 	args->name = name_value;
 
 	family = gtk_label_new("Family:");
@@ -2705,14 +2699,29 @@ void rule_update_data(struct rule_list_args *args)
 {
 	uint32_t	index = 0;
 	GtkTreeIter	iter;
+	int	res;
 
 	struct gui_rule   *rule, *r;
 	LIST_HEAD(rule_list);
 
-	gui_get_rules_list(&rule_list, args->family, args->table, args->chain);
-	gtk_tree_store_clear(args->store);
+	res = gui_get_rules_list(&rule_list, args->family, args->table, args->chain);
+	if (res != RULE_SUCCESS) {
+		GtkWidget *dialog;
+		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+				0,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_OK,
+				"%s",
+				rule_error[res]
+				);
+
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		return;
+	}
 
 	// display rules in treeview 
+	gtk_tree_store_clear(args->store);
 	list_for_each_entry_safe(rule, r, &rule_list, list) {
 		list_del(&rule->list);
 		index++;

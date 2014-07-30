@@ -50,7 +50,11 @@
 #define  SET_KERNEL_ERROR	1
 #define  SET_TABLE_NOT_EXIST	2
 #define  SET_NOT_EXIST		3
-#define  SET_ERROR_NUM		4
+#define  SET_EXIST		4
+#define  SET_ELEMENT_INVALID	5
+#define  SET_NAME_EMPTY		6
+#define  SET_NAME_INVALID	7
+#define  SET_ERROR_NUM		8
 
 #define  ELEMENT_SUCCESS	0
 #define  ELEMENT_KERNEL_ERROR	1

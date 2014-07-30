@@ -178,14 +178,12 @@ struct rule_create_data {
 };
 
 
-int name_check(char *name, int *start, int *end);
+int name_check(char *name);
 int integer_check(char *integer);
 
-int table_name_check(char *name, int *start, int *end);
 int table_create_getdata(struct table_create_widget  *widget,
 		struct table_create_data **data);
 
-int chain_name_check(char *name, int *start, int *end);
 int chain_priority_check(char *priority);
 int chain_create_getdata(struct chain_create_widget  *widget,
 		struct chain_create_data **data);

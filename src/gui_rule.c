@@ -648,6 +648,7 @@ int gui_check_chain_exist(int family, const char *table, const char *chain)
 	struct netlink_ctx	ctx;
 	struct handle		handle;
 	int			res;
+	struct chain		*c, *tmp;
 
 	LIST_HEAD(msgs);
 	ctx.msgs = &msgs;
@@ -676,6 +677,10 @@ int gui_check_chain_exist(int family, const char *table, const char *chain)
 			erec_destroy(erec);
 		}
 		return res;
+	}
+	list_for_each_entry_safe(c, tmp, &ctx.list, list) {
+		list_del(&c->list);
+		chain_free(c);
 	}
 	return CHAIN_SUCCESS;
 }
@@ -981,11 +986,8 @@ int gui_add_set(struct set_create_data *gui_set)
 	int	res = SET_SUCCESS;
 
 	LIST_HEAD(msgs);
-
-	memset(&ctx, 0, sizeof(ctx));
 	ctx.msgs = &msgs;
-	ctx.seqnum  = mnl_seqnum_alloc();
-	ctx.batch_supported = 0;
+	ctx.seqnum = mnl_seqnum_alloc();
 	init_list_head(&ctx.list);
 
 	handle.family = gui_set->family;
@@ -1002,26 +1004,40 @@ int gui_add_set(struct set_create_data *gui_set)
 	if (!list_empty(&(gui_set->elems)))
 		res = set_gen_expressions(&set, gui_set);
 	if (res != SET_SUCCESS)
-		return CHAIN_KERNEL_ERROR;
+		return res;
 
 	if (netlink_add_set(&ctx, &handle, &set) < 0) {
-		return CHAIN_KERNEL_ERROR;
+		struct  error_record *erec, *next;
+		if (errno == EEXIST)
+			res = SET_EXIST;
+		else
+			res = SET_KERNEL_ERROR;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
+		return res;
 	}
 	if (set.init != NULL) {
-		if (netlink_add_setelems(&ctx, &set.handle, set.init) < 0)
+		if (netlink_add_setelems(&ctx, &set.handle, set.init) < 0) {
+			struct  error_record *erec, *next;
+			list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+				list_del(&erec->list);
+				erec_destroy(erec);
+			}
 			return CHAIN_KERNEL_ERROR;
+		}
 	}
 
 	return SET_SUCCESS;
 }
 
-int gui_get_set(struct set_create_data *gui_set)
+int gui_get_set(struct set_create_data *gui_set, int getelement)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	struct location		loc;
 	int			res;
-	struct set	*set;
+	struct set	*set, *next;
 
 	LIST_HEAD(msgs);
 
@@ -1040,19 +1056,43 @@ int gui_get_set(struct set_create_data *gui_set)
 	if (res != TABLE_SUCCESS)
 		return SET_KERNEL_ERROR;
 
-	res = netlink_get_set(&ctx, &handle, &loc);
+	res = netlink_get_set(&ctx, &handle, &internal_location);
 	if (res < 0) {
-		return SET_KERNEL_ERROR;
+		struct  error_record *erec, *next;
+		if (errno == ENOENT)
+			res = SET_NOT_EXIST;
+		else
+			res = SET_KERNEL_ERROR;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
+		return res;
 	}
+
+	if (!getelement)
+		goto out;
 
 	set = list_first_entry(&ctx.list, struct set, list);
 	gui_set->keytype = set->keytype;
 	gui_set->keylen = set->keylen;
 
-	netlink_get_setelems(&ctx, &handle, &loc, set);
-	set_de_expressions(set, gui_set);
-
-	return SET_SUCCESS;
+	res = netlink_get_setelems(&ctx, &handle, &internal_location, set);
+	if (res < 0) {
+		struct  error_record *erec, *next;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
+		goto out;
+	}
+	res = set_de_expressions(set, gui_set);
+out:
+	list_for_each_entry_safe(set, next, &ctx.list, list) {
+		list_del(&set->list);
+		set_free(set);
+	}
+	return res;
 }
 	
 
@@ -1060,7 +1100,7 @@ int gui_delete_set(int family, char *table, char *set)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	struct location		loc;
+	struct set_create_data	*data;
 	int	res = SET_SUCCESS;
 
 	LIST_HEAD(msgs);
@@ -1076,7 +1116,23 @@ int gui_delete_set(int family, char *table, char *set)
 	handle.set = set;
 	handle.handle = 0;
 
-	if (netlink_delete_set(&ctx, &handle, &loc) < 0) {
+	data = xzalloc(sizeof(struct set_create_data));
+	data->family = family;
+	data->table = table;
+	data->set = set;
+	res = gui_get_set(data, 0);
+	xfree(data);
+	if (res == SET_NOT_EXIST)
+		return SET_SUCCESS;
+	if (res != SET_SUCCESS)
+		return res;
+
+	if (netlink_delete_set(&ctx, &handle, &internal_location) < 0) {
+		struct  error_record *erec, *next;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
 		res = SET_KERNEL_ERROR;
 	}
 
@@ -1143,7 +1199,7 @@ int gui_edit_set(struct set_create_data *gui_set)
 	if (!list_empty(&(gui_set->elems)))
 		res = set_gen_expressions(&set, gui_set);
 	if (res != SET_SUCCESS)
-		return CHAIN_KERNEL_ERROR;
+		return res;
 
 	gui_flush_set(handle.family, (char *)handle.table, (char *)handle.set);
 	if (set.init != NULL) {

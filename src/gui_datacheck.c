@@ -74,40 +74,20 @@ char *get_data_from_entry(GtkEntry *entry)
 
 /*
  * Check name, only letter, number, underscore allowed.
- * Skipe spaces at the start and end of name.
  * @name:  a string to be checked
- * @start: parameter used to save the first valid character in name
- * @end:   parameter used to save the last valid character in name
  * Return Value:
  * 	0:  name is valid
  * 	-1: name contains invalid character
- * 	-2: name is empty
  */
-int name_check(char *name, int *start, int *end)
+int name_check(char *name)
 {
 	int	i;
 	int	len = strlen(name);
-	*start = -1;
-	*end = -1;
 
 	for (i = 0; i < len; i++) {
-		if (isblank(name[i])) {
-			if ((*start != -1) && (*end == -1))
-				*end = i - 1;
-			continue;
-		}
 		if ((name[i] != '_') && !(isalnum(name[i])))
 			return -1;
-		if (*end != -1)
-			return -1;
-		if (*start == -1)
-			*start = i;
 	}
-
-	if (*start == -1)
-		return -2;
-	if (*end == -1)
-		*end = len - 1;
 	return 0;
 }
 
@@ -183,15 +163,6 @@ int unsigned_int_check(char *integer)
 }
 
 /*
- * Check table name
- */
-int table_name_check(char *name, int *start, int *end)
-{
-	return name_check(name, start, end);
-}
-
-
-/*
  * Get data from page, and check it
  * @widget:  widgets containing data in table creating
  */
@@ -200,8 +171,6 @@ int table_create_getdata(struct table_create_widget  *widget,
 {
 	int	res;
 	char	*name;
-	int	start = -1;
-	int	end = -1;
 	int		family;
 	GtkTreeModel    *model;
 	GtkTreeIter     iter;
@@ -214,7 +183,7 @@ int table_create_getdata(struct table_create_widget  *widget,
 	if (!name)
 		return TABLE_NAME_EMPTY;
 
-	res = table_name_check(name, &start, &end);
+	res = name_check(name);
 	if (res == -1) {
 		xfree(name);
 		return TABLE_NAME_INVALID;
@@ -223,22 +192,11 @@ int table_create_getdata(struct table_create_widget  *widget,
 		return TABLE_NAME_EMPTY;
 
 	p = xmalloc(sizeof(struct table_create_data));
-	p->table = xmalloc(end - start + 2);
-	memcpy(p->table, name + start, end - start + 1);
-	p->table[end + 1] = '\0';
+	p->table = name;
 	p->family = family;
 	*data = p;
 	xfree(name);
 	return TABLE_SUCCESS;
-}
-
-
-/*
- * Check chain name
- */
-int chain_name_check(char *name, int *start, int *end)
-{
-	return name_check(name, start, end);
 }
 
 /*
@@ -266,8 +224,6 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 	int	priority;
 	int	hook;
 	char	*priority_str = NULL;
-	int	start = -1;
-	int	end = -1;
 	struct chain_create_data *p = NULL;
 
 	name = get_data_from_entry(GTK_ENTRY(widget->name));
@@ -281,7 +237,7 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 		priority_str = get_data_from_entry(GTK_ENTRY(widget->priority));
 	}
 
-	res = chain_name_check(name, &start, &end);
+	res = name_check(name);
 	if (res == -1) {
 		xfree(name);
 		return CHAIN_NAME_INVALID;
@@ -301,9 +257,7 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 	p = xmalloc(sizeof (struct chain_create_data));
 	p->family = widget->family;
 	p->table = xstrdup(widget->table);
-	p->chain = xmalloc(end - start + 2);
-	memcpy(p->chain, name + start, end - start + 1);
-	p->chain[end + 1] = '\0';
+	p->chain = name;
 	if (basechain) {
 		p->basechain = 1;
 		p->type = xstrdup(type);
@@ -926,7 +880,13 @@ static int set_get_name_from_page(struct set_create_widget *widget,
 {
 	char	*name;
 	name = get_data_from_entry(GTK_ENTRY(widget->name));
-	data->set = xstrdup(name);
+	if (!name)
+		return SET_NAME_EMPTY;
+	if (name_check(name) != 0) {
+		xfree(name);
+		return SET_NAME_INVALID;
+	}
+	data->set = name;
 	return SET_SUCCESS;
 }
 

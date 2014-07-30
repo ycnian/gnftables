@@ -288,11 +288,8 @@ void begin_create_new_set(GtkButton *button, gpointer  info)
 
 	// check table exists
 	res = gui_check_table_exist(widget->family, widget->table);
-	if (res == TABLE_NOT_EXIST) {
-		gtk_label_set_text(GTK_LABEL(widget->msg), set_error[SET_TABLE_NOT_EXIST]);
-		return;
-	} else if (res == TABLE_KERNEL_ERROR) {
-		gtk_label_set_text(GTK_LABEL(widget->msg), set_error[SET_KERNEL_ERROR]);
+	if (res != TABLE_SUCCESS) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), table_error[res]);
 		return;
 	}
 
@@ -423,24 +420,72 @@ void back_to_rule_list(GtkButton *button, gpointer  info)
 
 void back_to_set_list(GtkButton *button, gpointer info)
 {
+	int	res;
+	GtkWidget	*notebook;
 	struct chain_list_args *data;
 	struct set_create_widget  *args;
-
 	args = (struct set_create_widget *)info;
+	notebook = args->notebook;
+
+	res = gui_check_table_exist(args->family, args->table);
+	if (res != TABLE_SUCCESS) {
+		GtkWidget *dialog;
+		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+				0,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_OK,
+				"%s",
+				table_error[res]
+				);
+
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 0);
+		gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
+		gnftables_table_init(notebook);
+		return;
+	}
+
 	data = xzalloc(sizeof(struct chain_list_args));
 	data->notebook = args->notebook;
 	data->family = args->family;
 	data->table = args->table;
 	gnftables_set_init(NULL, data);
+	xfree(data);
+	return;
 }
 
 
 void back_to_chain_list(GtkButton *button, gpointer  info)
 {
-	struct chain_create_widget  *args = (struct chain_create_widget *)info;
-	GtkWidget	*notebook = args->notebook;
+	int	res;
+	struct chain_create_widget  *args;
+	GtkWidget	*notebook;
+	args = (struct chain_create_widget *)info;
+	notebook = args->notebook;
+
+	res = gui_check_table_exist(args->family, args->table);
+	if (res != TABLE_SUCCESS) {
+		GtkWidget *dialog;
+		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+				0,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_OK,
+				"%s",
+				table_error[res]
+				);
+
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 0);
+		gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
+		gnftables_table_init(notebook);
+		return;
+	}
+
 	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
 	gnftables_set_chain_init(args->family, args->table, notebook);
+	return;
 }
 
 /*
@@ -2484,7 +2529,7 @@ static void set_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gp
 	set_args->data->table = xstrdup(set_args->table);
 	set_args->data->set = xstrdup(set_args->set);
 
-	res = gui_get_set(set_args->data);
+	res = gui_get_set(set_args->data, 1);
 	if (res != SET_SUCCESS) {
 		GtkWidget *dialog;
 		dialog = gtk_message_dialog_new(GTK_WINDOW(window),
@@ -2664,12 +2709,15 @@ static void set_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gp
 	int			family;
 	gchar			*table;
 	gchar			*set;
+	GtkWidget		*notebook;
 	GtkTreeModel		*model;
-	struct set_list_args	*set_args = (struct set_list_args *)data;
-
+	struct set_list_args	*set_args;
 	gint	res;
+	gint	err;
 	GtkWidget *dialog;
 
+	set_args = (struct set_list_args *)data;
+	notebook = set_args->notebook;
 	dialog = gtk_message_dialog_new(GTK_WINDOW(window),
                                  0,
                                  GTK_MESSAGE_WARNING,
@@ -2686,8 +2734,21 @@ static void set_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gp
 		gtk_tree_model_get_iter_from_string(model, &iter, path_str);
 		gtk_tree_model_get(model, &iter, SET_NAME, &set, -1);
 
-		gui_delete_set(family, table, set);
-		set_update_data(set_args);
+		err = gui_delete_set(family, table, set);
+		if (err != SET_SUCCESS) {
+			gtk_widget_destroy(dialog);
+			dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+				0, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
+				"%s", set_error[err]);
+			gtk_dialog_run(GTK_DIALOG(dialog));
+		}
+		if (err == SET_NOT_EXIST || err == SET_SUCCESS)
+			set_update_data(set_args);
+		else {
+			gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 0);
+			gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
+			gnftables_table_init(notebook);
+		}
 	}
 
 	gtk_widget_destroy(dialog);
@@ -2702,19 +2763,22 @@ void chain_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 	int			family;
 	gchar			*table;
 	gchar			*chain;
+	GtkWidget		*notebook;
 	GtkTreeModel		*model;
 	struct chain_list_args	*chain_args;
 	gint	err;
 	gint	res;
 	GtkWidget *dialog;
 	chain_args = (struct chain_list_args *)data;
+	notebook = GTK_WIDGET(chain_args->notebook);
 
 	dialog = gtk_message_dialog_new(GTK_WINDOW(window),
-                                 0,
-                                 GTK_MESSAGE_WARNING,
-                                 GTK_BUTTONS_OK_CANCEL,
-                                 "The chain and all rules in the chain will be deleted. Are you sure?"
-                                 );
+		0,
+		GTK_MESSAGE_WARNING,
+		GTK_BUTTONS_OK_CANCEL,
+		"The chain and all rules in the chain will be deleted."
+		" Are you sure?"
+		);
 
 	table = chain_args->table;
 	family = chain_args->family;
@@ -2733,7 +2797,13 @@ void chain_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointe
 				"%s", chain_error[err]);
 			gtk_dialog_run(GTK_DIALOG(dialog));
 		}
-		chain_update_data(chain_args);
+		if (err == CHAIN_NOT_EXIST || err == CHAIN_SUCCESS)
+			chain_update_data(chain_args);
+		else {
+			gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 0);
+			gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
+			gnftables_table_init(notebook);
+		}
 	}
 
 	gtk_widget_destroy(dialog);

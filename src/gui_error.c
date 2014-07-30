@@ -23,17 +23,17 @@ const char *table_error[TABLE_ERROR_NUM] = {
         [TABLE_SUCCESS]         = "OK",
         [TABLE_KERNEL_ERROR]    = "Could not receive data from kernel.",
         [TABLE_EXIST]           = "Table with the same name exists.",
-        [TABLE_NAME_INVALID]    = "Invalid table name, only letter, number, underscore allowed.",
+        [TABLE_NAME_INVALID]    = "Name is invalid, only letter, number, underscore allowed.",
 	[TABLE_NOT_EXIST]	= "Table doesn't exist.",
-	[TABLE_NAME_EMPTY]	= "Table name cannot be empty.",
+	[TABLE_NAME_EMPTY]	= "Name is empty.",
 };
 
 
 const char *chain_error[CHAIN_ERROR_NUM] = {
 	[CHAIN_SUCCESS]		= "OK",
 	[CHAIN_KERNEL_ERROR]	= "Could not receive data from kernel.",
-	[CHAIN_NAME_EMPTY]	= "Chain name cannot be empty.",
-	[CHAIN_NAME_INVALID]	= "Invalid chain name, only letter, number, underscore allowed.",
+	[CHAIN_NAME_EMPTY]	= "Name is empty.",
+	[CHAIN_NAME_INVALID]	= "Name is invalid, only letter, number, underscore allowed.",
 	[CHAIN_PRIORITY_INVALID]= "Invalid priority, only +, -, 0-9 allowed",
 	[CHAIN_TABLE_NOT_EXIST] = "Table doesn't exist.",
         [CHAIN_EXIST]           = "Chain with the same name exists.",
@@ -73,6 +73,10 @@ const char *set_error[SET_ERROR_NUM]  = {
 	[SET_KERNEL_ERROR]	= "Could not receive data from kernel.",
 	[SET_TABLE_NOT_EXIST]	= "Table doesn't exist.",
 	[SET_NOT_EXIST]		= "Set doesn't exist.",
+        [SET_EXIST]		= "Set with the same name exists.",
+	[SET_ELEMENT_INVALID]	= "Element invalid",
+	[SET_NAME_EMPTY]	= "Name is empty.",
+	[SET_NAME_INVALID]	= "Name is invalid, only letter, number, underscore allowed.",
 };
 
 

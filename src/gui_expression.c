@@ -1091,32 +1091,42 @@ int set_gen_expressions(struct set *set, struct set_create_data *gui_set)
 	struct expr  *constant;
 	struct expr  *tmp;
 	struct elem_create_data	*data;
+	struct error_record	*erec;
 
 	elem = set_expr_alloc(&loc);
+	set->init = elem;
+
 	list_for_each_entry(data, &(gui_set->elems), list) {
 		symbol = symbol_expr_alloc(&loc, SYMBOL_VALUE, NULL, data->key);
 		compound_expr_add(elem, symbol);
 	}
+
 	switch (gui_set->keytype->type) {
 	case TYPE_IPADDR:
-		elem->ops->set_type(elem, &ipaddr_type, BYTEORDER_BIG_ENDIAN);
+		expr_set_type(elem, &ipaddr_type, BYTEORDER_BIG_ENDIAN);
 		break;
 	case TYPE_INET_SERVICE:
-		elem->ops->set_type(elem, &inet_service_type, BYTEORDER_BIG_ENDIAN);
+		expr_set_type(elem, &inet_service_type, BYTEORDER_BIG_ENDIAN);
 		break;
 	default:
 		BUG();
 	}
+
 	list_for_each_entry_safe(symbol, tmp, &(elem->expressions), list) {
 		next = list_entry(symbol->list.next, struct expr, list);
+		erec = symbol_parse(symbol, &constant);
+		if (erec) {
+			erec_destroy(erec);
+			goto error;
+		}
 		list_del(&(symbol->list));
-		symbol_parse(symbol, &constant);
 		list_add_tail(&constant->list, &next->list);
 		expr_free(symbol);
 	}
-
-	set->init = elem;
 	return SET_SUCCESS;
+
+error:
+	return SET_ELEMENT_INVALID;
 }
 
 

@@ -72,7 +72,7 @@ int gui_get_sets_list(struct list_head *head, int family, char *table, const cha
 
 
 int gui_add_set(struct set_create_data *gui_set);
-int gui_get_set(struct set_create_data *gui_set);
+int gui_get_set(struct set_create_data *gui_set, int getelement);
 int gui_delete_set(int family, char *table, char *set);
 int gui_flush_set(int family, char *table, char *name);
 int gui_edit_set(struct set_create_data *gui_set);

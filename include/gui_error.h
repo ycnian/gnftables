@@ -54,7 +54,8 @@
 #define  SET_ELEMENT_INVALID	5
 #define  SET_NAME_EMPTY		6
 #define  SET_NAME_INVALID	7
-#define  SET_ERROR_NUM		8
+#define  SET_TYPE_NOT_SUPPORT	8
+#define  SET_ERROR_NUM		9
 
 #define  ELEMENT_SUCCESS	0
 #define  ELEMENT_KERNEL_ERROR	1

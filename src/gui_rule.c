@@ -1086,6 +1086,12 @@ int gui_get_set(struct set_create_data *gui_set, int getelement)
 		}
 		goto out;
 	}
+
+	if (set->keytype->type != TYPE_IPADDR &&
+		set->keytype->type != TYPE_INET_SERVICE) {
+		res = SET_TYPE_NOT_SUPPORT;
+		goto out;
+	}
 	res = set_de_expressions(set, gui_set);
 out:
 	list_for_each_entry_safe(set, next, &ctx.list, list) {

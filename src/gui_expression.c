@@ -1618,10 +1618,13 @@ int set_parse_expr(struct expr *expr, struct set_create_data *gui_set)
 
 int set_de_expressions(struct set *set, struct set_create_data *gui_set)
 {
+	int	res;
 	struct expr	*expr;
 
 	list_for_each_entry(expr, &set->init->expressions, list) {
-		set_parse_expr(expr, gui_set);
+		res = set_parse_expr(expr, gui_set);
+		if (res != RULE_SUCCESS)
+			return res;
 	}
 	return SET_SUCCESS;
 }

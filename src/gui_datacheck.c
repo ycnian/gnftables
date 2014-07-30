@@ -188,14 +188,11 @@ int table_create_getdata(struct table_create_widget  *widget,
 		xfree(name);
 		return TABLE_NAME_INVALID;
 	}
-	else if (res == -2)
-		return TABLE_NAME_EMPTY;
 
-	p = xmalloc(sizeof(struct table_create_data));
+	p = xzalloc(sizeof(struct table_create_data));
 	p->table = name;
 	p->family = family;
 	*data = p;
-	xfree(name);
 	return TABLE_SUCCESS;
 }
 
@@ -242,8 +239,6 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 		xfree(name);
 		return CHAIN_NAME_INVALID;
 	}
-	else if (res == -2)
-		return CHAIN_NAME_EMPTY;
 
 	if (basechain && priority_str) {
 		res = chain_priority_check(priority_str);
@@ -254,7 +249,7 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 		}
 	}
 
-	p = xmalloc(sizeof (struct chain_create_data));
+	p = xzalloc(sizeof (struct chain_create_data));
 	p->family = widget->family;
 	p->table = xstrdup(widget->table);
 	p->chain = name;
@@ -279,7 +274,6 @@ int chain_create_getdata(struct chain_create_widget  *widget,
 	}
 
 	*data = p;
-	xfree(name);
 	xfree(priority_str);
 	return CHAIN_SUCCESS;
 }

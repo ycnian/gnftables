@@ -44,6 +44,60 @@
 #define   RULE_TOTAL		7
 
 
+#define  NOTEBOOK_TABLE_LIST		(1 << 0)
+#define  NOTEBOOK_TABLE_CREATE		(1 << 1)
+#define  NOTEBOOK_CHAIN_LIST		(1 << 2)
+#define  NOTEBOOK_CHAIN_CREATE		(1 << 3)
+#define  NOTEBOOK_SET_LIST		(1 << 4)
+#define  NOTEBOOK_SET_CREATE_EDIT	(1 << 5)
+#define  NOTEBOOK_RULE_LIST		(1 << 6)
+#define  NOTEBOOK_RULE_CREATE_EDIT	(1 << 7)
+#define  NOTEBOOK_ABOUT_GNFTABLES	(1 << 8)
+#define  NOTEBOOK_PAGES			9
+
+#define  NOTEBOOK_TABLE (NOTEBOOK_TABLE_LIST | NOTEBOOK_TABLE_CREATE)
+#define  NOTEBOOK_CHAIN_SET (NOTEBOOK_CHAIN_LIST | NOTEBOOK_CHAIN_CREATE | NOTEBOOK_SET_LIST | NOTEBOOK_SET_CREATE_EDIT)
+#define  NOTEBOOK_RULE (NOTEBOOK_RULE_LIST | NOTEBOOK_RULE_CREATE_EDIT)
+
+struct top_window {
+	int	silent;
+	int	page_current;
+	int	page_next;
+	GtkWidget	*window;
+	GtkWidget	*notebook;
+	GtkWidget	*table_container;
+	GtkWidget	*chain_set_container;
+	GtkWidget	*rule_container;
+	GtkWidget	*table;
+	GtkWidget	*chain_set;
+	GtkWidget	*rule_rule;
+	void		*data;
+};
+
+/**
+ * widgets containg values used in table creating procedure
+ * @notebook: the notebook, used to jump to table list page.
+ * @name: table name
+ * @family: table family
+ * @msg:  error message is displayed here if values are invalid.
+ */
+struct table_submit_argsnnn {
+	GtkWidget       *name;
+	GtkWidget       *family;
+	GtkWidget	*msg;
+};
+
+struct chain_list_argsnnn {
+	int	family;
+	char	*table;
+	char	*type;
+};
+
+struct chain_create_argsnnn {
+	int	family;
+	char	*table;
+};
+
 /**
  * widgets containg values used in table creating procedure
  * @notebook: the notebook, used to jump to table list page.
@@ -52,15 +106,9 @@
  * @msg:  error message is displayed here if values are invalid.
  */
 struct table_create_widget {
-	GtkWidget       *notebook;
 	GtkWidget       *name;
 	GtkWidget       *family;
 	GtkWidget	*msg;
-};
-
-struct list_sets_and_chains {
-	GtkWidget	*treeview;
-	GtkWidget	*notebook;
 };
 
 
@@ -320,13 +368,10 @@ void back_to_table_list (GtkButton *button, gpointer  notebook);
 void create_new_chain(GtkButton *button, gpointer  notebook);
 void begin_create_new_table(GtkButton *button, gpointer  info);
 void back_to_table_list (GtkButton *button, gpointer  notebook);
-void create_new_table(GtkButton *button, gpointer  notebook);
-void gnftables_about_init(GtkWidget *notebook);
 void gnftables_set_chain_init(gint family, gchar *table_name, GtkWidget *notebook);
 void gnftables_table_init(GtkWidget *notebook);
 void select_family(GtkComboBox *widget, gpointer user_data);
 GtkWidget *create_family_list(gint list, void (*callback)(GtkComboBox *widget, gpointer data), gpointer data);
-void table_update_data(gint family, GtkTreeStore *store);
 
 
 void gnftables_set_init(GtkButton *button, gpointer  data);
@@ -400,5 +445,26 @@ void rule_add_content_actions(struct rule_create_widget *new_rule, struct rule_l
 void rule_actions_add(GtkButton *button, gpointer data);
 void back_to_set_list(GtkButton *button, gpointer info);
 void begin_create_new_set(GtkButton *button, gpointer info);
+
+
+void gnftables_chain_add(GtkButton *button, gpointer data);
+void gnftables_chain_details(GtkCellRendererToggle *cell,
+		gchar *path_str, gpointer data);
+void gnftables_chain_delete(GtkCellRendererToggle *cell,
+		gchar *path_str, gpointer data);
+void gnftables_chain_update(struct chain_list_argsnnn *args, GtkTreeStore *store);
+void gnftables_chain_list(void);
+void gnftables_addpage_chain(void);
+
+void gnftables_table_submit(GtkButton *button, gpointer info);
+void gnftables_table_add(GtkButton *button, gpointer data);
+void gnftables_table_details(GtkCellRendererToggle *cell,
+		gchar *path_str, gpointer data);
+void gnftables_table_delete(GtkCellRendererToggle *cell,
+		gchar *path_str, gpointer data);
+void gnftables_table_update(gint family, GtkTreeStore *store);
+void gnftables_table_list(void);
+void gnftables_addpage_table(void);
+void gnftables_addpage_about(void);
 
 #endif

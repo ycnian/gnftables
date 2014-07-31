@@ -166,7 +166,7 @@ int unsigned_int_check(char *integer)
  * Get data from page, and check it
  * @widget:  widgets containing data in table creating
  */
-int table_create_getdata(struct table_create_widget  *widget,
+int table_create_getdata(struct table_submit_argsnnn  *widget,
 		struct table_create_data **data)
 {
 	int	res;

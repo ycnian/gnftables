@@ -181,7 +181,7 @@ struct rule_create_data {
 int name_check(char *name);
 int integer_check(char *integer);
 
-int table_create_getdata(struct table_create_widget  *widget,
+int table_create_getdata(struct table_submit_argsnnn  *widget,
 		struct table_create_data **data);
 
 int chain_priority_check(char *priority);

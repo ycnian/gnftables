@@ -59,6 +59,13 @@
 #define  NOTEBOOK_CHAIN_SET (NOTEBOOK_CHAIN_LIST | NOTEBOOK_CHAIN_CREATE | NOTEBOOK_SET_LIST | NOTEBOOK_SET_CREATE_EDIT)
 #define  NOTEBOOK_RULE (NOTEBOOK_RULE_LIST | NOTEBOOK_RULE_CREATE_EDIT)
 
+struct page_info {
+	int	family;
+	char	*table;
+	char	*chain;
+	char	*set;
+	char	*type;
+};
 struct top_window {
 	int	silent;
 	int	page_current;
@@ -71,7 +78,7 @@ struct top_window {
 	GtkWidget	*table;
 	GtkWidget	*chain_set;
 	GtkWidget	*rule_rule;
-	void		*data;
+	struct page_info	*data;
 };
 
 /**
@@ -96,6 +103,17 @@ struct chain_list_argsnnn {
 struct chain_create_argsnnn {
 	int	family;
 	char	*table;
+};
+
+struct chain_submit_argsnnn {
+	GtkWidget	*name;
+	GtkWidget	*basechain;
+	GtkWidget	*type;
+	GtkWidget	*hook;
+	GtkWidget	*priority;
+	GtkWidget	*msg;
+	gint		family;
+	gchar		*table;
 };
 
 /**
@@ -447,12 +465,19 @@ void back_to_set_list(GtkButton *button, gpointer info);
 void begin_create_new_set(GtkButton *button, gpointer info);
 
 
+
+void gnftables_addpage_rule(void);
+
+void gnftables_set_update(struct page_info *args, GtkTreeStore *store);
+void gnftables_set_list(void);
+
+void gnftables_chain_submit(GtkButton *button, gpointer info);
 void gnftables_chain_add(GtkButton *button, gpointer data);
 void gnftables_chain_details(GtkCellRendererToggle *cell,
 		gchar *path_str, gpointer data);
 void gnftables_chain_delete(GtkCellRendererToggle *cell,
 		gchar *path_str, gpointer data);
-void gnftables_chain_update(struct chain_list_argsnnn *args, GtkTreeStore *store);
+void gnftables_chain_update(struct page_info *args, GtkTreeStore *store);
 void gnftables_chain_list(void);
 void gnftables_addpage_chain(void);
 

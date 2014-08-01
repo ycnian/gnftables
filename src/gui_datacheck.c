@@ -210,7 +210,7 @@ int chain_priority_check(char *priority)
  * Get data from page, and check it
  * @widget:  widgets containing data in chain creating
  */
-int chain_create_getdata(struct chain_create_widget  *widget,
+int chain_create_getdata(struct chain_submit_argsnnn  *widget,
 		struct chain_create_data **data)
 {
 	int	res;

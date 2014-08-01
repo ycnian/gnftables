@@ -185,7 +185,7 @@ int table_create_getdata(struct table_submit_argsnnn  *widget,
 		struct table_create_data **data);
 
 int chain_priority_check(char *priority);
-int chain_create_getdata(struct chain_create_widget  *widget,
+int chain_create_getdata(struct chain_submit_argsnnn  *widget,
 		struct chain_create_data **data);
 
 int rule_create_getdata(struct rule_create_widget  *widget,

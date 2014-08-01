@@ -143,11 +143,11 @@ void select_page(GtkNotebook *notebook, GtkWidget *page, guint page_num, gpointe
 	unsigned int    i;
 	unsigned	num;
 	num = gtk_notebook_get_n_pages(notebook);
+	printf("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa   silent = %d   num = %d  page_num = %d\n", top_window->silent, num, page_num);
 	if (top_window->silent) {
 		top_window->silent = 0;
 		return;
 	}
-	printf("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa    num = %d  page_num = %d\n", num, page_num);
 //	for (i = page_num + 1; i < num - 1; i++)
 //		gtk_notebook_remove_page (notebook, i);
 //	gtk_notebook_remove_page (notebook, 0);
@@ -322,53 +322,9 @@ void begin_create_new_set(GtkButton *button, gpointer  info)
 	datac->notebook = widget->notebook;
 	datac->family = widget->family;
 	datac->table = widget->table;
-	gnftables_set_init(NULL, datac);
+//	gnftables_set_init(NULL, datac);
 }
 
-/*
- * Get data from chain creating page and send NFT_MSG_NEWCHAIN message to kernel.
- */
-void begin_create_new_chain(GtkButton *button, gpointer  info)
-{
-	GtkWidget	*notebook;
-	int		res;
-	struct chain_create_widget	*widget;
-	struct chain_create_data	*data = NULL;
-
-	widget = (struct chain_create_widget *)info;
-	notebook = widget->notebook;
-
-	// check table exists
-	res = gui_check_table_exist(widget->family, widget->table);
-	if (res != CHAIN_SUCCESS) {
-		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[res]);
-		return;
-	}
-
-	// get data
-	res = chain_create_getdata(widget, &data);
-	if (res != CHAIN_SUCCESS) {
-		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[res]);
-		return;
-	}
-
-	res = gui_add_chain(data);
-	xfree(data->table);
-	xfree(data->chain);
-	xfree(data->type);
-	xfree(data);
-	if (res != CHAIN_SUCCESS) {
-		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[res]);
-		return;
-	}
-
-	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
-
-//	gnftables_set_chain_init(widget->family, widget->table, notebook);
-	gtk_widget_show_all(GTK_WIDGET(notebook));
-	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 1);
-	gtk_widget_queue_draw(GTK_WIDGET(notebook));
-}
 
 
 
@@ -417,7 +373,7 @@ void back_to_set_list(GtkButton *button, gpointer info)
 	data->notebook = args->notebook;
 	data->family = args->family;
 	data->table = args->table;
-	gnftables_set_init(NULL, data);
+//	gnftables_set_init(NULL, data);
 	xfree(data);
 	return;
 }
@@ -2319,7 +2275,7 @@ For reference, here's the list of different priority used in iptables:\n\
 
     	ok = gtk_button_new_with_label("OK");
 	gtk_widget_set_size_request(ok, 100, 10);
-	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_chain), widgets);
+//	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_chain), widgets);
 	gtk_layout_put(GTK_LAYOUT(layout_chain), ok, 480, 310);
 
 
@@ -2492,51 +2448,6 @@ static void set_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gp
 		create_new_set(NULL, set_args);
 }
 
-void chain_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
-{
-	int	res;
-	GtkTreeIter		iter;
-	int			family;
-	gchar			*table;
-	gchar			*chain;
-	GtkTreeModel		*model;
-	GtkWidget		*notebook;
-	struct chain_list_args	*chain_args = (struct chain_list_args *)data;
-
-	table = chain_args->table;
-	family = chain_args->family;
-	notebook = chain_args->notebook;
-
-	model = GTK_TREE_MODEL(chain_args->model);
-	gtk_tree_model_get_iter_from_string(model, &iter, path_str);
-	gtk_tree_model_get(model, &iter, CHAIN_NAME, &chain, -1);
-
-	res = gui_check_chain_exist(family, table, chain);
-	if (res != CHAIN_SUCCESS) {
-		GtkWidget *dialog;
-		dialog = gtk_message_dialog_new(GTK_WINDOW(top_window->window),
-				0,
-				GTK_MESSAGE_ERROR,
-				GTK_BUTTONS_OK,
-				"%s",
-				chain_error[res]
-				);
-
-		gtk_dialog_run(GTK_DIALOG(dialog));
-		gtk_widget_destroy(dialog);
-		if (res == CHAIN_NOT_EXIST)
-			chain_update_data(chain_args);
-		else {
-			gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
-			gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 0);
-			gnftables_table_init(notebook);
-		}
-	} else
-		gnftables_rule_init(family, table, chain, notebook);
-
-	xfree(chain);
-	return;
-}
 
 void basechain_selected(GtkWidget *check_button, gpointer data) 
 {
@@ -2696,58 +2607,6 @@ static void set_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gp
 
 }
 
-void chain_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data)
-{
-	GtkTreeIter		iter;
-	int			family;
-	gchar			*table;
-	gchar			*chain;
-	GtkWidget		*notebook;
-	GtkTreeModel		*model;
-	struct chain_list_args	*chain_args;
-	gint	err;
-	gint	res;
-	GtkWidget *dialog;
-	chain_args = (struct chain_list_args *)data;
-	notebook = GTK_WIDGET(chain_args->notebook);
-
-	dialog = gtk_message_dialog_new(GTK_WINDOW(top_window->window),
-		0,
-		GTK_MESSAGE_WARNING,
-		GTK_BUTTONS_OK_CANCEL,
-		"The chain and all rules in the chain will be deleted."
-		" Are you sure?"
-		);
-
-	table = chain_args->table;
-	family = chain_args->family;
-
-	res = gtk_dialog_run(GTK_DIALOG(dialog));
-	if (res == GTK_RESPONSE_OK) {
-		model = GTK_TREE_MODEL(chain_args->model);
-		gtk_tree_model_get_iter_from_string(model, &iter, path_str);
-		gtk_tree_model_get(model, &iter, CHAIN_NAME, &chain, -1);
-
-		err = gui_delete_chain(family, table, chain);
-		if (err != CHAIN_SUCCESS) {
-			gtk_widget_destroy(dialog);
-			dialog = gtk_message_dialog_new(GTK_WINDOW(top_window->window),
-				0, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
-				"%s", chain_error[err]);
-			gtk_dialog_run(GTK_DIALOG(dialog));
-		}
-		if (err == CHAIN_NOT_EXIST || err == CHAIN_SUCCESS)
-			chain_update_data(chain_args);
-		else {
-			gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
-			gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 0);
-			gnftables_table_init(notebook);
-		}
-	}
-
-	gtk_widget_destroy(dialog);
-	return;
-}
 
 
 /*
@@ -2797,54 +2656,6 @@ void rule_update_data(struct rule_list_args *args)
 	}
 }
 
-void set_update_data(struct set_list_args *args)
-{
-	uint32_t	index = 0;
-	GtkTreeIter	iter;
-	struct set_list_data   *set, *s;
-	gint		family = args->family;
-	gchar		*table_name = args->table;
-//	gchar		*type = args->type;
-	GtkTreeStore	*store = args->store;
-	int		res;
-
-	LIST_HEAD(set_list);
-
-	res = gui_get_sets_list(&set_list, family, table_name, (char *)"all", 1);
-	if (res != SET_SUCCESS) {
-		GtkWidget *dialog;
-		dialog = gtk_message_dialog_new(GTK_WINDOW(top_window->window),
-				0,
-				GTK_MESSAGE_ERROR,
-				GTK_BUTTONS_OK,
-				"%s",
-				set_error[res]
-				);
-
-		gtk_dialog_run(GTK_DIALOG(dialog));
-		gtk_widget_destroy(dialog);
-		return;
-	}
-
-	gtk_tree_store_clear(store);
-	// display sets in treeview
-	list_for_each_entry_safe(set, s, &set_list, list) {
-		list_del(&set->list);
-		index++;
-		gtk_tree_store_append(store, &iter, NULL);
-		gtk_tree_store_set(store, &iter,
-			SET_ID, index,
-			SET_NAME, xstrdup(set->name),
-			SET_KEYTYPE, xstrdup(set->keytype),
-			SET_DATATYPE, set->datatype ? xstrdup(set->datatype) : "X",
-			SET_ELEMS, set->nelems,
-			SET_DETAIL, TRUE,
-			SET_DELETE, TRUE, -1);
-		xfree(set->table);
-		xfree(set->name);
-		xfree(set);
-	}
-}
 
 /*
  * Get chains from kernel and display in chain list page
@@ -2965,142 +2776,6 @@ void gnftables_goto_chain_list(GtkButton *button, gpointer  data)
 //		set_arg->table, set_arg->notebook);
 }
 
-void gnftables_set_init(GtkButton *button, gpointer  data)
-{
-	GtkWidget	*title;
-	GtkWidget	*layout;
-	GtkWidget	*notebook;
-	GtkWidget	*chain_list;
-	GtkWidget	*create_set;
-	GtkWidget	*list_sets;
-	GtkWidget	*scrolledwindow;
-	GtkTreeStore	*store;
-	GtkCellRenderer	*renderer;
-	GtkCellRenderer	*renderer_details;
-	GtkCellRenderer	*renderer_delete;
-	GtkTreeViewColumn	*column;
-
-	int	res;
-	struct set_list_args  *set_arg;
-	struct chain_list_args *chain_arg;
-
-	chain_arg = (struct chain_list_args *)data;
-	notebook = chain_arg->notebook;
-	res = gui_check_table_exist(chain_arg->family, chain_arg->table);
-	if (res != TABLE_SUCCESS) {
-		GtkWidget *dialog;
-		dialog = gtk_message_dialog_new(GTK_WINDOW(top_window->window),
-				0,
-				GTK_MESSAGE_ERROR,
-				GTK_BUTTONS_OK,
-				"%s",
-				table_error[res]
-				);
-
-		gtk_dialog_run(GTK_DIALOG(dialog));
-		gtk_widget_destroy(dialog);
-		gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
-		gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 0);
-		gnftables_table_init(notebook);
-		return;
-	}
-
-	set_arg = xzalloc(sizeof(struct set_list_args));
-	set_arg->notebook = chain_arg->notebook;
-	set_arg->family = chain_arg->family;
-	set_arg->table = chain_arg->table;
-
-	store = gtk_tree_store_new(SET_TOTAL, G_TYPE_INT, G_TYPE_STRING,
-			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INT, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
-
-	title = gtk_label_new("Sets");
-	gtk_widget_set_size_request(title, 200, 10);
-	layout = gtk_layout_new(NULL, NULL);
-
-    	chain_list = gtk_button_new_with_label("Go to chain list page");
-	gtk_widget_set_size_request(chain_list, 150, 10);
-	g_signal_connect(G_OBJECT(chain_list), "clicked",
-			G_CALLBACK(gnftables_goto_chain_list), set_arg);
-	gtk_layout_put(GTK_LAYOUT(layout), chain_list, 530, 10);
-
-    	create_set = gtk_button_new_with_label("Create Set");
-	gtk_widget_set_size_request(create_set, 150, 10);
-	g_signal_connect(G_OBJECT(create_set), "clicked",
-			G_CALLBACK(create_new_set), set_arg);
-	gtk_layout_put(GTK_LAYOUT(layout), create_set, 700, 10);
-	set_arg->store = store;
-
-	set_update_data(set_arg);
-
-	// treeview style
-	list_sets = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
-	renderer = gtk_cell_renderer_text_new();
-	set_arg->model = gtk_tree_view_get_model(GTK_TREE_VIEW(list_sets));
-
-	column = gtk_tree_view_column_new_with_attributes("Id", renderer,
-			"text", SET_ID, NULL);
-	gtk_tree_view_column_set_clickable(column, TRUE);
-	gtk_tree_view_column_set_min_width(column, 50);
-	gtk_tree_view_column_set_alignment(column, 0.0);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
-	column = gtk_tree_view_column_new_with_attributes("Name", renderer,
-			"text", SET_NAME, NULL);
-	gtk_tree_view_column_set_min_width(column, 200);
-	gtk_tree_view_column_set_alignment(column, 0.0);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
-	column = gtk_tree_view_column_new_with_attributes("Key Type", renderer,
-			"text", SET_KEYTYPE, NULL);
-	gtk_tree_view_column_set_min_width(column, 200);
-	gtk_tree_view_column_set_alignment(column, 0.0);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
-	column = gtk_tree_view_column_new_with_attributes("Data Type", renderer,
-			"text", SET_DATATYPE, NULL);
-	gtk_tree_view_column_set_min_width(column, 200);
-	gtk_tree_view_column_set_alignment(column, 0.0);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
-	gtk_tree_view_column_set_visible(column, FALSE);
-	column = gtk_tree_view_column_new_with_attributes("Elements", renderer,
-			"text", SET_ELEMS, NULL);
-	gtk_tree_view_column_set_min_width(column, 90);
-	gtk_tree_view_column_set_alignment(column, 0.0);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
-
-	renderer_details = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer_details, "toggled",
-			G_CALLBACK(set_callback_detail), set_arg) ;
-	column = gtk_tree_view_column_new_with_attributes("Details",
-			renderer_details, "active", SET_DETAIL, NULL);
-	gtk_tree_view_column_set_min_width(column, 80);
-	gtk_tree_view_column_set_alignment(column, 0.0);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
-
-	renderer_delete = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer_delete, "toggled",
-			G_CALLBACK(set_callback_delete), set_arg) ;
-	column = gtk_tree_view_column_new_with_attributes("Delete",
-			renderer_delete, "active", SET_DELETE, NULL);
-	gtk_tree_view_column_set_min_width(column, 80);
-	gtk_tree_view_column_set_alignment(column, 0.0);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
-
-        scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
-	gtk_scrolled_window_set_min_content_width(
-			GTK_SCROLLED_WINDOW(scrolledwindow), 876);
-	gtk_scrolled_window_set_min_content_height(
-			GTK_SCROLLED_WINDOW(scrolledwindow), 410);
-	gtk_scrolled_window_set_shadow_type(
-			GTK_SCROLLED_WINDOW(scrolledwindow),
-			GTK_SHADOW_ETCHED_IN);
-	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledwindow),
-			GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-	gtk_container_add(GTK_CONTAINER(scrolledwindow), list_sets);
-
-	gtk_layout_put(GTK_LAYOUT(layout), scrolledwindow, 0, 50);
-	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
-	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, title, 1);
-	gtk_widget_show_all(GTK_WIDGET(notebook));
-	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 1);
-}
 
 
 
@@ -3331,45 +3006,95 @@ void gnftables_table_init(GtkWidget *notebook)
 
 
 
+void set_update_data(struct set_list_args *args)
+{
+
+}
 
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
-
-/*
- * Goto chain creating page
- *
- */
-void gnftables_chain_add(GtkButton *button, gpointer data)
+void gnftables_addpage_rule(void)
 {
-	GtkWidget	*layout;
+	printf("hello world\n");
+}
+
+
+void gnftables_set_update(struct page_info *args, GtkTreeStore *store)
+{
+	uint32_t	index = 0;
+	GtkTreeIter	iter;
+	struct set_list_data   *set, *s;
+	gint	family = args->family;
+	gchar	*table = args->table;
+	gchar	*type = args->type;
+	int		res;
+
+	LIST_HEAD(set_list);
+	res = gui_get_sets_list(&set_list, family, table, type, 1);
+	if (res != SET_SUCCESS) {
+		GtkWidget *dialog;
+		dialog = gtk_message_dialog_new(GTK_WINDOW(top_window->window),
+				0,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_OK,
+				"%s",
+				set_error[res]
+				);
+
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		return;
+	}
+
+	gtk_tree_store_clear(store);
+	// display sets in treeview
+	list_for_each_entry_safe(set, s, &set_list, list) {
+		list_del(&set->list);
+		index++;
+		gtk_tree_store_append(store, &iter, NULL);
+		gtk_tree_store_set(store, &iter,
+			SET_ID, index,
+			SET_NAME, xstrdup(set->name),
+			SET_KEYTYPE, xstrdup(set->keytype),
+			SET_DATATYPE, set->datatype ? xstrdup(set->datatype) : "X",
+			SET_ELEMS, set->nelems,
+			SET_DETAIL, TRUE,
+			SET_DELETE, TRUE, -1);
+		xfree(set->table);
+		xfree(set->name);
+		xfree(set);
+	}
+}
+
+
+//void gnftables_set_list(GtkButton *button, gpointer  data)
+void gnftables_set_list(void)
+{
+	GtkWidget	*container;
 	GtkWidget	*title;
-	GtkWidget	*ok;
-	GtkWidget	*cancel;
-	GtkWidget	*frame;
-	GtkWidget	*layout_chain;
-	GtkWidget	*name;
-	GtkWidget	*name_value;
-	GtkWidget	*family;
-	GtkWidget	*family_valuee;
-	GtkWidget	*type;
-	GtkWidget	*type_value;
-	GtkWidget	*hook;
-	GtkWidget	*hook_value;
-	GtkWidget	*priority;
-	GtkWidget	*priority_value;
+	GtkWidget	*fixed;
 	GtkWidget	*notebook;
-	GtkWidget	*msg;
+	GtkWidget	*chain_list;
+	GtkWidget	*create_set;
+	GtkWidget	*list_sets;
+	GtkWidget	*scrolledwindow;
+	GtkTreeStore	*store;
+	GtkCellRenderer	*renderer;
+	GtkCellRenderer	*renderer_details;
+	GtkCellRenderer	*renderer_delete;
+	GtkTreeViewColumn	*column;
 
 	int	res;
-	struct  basechain_info  *basechain;
-	struct chain_create_widget *widgets;
-	struct chain_list_args	*chain_arg;
+	int	family;
+	char	*table;
 
-	chain_arg = (struct chain_list_args *)data;
-	notebook = chain_arg->notebook;
-	res = gui_check_table_exist(chain_arg->family, chain_arg->table);
+	notebook = top_window->notebook;
+	container = top_window->chain_set_container;
+	family = top_window->data->family;
+	table = top_window->data->table;
+	res = gui_check_table_exist(family, table);
 	if (res != TABLE_SUCCESS) {
 		GtkWidget *dialog;
 		dialog = gtk_message_dialog_new(GTK_WINDOW(top_window->window),
@@ -3382,55 +3107,231 @@ void gnftables_chain_add(GtkButton *button, gpointer data)
 
 		gtk_dialog_run(GTK_DIALOG(dialog));
 		gtk_widget_destroy(dialog);
-		gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
-		gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 0);
-		gnftables_table_init(notebook);
+		gnftables_table_list();
 		return;
 	}
 
-	basechain = xzalloc(sizeof(*basechain));
-	widgets = xzalloc(sizeof(struct chain_create_widget));
-	notebook = chain_arg->notebook;
-	widgets->notebook = notebook;
-	widgets->family = chain_arg->family;
-	widgets->table = chain_arg->table;
+	store = gtk_tree_store_new(SET_TOTAL, G_TYPE_INT, G_TYPE_STRING,
+			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INT, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
 
-
-	gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
-
-	layout = gtk_layout_new(NULL, NULL);
-	title = gtk_label_new("Chains");
+	title = gtk_label_new("Sets");
 	gtk_widget_set_size_request(title, 200, 10);
+	fixed = gtk_fixed_new();
 
+    	chain_list = gtk_button_new_with_label("Go to chain list page");
+	gtk_widget_set_size_request(chain_list, 150, 10);
+	g_signal_connect(G_OBJECT(chain_list), "clicked",
+			G_CALLBACK(gnftables_chain_list), NULL);
+	gtk_fixed_put(GTK_FIXED(fixed), chain_list, 530, 10);
+
+    	create_set = gtk_button_new_with_label("Create Set");
+	gtk_widget_set_size_request(create_set, 150, 10);
+	g_signal_connect(G_OBJECT(create_set), "clicked",
+			G_CALLBACK(create_new_set), NULL);
+	gtk_fixed_put(GTK_FIXED(fixed), create_set, 700, 10);
+
+	// treeview style
+	list_sets = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
+	renderer = gtk_cell_renderer_text_new();
+
+	column = gtk_tree_view_column_new_with_attributes("Id", renderer,
+			"text", SET_ID, NULL);
+	gtk_tree_view_column_set_clickable(column, TRUE);
+	gtk_tree_view_column_set_min_width(column, 50);
+	gtk_tree_view_column_set_alignment(column, 0.0);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
+	column = gtk_tree_view_column_new_with_attributes("Name", renderer,
+			"text", SET_NAME, NULL);
+	gtk_tree_view_column_set_min_width(column, 200);
+	gtk_tree_view_column_set_alignment(column, 0.0);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
+	column = gtk_tree_view_column_new_with_attributes("Key Type", renderer,
+			"text", SET_KEYTYPE, NULL);
+	gtk_tree_view_column_set_min_width(column, 200);
+	gtk_tree_view_column_set_alignment(column, 0.0);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
+	column = gtk_tree_view_column_new_with_attributes("Data Type", renderer,
+			"text", SET_DATATYPE, NULL);
+	gtk_tree_view_column_set_min_width(column, 200);
+	gtk_tree_view_column_set_alignment(column, 0.0);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
+	gtk_tree_view_column_set_visible(column, FALSE);
+	column = gtk_tree_view_column_new_with_attributes("Elements", renderer,
+			"text", SET_ELEMS, NULL);
+	gtk_tree_view_column_set_min_width(column, 90);
+	gtk_tree_view_column_set_alignment(column, 0.0);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
+
+	renderer_details = gtk_cell_renderer_toggle_new();
+	g_signal_connect(renderer_details, "toggled",
+			G_CALLBACK(set_callback_detail), list_sets) ;
+	column = gtk_tree_view_column_new_with_attributes("Details",
+			renderer_details, "active", SET_DETAIL, NULL);
+	gtk_tree_view_column_set_min_width(column, 80);
+	gtk_tree_view_column_set_alignment(column, 0.0);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
+
+	renderer_delete = gtk_cell_renderer_toggle_new();
+	g_signal_connect(renderer_delete, "toggled",
+			G_CALLBACK(set_callback_delete), list_sets);
+	column = gtk_tree_view_column_new_with_attributes("Delete",
+			renderer_delete, "active", SET_DELETE, NULL);
+	gtk_tree_view_column_set_min_width(column, 80);
+	gtk_tree_view_column_set_alignment(column, 0.0);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
+
+        scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
+	gtk_scrolled_window_set_min_content_width(
+			GTK_SCROLLED_WINDOW(scrolledwindow), 876);
+	gtk_scrolled_window_set_min_content_height(
+			GTK_SCROLLED_WINDOW(scrolledwindow), 410);
+	gtk_scrolled_window_set_shadow_type(
+			GTK_SCROLLED_WINDOW(scrolledwindow),
+			GTK_SHADOW_ETCHED_IN);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledwindow),
+			GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+	gtk_container_add(GTK_CONTAINER(scrolledwindow), list_sets);
+
+	gtk_fixed_put(GTK_FIXED(fixed), scrolledwindow, 0, 50);
+	if (top_window->chain_set)
+		gtk_widget_destroy(top_window->chain_set);
+	top_window->chain_set = fixed;
+	gtk_fixed_put(GTK_FIXED(container), fixed, 0, 0);
+
+	gnftables_set_update(top_window->data, store);
+	gtk_widget_show_all(GTK_WIDGET(notebook));
+	gtk_widget_queue_draw(GTK_WIDGET(notebook));
+	top_window->page_current = NOTEBOOK_SET_LIST;
+}
+
+
+/*
+ * Get data from chain creating page and send NFT_MSG_NEWCHAIN message to kernel.
+ */
+void gnftables_chain_submit(GtkButton *button, gpointer info)
+{
+	int		res;
+	struct chain_submit_argsnnn	*widget;
+	struct chain_create_data	*data = NULL;
+	widget = (struct chain_submit_argsnnn *)info;
+
+	// check table exists
+	res = gui_check_table_exist(widget->family, widget->table);
+	if (res != CHAIN_SUCCESS) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), table_error[res]);
+		return;
+	}
+
+	// get data
+	res = chain_create_getdata(widget, &data);
+	if (res != CHAIN_SUCCESS) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[res]);
+		return;
+	}
+
+	res = gui_add_chain(data);
+	xfree(data->table);
+	xfree(data->chain);
+	xfree(data->type);
+	xfree(data);
+	if (res != CHAIN_SUCCESS) {
+		gtk_label_set_text(GTK_LABEL(widget->msg), chain_error[res]);
+		return;
+	}
+
+	gnftables_chain_list();
+}
+
+/*
+ * Goto chain creating page
+ *
+ */
+void gnftables_chain_add(GtkButton *button, gpointer data)
+{
+	GtkWidget	*fixed;
+	GtkWidget	*container;
+	GtkWidget	*ok;
+	GtkWidget	*cancel;
+	GtkWidget	*frame;
+	GtkWidget	*fixed_chain;
+	GtkWidget	*name;
+	GtkWidget	*name_value;
+	GtkWidget	*base;
+	GtkWidget	*base_value;
+	GtkWidget	*type;
+	GtkWidget	*type_value;
+	GtkWidget	*hook;
+	GtkWidget	*hook_value;
+	GtkWidget	*priority;
+	GtkWidget	*priority_value;
+	GtkWidget	*notebook;
+	GtkWidget	*msg;
+
+	int	res;
+	int	family;
+	char	*table;
+	struct  basechain_info  *basechain;
+	struct chain_submit_argsnnn *widgets;
+
+	notebook = top_window->notebook;
+	family = top_window->data->family;
+	table = top_window->data->table;
+	res = gui_check_table_exist(family, table);
+	if (res != TABLE_SUCCESS) {
+		GtkWidget *dialog;
+		dialog = gtk_message_dialog_new(GTK_WINDOW(top_window->window),
+				0,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_OK,
+				"%s",
+				table_error[res]
+				);
+
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		top_window->silent = 1;
+		gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
+		gnftables_table_list();
+		return;
+	}
+
+	container = top_window->chain_set_container;
+	top_window->page_current = NOTEBOOK_CHAIN_CREATE;
+	basechain = xzalloc(sizeof(*basechain));
+	widgets = xzalloc(sizeof(struct chain_submit_argsnnn));
+	notebook = top_window->notebook;
+	widgets->family = family;
+	widgets->table = table;
+
+	fixed = gtk_fixed_new();
 	frame = gtk_frame_new ("Create a new chain");
 	gtk_container_set_border_width (GTK_CONTAINER(frame), 0);
 	gtk_widget_set_size_request(frame, 600, 371);
-	gtk_layout_put(GTK_LAYOUT(layout), frame, 150, 40);
+	gtk_fixed_put(GTK_FIXED(fixed), frame, 150, 40);
 
-
-	layout_chain = gtk_layout_new(NULL, NULL);
-	gtk_container_add(GTK_CONTAINER(frame), layout_chain);
+	fixed_chain = gtk_fixed_new();
+	gtk_container_add(GTK_CONTAINER(frame), fixed_chain);
 
 	name = gtk_label_new("Name:");
-	gtk_layout_put(GTK_LAYOUT(layout_chain), name, 30, 30);
+	gtk_fixed_put(GTK_FIXED(fixed_chain), name, 30, 30);
 	name_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(name_value), 30);
 	gtk_entry_set_max_length(GTK_ENTRY(name_value), 32);
-	gtk_layout_put(GTK_LAYOUT(layout_chain), name_value, 100, 30);
+	gtk_fixed_put(GTK_FIXED(fixed_chain), name_value, 100, 30);
 	widgets->name = name_value;
 
-	family = gtk_label_new("basechain:");
-	gtk_layout_put(GTK_LAYOUT(layout_chain), family, 30, 80);
+	base = gtk_label_new("basechain:");
+	gtk_fixed_put(GTK_FIXED(fixed_chain), base, 30, 80);
 
-	family_valuee = gtk_check_button_new();
-	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(family_valuee), TRUE);
-	gtk_layout_put(GTK_LAYOUT(layout_chain), family_valuee, 100, 80);
-	g_signal_connect(family_valuee, "toggled", G_CALLBACK(basechain_selected), basechain);
-	widgets->basechain = family_valuee;
+	base_value = gtk_check_button_new();
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(base_value), TRUE);
+	gtk_fixed_put(GTK_FIXED(fixed_chain), base_value, 100, 80);
+	g_signal_connect(base_value, "toggled", G_CALLBACK(basechain_selected), basechain);
+	widgets->basechain = base_value;
 
 
 	type = gtk_label_new("Type:");
-	gtk_layout_put(GTK_LAYOUT(layout_chain), type, 30, 130);
+	gtk_fixed_put(GTK_FIXED(fixed_chain), type, 30, 130);
 
 	type_value = gtk_combo_box_text_new();
 	gtk_widget_set_size_request(type_value, 150, 10);
@@ -3441,13 +3342,13 @@ void gnftables_chain_add(GtkButton *button, gpointer data)
 //	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(type_value),
 //			"route", "route");
 	gtk_combo_box_set_active(GTK_COMBO_BOX(type_value), 0);
-	gtk_layout_put(GTK_LAYOUT(layout_chain), type_value, 100, 130);
+	gtk_fixed_put(GTK_FIXED(fixed_chain), type_value, 100, 130);
 	basechain->type = type;
 	basechain->type_value = type_value;
 	widgets->type = type_value;
 
 	hook = gtk_label_new("Hook:");
-	gtk_layout_put(GTK_LAYOUT(layout_chain), hook, 30, 180);
+	gtk_fixed_put(GTK_FIXED(fixed_chain), hook, 30, 180);
 
 	hook_value = gtk_combo_box_text_new();
 	gtk_widget_set_size_request(hook_value, 150, 10);
@@ -3462,7 +3363,7 @@ void gnftables_chain_add(GtkButton *button, gpointer data)
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hook_value),
 			"output", "output");
 	gtk_combo_box_set_active(GTK_COMBO_BOX(hook_value), 0);
-	gtk_layout_put(GTK_LAYOUT(layout_chain), hook_value, 100, 180);
+	gtk_fixed_put(GTK_FIXED(fixed_chain), hook_value, 100, 180);
 	basechain->hook = hook;
 	basechain->hook_value = hook_value;
 	widgets->hook = hook_value;
@@ -3471,7 +3372,7 @@ void gnftables_chain_add(GtkButton *button, gpointer data)
 			G_CALLBACK(chain_create_type_changed), hook_value);
 
 	priority = gtk_label_new("Priority:");
-	gtk_layout_put(GTK_LAYOUT(layout_chain), priority, 30, 230);
+	gtk_fixed_put(GTK_FIXED(fixed_chain), priority, 30, 230);
 	priority_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(priority_value), 30);
 	gtk_widget_set_tooltip_text(priority_value, "The priority can be used to order the chains or to put them before or after some Netfilter internal operations.\n\
@@ -3487,29 +3388,29 @@ For reference, here's the list of different priority used in iptables:\n\
  100: source NAT\n\
  225: SELInux at packet exit\n\
  300: connection tracking at exit");
-	gtk_layout_put(GTK_LAYOUT(layout_chain), priority_value, 100, 230);
+	gtk_fixed_put(GTK_FIXED(fixed_chain), priority_value, 100, 230);
 	basechain->priority = priority;
 	basechain->priority_value = priority_value;
 	widgets->priority = priority_value;
 
 	msg = gtk_label_new("");
-	gtk_layout_put(GTK_LAYOUT(layout_chain), msg, 30, 280);
+	gtk_fixed_put(GTK_FIXED(fixed_chain), msg, 30, 280);
 	widgets->msg = msg;
 
     	cancel = gtk_button_new_with_label("Cancel");
 	gtk_widget_set_size_request(cancel, 100, 10);
-	g_signal_connect(G_OBJECT(cancel), "clicked", G_CALLBACK(back_to_chain_list), widgets);
-	gtk_layout_put(GTK_LAYOUT(layout_chain), cancel, 360, 310);
+	g_signal_connect(G_OBJECT(cancel), "clicked", G_CALLBACK(gnftables_chain_list), NULL);
+	gtk_fixed_put(GTK_FIXED(fixed_chain), cancel, 360, 310);
 
     	ok = gtk_button_new_with_label("OK");
 	gtk_widget_set_size_request(ok, 100, 10);
-	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(begin_create_new_chain), widgets);
-	gtk_layout_put(GTK_LAYOUT(layout_chain), ok, 480, 310);
+	g_signal_connect(G_OBJECT(ok), "clicked", G_CALLBACK(gnftables_chain_submit), widgets);
+	gtk_fixed_put(GTK_FIXED(fixed_chain), ok, 480, 310);
 
-
-	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), layout, title, 1);
+	gtk_widget_destroy(top_window->chain_set);
+	gtk_fixed_put(GTK_FIXED(container), fixed, 0, 0);
+	top_window->chain_set = fixed;
 	gtk_widget_show_all(GTK_WIDGET(notebook));
-	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 1);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
 }
 
@@ -3517,18 +3418,95 @@ For reference, here's the list of different priority used in iptables:\n\
 void gnftables_chain_details(GtkCellRendererToggle *cell,
 		gchar *path_str, gpointer data)
 {
+	int	res;
+	GtkTreeIter		iter;
+	int			family;
+	gchar			*table;
+	gchar			*chain;
+	GtkTreeModel		*model;
 
+	family = top_window->data->family;
+	table = top_window->data->table;
 
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(data));
+	gtk_tree_model_get_iter_from_string(model, &iter, path_str);
+	gtk_tree_model_get(model, &iter, CHAIN_NAME, &chain, -1);
+
+	res = gui_check_chain_exist(family, table, chain);
+	if (res != CHAIN_SUCCESS) {
+		GtkWidget *dialog;
+		dialog = gtk_message_dialog_new(GTK_WINDOW(top_window->window),
+				0,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_OK,
+				"%s",
+				chain_error[res]
+				);
+
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		xfree(chain);
+		if (res == CHAIN_NOT_EXIST)
+			gnftables_chain_list();
+		else
+			gnftables_table_list();
+		return;
+	} else {
+		top_window->data->chain = chain;
+		gnftables_addpage_rule();	// add rule list page.
+	}
 }
 
+
 void gnftables_chain_delete(GtkCellRendererToggle *cell,
-		gchar *path_str, gpointer data);
+		gchar *path_str, gpointer data)
+{
+	GtkTreeIter		iter;
+	int			family;
+	gchar			*table;
+	gchar			*chain;
+	GtkTreeModel		*model;
+	gint	err;
+	gint	res;
+	GtkWidget *dialog;
+
+	family = top_window->data->family;
+	table = top_window->data->table;
+	dialog = gtk_message_dialog_new(GTK_WINDOW(top_window->window),
+		0,
+		GTK_MESSAGE_WARNING,
+		GTK_BUTTONS_OK_CANCEL,
+		"The chain and all rules in the chain will be deleted."
+		" Are you sure?"
+		);
+	res = gtk_dialog_run(GTK_DIALOG(dialog));
+	if (res == GTK_RESPONSE_OK) {
+		model = gtk_tree_view_get_model(GTK_TREE_VIEW(data));
+		gtk_tree_model_get_iter_from_string(model, &iter, path_str);
+		gtk_tree_model_get(model, &iter, CHAIN_NAME, &chain, -1);
+
+		err = gui_delete_chain(family, table, chain);
+		if (err != CHAIN_SUCCESS) {
+			gtk_widget_destroy(dialog);
+			dialog = gtk_message_dialog_new(GTK_WINDOW(top_window->window),
+				0, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
+				"%s", chain_error[err]);
+			gtk_dialog_run(GTK_DIALOG(dialog));
+		}
+		if (err == CHAIN_NOT_EXIST || err == CHAIN_SUCCESS)
+			gnftables_chain_list();
+		else
+			gnftables_table_list();
+	}
+	gtk_widget_destroy(dialog);
+	return;
+}
 
 
 /*
  * Get chains from kernel and display in chain list page
  */
-void gnftables_chain_update(struct chain_list_argsnnn *args, GtkTreeStore *store)
+void gnftables_chain_update(struct page_info *args, GtkTreeStore *store)
 {
 	int	res;
 	int	index = 0;
@@ -3541,10 +3519,6 @@ void gnftables_chain_update(struct chain_list_argsnnn *args, GtkTreeStore *store
 	LIST_HEAD(chain_list);
 
 	res = gui_get_chains_list(&chain_list, family, table, type, 1);
-	xfree(args->table);
-	xfree(args->type);
-	xfree(args);
-	top_window->data = NULL;
 	if (res != CHAIN_SUCCESS) {
 		GtkWidget *dialog;
 		dialog = gtk_message_dialog_new(GTK_WINDOW(top_window->window),
@@ -3615,15 +3589,34 @@ void gnftables_chain_list(void)
 	GtkCellRenderer	*renderer_delete;
 	GtkTreeViewColumn	*column;
 
-	struct chain_create_argsnnn  *args;
-	strct chain_list_argsnnn     *list_args;
-	list_args = (struct chain_list_argsnnn *)top_window->data;
+	int	res;
+	struct page_info     *list_args;
+	list_args = (struct page_info *)top_window->data;
 	notebook = top_window->notebook;
 	container = top_window->chain_set_container;
 
-	args = xzalloc(sizeof(struct chain_create_argsnnn));
-	args->family = list_args->family;
-	args->table = xstrdup(list_args->table);
+	res = gui_check_table_exist(list_args->family, list_args->table);
+	if (res != TABLE_SUCCESS) {
+		GtkWidget *dialog;
+		dialog = gtk_message_dialog_new(GTK_WINDOW(top_window->window),
+				0,
+				GTK_MESSAGE_ERROR,
+				GTK_BUTTONS_OK,
+				"%s",
+				table_error[res]
+				);
+
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+		if (top_window->chain_set) {
+			gtk_widget_destroy(top_window->chain_set);
+			top_window->chain_set = NULL;
+		}
+		top_window->silent = 1;
+		gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 1);
+		gnftables_table_list();
+		return;
+	}
 
 	store = gtk_tree_store_new(CHAIN_TOTAL, G_TYPE_INT, G_TYPE_STRING,
 			G_TYPE_INT, G_TYPE_STRING, G_TYPE_STRING,
@@ -3653,13 +3646,13 @@ void gnftables_chain_list(void)
     	set_list = gtk_button_new_with_label("Go to set list page");
 	gtk_widget_set_size_request(set_list, 150, 10);
 	g_signal_connect(G_OBJECT(set_list), "clicked",
-			G_CALLBACK(gnftables_set_init), NULL);
+			G_CALLBACK(gnftables_set_list), NULL);
 	gtk_fixed_put(GTK_FIXED(fixed), set_list, 530, 10);
 
     	create_chain = gtk_button_new_with_label("Create Chain");
 	gtk_widget_set_size_request(create_chain, 150, 10);
 	g_signal_connect(G_OBJECT(create_chain), "clicked",
-			G_CALLBACK(gnftables_chain_add), args);
+			G_CALLBACK(gnftables_chain_add), NULL);
 	gtk_fixed_put(GTK_FIXED(fixed), create_chain, 700, 10);
 
 	// treeview style
@@ -3707,7 +3700,7 @@ void gnftables_chain_list(void)
 
 	renderer_details = gtk_cell_renderer_toggle_new();
 	g_signal_connect(renderer_details, "toggled",
-			G_CALLBACK(chain_callback_detail), NULL) ;
+			G_CALLBACK(gnftables_chain_details), list_chains) ;
 	column = gtk_tree_view_column_new_with_attributes("Details",
 			renderer_details, "active", CHAIN_DETAIL, NULL);
 	gtk_tree_view_column_set_min_width(column, 80);
@@ -3716,7 +3709,7 @@ void gnftables_chain_list(void)
 
 	renderer_delete = gtk_cell_renderer_toggle_new();
 	g_signal_connect(renderer_delete, "toggled",
-			G_CALLBACK(chain_callback_delete), NULL);
+			G_CALLBACK(gnftables_chain_delete), list_chains);
 	column = gtk_tree_view_column_new_with_attributes("Delete",
 			renderer_delete, "active", CHAIN_DELETE, NULL);
 	gtk_tree_view_column_set_min_width(column, 80);
@@ -3737,10 +3730,14 @@ void gnftables_chain_list(void)
 
 	gtk_fixed_put(GTK_FIXED(fixed), scrolledwindow, 0, 50);
 	gtk_fixed_put(GTK_FIXED(container), fixed, 0, 0);
+	if (top_window->chain_set)
+		gtk_widget_destroy(top_window->chain_set);
+	top_window->chain_set = fixed;
 
+	gnftables_chain_update(top_window->data, store);
 	gtk_widget_show_all(GTK_WIDGET(notebook));
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
-	gnftables_chain_update(top_window->data, store);
+	top_window->page_current = NOTEBOOK_CHAIN_LIST;
 }
 
 
@@ -3756,6 +3753,7 @@ void gnftables_addpage_chain(void)
 	notebook = top_window->notebook;
 	container = top_window->chain_set_container;
 	
+	top_window->silent = 1;
 	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), container, title, 1);
 	gtk_widget_show_all(container);
 
@@ -3868,7 +3866,6 @@ void gnftables_table_add(GtkButton *button, gpointer data)
 	top_window->table = fixed;
 	gtk_fixed_put(GTK_FIXED(container), fixed, 0, 0);
 	gtk_widget_show_all(GTK_WIDGET(notebook));
-	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 0);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
 }
 
@@ -3897,14 +3894,8 @@ void gnftables_table_details(GtkCellRendererToggle *cell,
 	// goto chains list page. If not, live in table list page.
 	res = gui_check_table_exist(family, name);
 	if (res == TABLE_SUCCESS) {
-		struct chain_list_argsnnn  *args;
-		args = xzalloc(sizeof(struct chain_list_argsnnn));
-		args->family = family;
-		args->table = name;
-		args->type = xstrdup("all");
-		if (top_window->data)
-			xfree(top_window->data);
-		top_window->data = args;
+		top_window->data->table = name;
+		top_window->data->type = xstrdup("all");
 		gnftables_addpage_chain();	// add chain list page.
 	} else {
 		GtkWidget *dialog;
@@ -3982,6 +3973,7 @@ void gnftables_table_update(gint family, GtkTreeStore *store)
 	LIST_HEAD(table_list);
 
 	// only ipv4 is supported now.
+	top_window->data->family = NFPROTO_IPV4;
 	res = gui_get_tables_list(&table_list, NFPROTO_IPV4);
 	if (res != TABLE_SUCCESS) {
 		GtkWidget *dialog;
@@ -4053,8 +4045,8 @@ void gnftables_table_list(void)
 	top_window->table = fixed;
 	if (top_window->data) {
 		xfree(top_window->data);
-		top_window->data = NULL;
 	}
+	top_window->data = xzalloc(sizeof(struct page_info));
 	gtk_fixed_put(GTK_FIXED(container), fixed, 0, 0);
 
 	store = gtk_tree_store_new(TABLE_TOTAL, G_TYPE_INT, G_TYPE_STRING, 
@@ -4139,11 +4131,13 @@ void gnftables_table_list(void)
 	gtk_fixed_put(GTK_FIXED(fixed), scrolledwindow, 0, 50);
 
 	gtk_widget_show_all(container);
+	top_window->silent = 1;
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 0);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
 
 	// get information of all tables from kernel.
 	gnftables_table_update(NFPROTO_UNSPEC, store);
+	top_window->page_current = NOTEBOOK_TABLE_LIST;
 }
 
 
@@ -4158,9 +4152,9 @@ void gnftables_addpage_table(void)
 	notebook = top_window->notebook;
 	container = top_window->table_container;
 	
+	top_window->silent = 1;
 	gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), container, title, 0);
 	gtk_widget_show_all(container);
-	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 0);
 	gtk_widget_queue_draw(GTK_WIDGET(notebook));
 	gnftables_table_list();
 }
@@ -4249,6 +4243,7 @@ int main(int argc, char *argv[])
 	gnftables_addpage_table();
 	gnftables_addpage_about();
 
+	top_window->silent = 1;
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 0);
 	g_signal_connect(G_OBJECT(notebook), "switch-page",
 		G_CALLBACK(select_page), NULL);

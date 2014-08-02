@@ -247,6 +247,6 @@ int get_actions_data_from_page(struct actions_all *widget, struct actions *data)
 char *string_skip_space(char *str);
 int pktmeta_iftype_check(char *type, unsigned short *value);
 
-int set_create_getdata(struct set_create_widget  *widget,
+int set_create_getdata(struct set_submit_argsnnn  *widget,
                 struct set_create_data **data);
 #endif

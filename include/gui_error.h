@@ -44,7 +44,8 @@
 #define  RULE_HEADER_SET_NOT_EXIST	19
 #define  RULE_INDEX_INVALID		20
 #define  RULE_NOT_EXIST			21
-#define  RULE_ERROR_NUM		22
+#define  RULE_TYPE_NOT_SUPPORT		22
+#define  RULE_ERROR_NUM		23
 
 #define  SET_SUCCESS		0
 #define  SET_KERNEL_ERROR	1

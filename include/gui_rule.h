@@ -59,12 +59,14 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 void gui_rule_free(struct gui_rule *rule);
 int gui_delete_rule(int family, const char *table, const char *chain, int handle);
 int gui_add_rule(struct rule_create_data *data);
+int gui_check_rule_exist(int family, const char *table, const char *chain, int handle);
 int gui_get_rule(int family, const char *table, const char *chain, int handle_no, struct rule_create_data  **content);
 
 int gui_get_sets_number(int family, char *table, int *nsets);
 
 
 int gui_add_table(struct table_create_data *data);
+int gui_delete_table(int family, char *name);
 int gui_check_table_exist(int family, const char *name);
 int gui_get_rules_number(int family, char *table, char *chain, int *nrules);
 int gui_check_chain_exist(int family, const char *table, const char *chain);
@@ -80,4 +82,6 @@ void gui_set_free(struct set_list_data *set);
 
 int tables_fprint(char *filename);
 int tables_load(char *filename);
+
+int str2family(const char *family);
 #endif

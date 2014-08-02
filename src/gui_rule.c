@@ -291,21 +291,20 @@ int gui_delete_rule(int family, const char *table, const char *chain, int handle
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
-	int	res = TABLE_SUCCESS;
+	int	res = RULE_SUCCESS;
+	struct mnl_err *err, *tmp;
 	bool batch_supported;
 
 	LIST_HEAD(msgs);
 	LIST_HEAD(err_list);
 
-//	res = gui_check_rule_exist(family, table, chain);
-//	if (res != TABLE_SUCCESS)
-//		return res;
-
+	res = gui_check_rule_exist(family, table, chain, handle_no);
+	if (res != RULE_SUCCESS)
+		return res;
 	batch_supported = netlink_batch_supported();
 
-	memset(&ctx, 0, sizeof(ctx));
 	ctx.msgs = &msgs;
-	ctx.seqnum  = mnl_seqnum_alloc();
+	ctx.seqnum = mnl_seqnum_alloc();
 	ctx.batch_supported = batch_supported;
 	init_list_head(&ctx.list);
 
@@ -319,12 +318,24 @@ int gui_delete_rule(int family, const char *table, const char *chain, int handle
 	 mnl_batch_begin();
 	// delete rule.
 	if (netlink_del_rule_batch(&ctx, &handle, &internal_location) < 0) {
-			res = TABLE_KERNEL_ERROR;
+		struct  error_record *erec, *next;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
+		return RULE_KERNEL_ERROR;
 	}
 	mnl_batch_end();
 
-	if (mnl_batch_ready())
-		netlink_batch_send(&err_list);
+	if (mnl_batch_ready()) {
+		res = netlink_batch_send(&err_list);
+		if (res < 0) {
+			list_for_each_entry_safe(err, tmp, &err_list, head)
+				mnl_err_list_free(err);
+			return RULE_KERNEL_ERROR;
+		}
+	} else
+		mnl_batch_reset();
 	return res;
 }
 
@@ -374,14 +385,64 @@ int gui_add_rule(struct rule_create_data *data)
 	mnl_batch_end();
 
 
-	if (mnl_batch_ready()) {
+	if (mnl_batch_ready())
 		netlink_batch_send(&err_list);
-	} else
+	else
 		mnl_batch_reset();
 	return res;
 
 }
 
+/*
+ * Check whether a rule exists.
+ * @family:  protocol family
+ * @table:   table name
+ * @chain:   chain name
+ */
+int gui_check_rule_exist(int family, const char *table, const char *chain, int handle_no)
+{
+	struct netlink_ctx	ctx;
+	struct handle		handle;
+	int			res;
+	struct rule		*r, *tmp;
+
+	LIST_HEAD(msgs);
+	ctx.msgs = &msgs;
+	ctx.seqnum  = mnl_seqnum_alloc();
+	init_list_head(&ctx.list);
+
+	handle.family = family;
+	handle.table = table;
+	handle.chain = chain;
+	handle.handle = handle_no;
+
+	res = gui_check_chain_exist(family, table, chain);
+	if (res == CHAIN_TABLE_NOT_EXIST)
+		return RULE_TABLE_NOT_EXIST;
+	if (res == CHAIN_NOT_EXIST)
+		return RULE_CHAIN_NOT_EXIST;
+	if (res != CHAIN_SUCCESS)
+		return RULE_KERNEL_ERROR;
+
+	res = netlink_get_rule(&ctx, &handle, &internal_location);
+	if (res < 0) {
+		struct  error_record *erec, *next;
+		if (errno == ENOENT)
+			res = RULE_NOT_EXIST;
+		else
+			res = RULE_KERNEL_ERROR;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
+		return res;
+	}
+	list_for_each_entry_safe(r, tmp, &ctx.list, list) {
+		list_del(&r->list);
+		rule_free(r);
+	}
+	return RULE_SUCCESS;
+}
 
 /*
  * Get number of sets in a table.

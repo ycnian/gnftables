@@ -65,6 +65,7 @@ struct page_info {
 	char	*chain;
 	char	*set;
 	char	*type;
+	int	handle;
 };
 struct top_window {
 	int	silent;
@@ -77,7 +78,7 @@ struct top_window {
 	GtkWidget	*rule_container;
 	GtkWidget	*table;
 	GtkWidget	*chain_set;
-	GtkWidget	*rule_rule;
+	GtkWidget	*rule;
 	struct page_info	*data;
 };
 
@@ -115,6 +116,20 @@ struct chain_submit_argsnnn {
 	gint		family;
 	gchar		*table;
 };
+
+
+struct set_submit_argsnnn {
+	GtkWidget	*name;
+	GtkWidget	*type;
+	GtkWidget	*add;
+	GtkTreeStore	*store;
+	GtkWidget	*treeview;
+	GtkWidget	*msg;
+	gint		family;
+	gchar		*table;
+	int		create;
+};
+
 
 /**
  * widgets containg values used in table creating procedure
@@ -379,97 +394,26 @@ struct rule_create_widget {
 };
 
 
-void remove_book(GtkButton *button, GtkNotebook *notebook);
-void select_page(GtkNotebook *notebook, GtkWidget *page, guint page_num, gpointer user_data);
-GdkPixbuf  *create_pixbuf(const gchar *filename);
-void back_to_table_list (GtkButton *button, gpointer  notebook);
-void create_new_chain(GtkButton *button, gpointer  notebook);
-void begin_create_new_table(GtkButton *button, gpointer  info);
-void back_to_table_list (GtkButton *button, gpointer  notebook);
-void gnftables_set_chain_init(gint family, gchar *table_name, GtkWidget *notebook);
-void gnftables_table_init(GtkWidget *notebook);
-void select_family(GtkComboBox *widget, gpointer user_data);
-GtkWidget *create_family_list(gint list, void (*callback)(GtkComboBox *widget, gpointer data), gpointer data);
-
-
-void gnftables_set_init(GtkButton *button, gpointer  data);
-
-
-
-int  get_table_list(struct list_head *table_list, uint32_t family);
-int gui_delete_table(int family, char *name);
-
-int str2family(const char *family);
-
-
-void table_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data);
-void table_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer data);
-gboolean show_treeview_menu(GtkWidget *widget, GdkEvent  *event, gpointer   user_data);
-
-
-void chain_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data);
-void chain_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer data);
-void chain_update_data(struct chain_list_args *args);
-void basechain_selected(GtkWidget *check_button, gpointer data);
-void back_to_chain_list(GtkButton *button, gpointer  info);
-void begin_create_new_chain(GtkButton *button, gpointer  info);
-
-
-void gnftables_rule_init(gint family, gchar *table_name, gchar *chain_name, GtkWidget *notebook);
-void rule_update_data(struct rule_list_args *args);
-
-void rule_callback_detail(GtkCellRendererToggle *cell, gchar *path_str, gpointer data);
-void rule_callback_delete(GtkCellRendererToggle *cell, gchar *path_str, gpointer data);
-
-void create_new_rule(GtkButton *button, gpointer  data);
-void create_new_rule_begin(gpointer  data);
-void transport_callback(GtkComboBoxText *widget, gpointer data);
-void back_to_rule_list(GtkButton *button, gpointer  info);
-void begin_create_new_rule(GtkButton *button, gpointer  info);
-void chain_list_type_changed(GtkComboBoxText *widget, gpointer data);
-void chain_create_type_changed(GtkComboBoxText *widget, gpointer data);
-
-void transport_callback_do(struct rule_create_widget  *widget);
-void update_pktmeta_position(struct rule_create_widget  *widget);
-void update_actions_position(struct rule_create_widget  *widget);
-void update_index_position(struct rule_create_widget  *widget);
-void update_cancel_ok_position(struct rule_create_widget  *widget);
-void update_header_transport_widgets(GtkWidget *fixed, struct transport_info *transport);
-void header_transport_show_all(GtkWidget *fixed, struct transport_info *transport);
-void header_transport_show_tcp(GtkWidget *fixed, struct transport_info *transport);
-void header_transport_show_udp(GtkWidget *fixed, struct transport_info *transport);
-void header_saddr_exclude(GtkWidget *check_button, gpointer data);
-void header_daddr_exclude(GtkWidget *check_button, gpointer data);
-void header_trans_port_init(const char *string, GtkWidget *fixed, int vertical,
-                struct transport_port_info *port,
-                void (* porttype_callback)(GtkComboBoxText *widget, gpointer data),
-                void (* port_exclude)(GtkWidget *check_button, gpointer data));
-void header_trans_all_init(void);
-void header_trans_tcp_init(GtkWidget *fixed, struct transport_port_info *sport, struct transport_port_info *dport);
-void header_trans_udp_init(GtkWidget *fixed, struct transport_port_info *sport, struct transport_port_info *dport);
-void transport_port_callback(GtkComboBoxText *widget, gpointer data);
-void transport_port_exclude(GtkWidget *check_button, gpointer data);
-void header_transport_porttype_changed(struct transport_port_info  *port_info);
-
-void gnftables_goto_chain_list(GtkButton *button, gpointer  data);
-void set_update_data(struct set_list_args *args);
-struct rule_create_widget *rule_widget_container_create(struct rule_list_args *rule_arg);
-void rule_add_content_header(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg);
-void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg);
-void rule_add_content_submit(struct rule_create_widget *new_rule);
-void rule_add_content(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg);
-//void rule_add_content_header_data(struct match_header *header, struct pktheader *header_data);
-void rule_add_content_actions(struct rule_create_widget *new_rule, struct rule_list_args *rule_arg);
-void rule_actions_add(GtkButton *button, gpointer data);
-void back_to_set_list(GtkButton *button, gpointer info);
-void begin_create_new_set(GtkButton *button, gpointer info);
-
-
-
+void gnftables_rule_submit(GtkButton *button, gpointer info);
+void gnftables_rule_add(GtkButton *button, gpointer data);
+void gnftables_rule_details(GtkCellRendererToggle *cell,
+		gchar *path_str, gpointer data);
+void gnftables_rule_delete(GtkCellRendererToggle *cell,
+		gchar *path_str, gpointer data);
+void gnftables_rule_update(struct page_info *args, GtkTreeStore *store);
+void gnftables_rule_list(void);
 void gnftables_addpage_rule(void);
 
+
+void gnftables_set_submit(GtkButton *button, gpointer info);
+void gnftables_set_add(GtkButton *button, gpointer data);
+void gnftables_set_details(GtkCellRendererToggle *cell,
+		gchar *path_str, gpointer data);
+void gnftables_set_delete(GtkCellRendererToggle *cell,
+		gchar *path_str, gpointer data);
 void gnftables_set_update(struct page_info *args, GtkTreeStore *store);
 void gnftables_set_list(void);
+
 
 void gnftables_chain_submit(GtkButton *button, gpointer info);
 void gnftables_chain_add(GtkButton *button, gpointer data);
@@ -480,6 +424,7 @@ void gnftables_chain_delete(GtkCellRendererToggle *cell,
 void gnftables_chain_update(struct page_info *args, GtkTreeStore *store);
 void gnftables_chain_list(void);
 void gnftables_addpage_chain(void);
+
 
 void gnftables_table_submit(GtkButton *button, gpointer info);
 void gnftables_table_add(GtkButton *button, gpointer data);

@@ -869,7 +869,7 @@ error:
 	return res;
 }
 
-static int set_get_name_from_page(struct set_create_widget *widget,
+static int set_get_name_from_page(struct set_submit_argsnnn *widget,
 		struct set_create_data *data)
 {
 	char	*name;
@@ -884,7 +884,7 @@ static int set_get_name_from_page(struct set_create_widget *widget,
 	return SET_SUCCESS;
 }
 
-static int set_get_type_from_page(struct set_create_widget *widget,
+static int set_get_type_from_page(struct set_submit_argsnnn *widget,
 		struct set_create_data *data)
 {
 	char	*type;
@@ -894,7 +894,7 @@ static int set_get_type_from_page(struct set_create_widget *widget,
 	return SET_SUCCESS;
 }
 
-static int set_get_elems_from_page(struct set_create_widget *widget,
+static int set_get_elems_from_page(struct set_submit_argsnnn *widget,
 		struct set_create_data *data)
 {
 	GtkTreeIter     iter;
@@ -920,7 +920,7 @@ static int set_get_elems_from_page(struct set_create_widget *widget,
 	return SET_SUCCESS;
 }
 
-int set_create_getdata(struct set_create_widget  *widget,
+int set_create_getdata(struct set_submit_argsnnn  *widget,
 		struct set_create_data **data)
 {
 	int	res;

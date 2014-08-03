@@ -3167,7 +3167,7 @@ void gnftables_addpage_chain(void)
 	GtkWidget	*notebook;
 	GtkWidget	*container;
 
-	title = gtk_label_new("Chains");
+	title = gtk_label_new("Chains/Sets");
 	gtk_widget_set_size_request(title, 200, 10);
 
 	notebook = top_window->notebook;

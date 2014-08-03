@@ -1165,7 +1165,7 @@ int rule_parse_ip_protocol_expr(struct expr *expr, struct pktheader *header, enu
 		trans->udp = xmalloc(sizeof(struct trans_udp_data));
 		trans->trans_type = TRANSPORT_UDP;
 	} else
-		BUG();
+		return RULE_TYPE_NOT_SUPPORT;
 
 	return RULE_SUCCESS;
 }
@@ -1220,7 +1220,7 @@ int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr, enum o
 			expr_snprint(addr->range.from, size + 1, expr);
 			break;
 		default:
-			BUG();
+			return RULE_TYPE_NOT_SUPPORT;
 		}
 	} else if (expr->ops->type == EXPR_SET_REF) {
 		int	size = expr_snprint(NULL, 0, expr);
@@ -1237,7 +1237,7 @@ int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr, enum o
 		}
 
 	} else
-		BUG();
+		return RULE_TYPE_NOT_SUPPORT;
 	return RULE_SUCCESS;
 }
 
@@ -1300,7 +1300,7 @@ int rule_parse_port_expr(struct expr *expr,  struct trans_port_data *port, enum 
 			expr_snprint(port->range.from, size + 1, expr);
 			break;
 		default:
-			BUG();
+			return RULE_TYPE_NOT_SUPPORT;
 		}
 	} else if (expr->ops->type == EXPR_SET_REF) {
 		int	size = expr_snprint(NULL, 0, expr);
@@ -1316,7 +1316,7 @@ int rule_parse_port_expr(struct expr *expr,  struct trans_port_data *port, enum 
 			strncpy(port->portlist, buf + 1, size - 1);
 		}
 	} else
-		BUG();
+		return RULE_TYPE_NOT_SUPPORT;
 
 	return RULE_SUCCESS;
 }
@@ -1388,6 +1388,7 @@ int rule_parse_header_expr(struct expr *expr, struct pktheader *header)
 	enum ops	op;
 	int	total = 0;
 	int	i = 0;
+	int	res;
 
 	op = expr->op;
 	left = expr->left;
@@ -1405,16 +1406,15 @@ int rule_parse_header_expr(struct expr *expr, struct pktheader *header)
 		parse = header_udp_parsers;
 		total = array_size(header_ip_parsers);
 	} else
-		BUG();
-
+		return RULE_TYPE_NOT_SUPPORT;
 
 	for (i = 0; i < total; i++) {
 		if (strcmp(tmpl->token, parse[i].name))
 			continue;
-		parse[i].parse(right, header, op);
-		return RULE_SUCCESS;
+		res = parse[i].parse(right, header, op);
+		return res;
 	}
-	return RULE_SUCCESS;
+	return RULE_TYPE_NOT_SUPPORT;
 }
 
 static int rule_parse_ifname_expr(struct expr *expr, union ifname *ifname)
@@ -1485,7 +1485,7 @@ int rule_parse_pktmeta(struct expr *expr, struct pktmeta *pktmeta)
 		pktmeta->skgid = xzalloc(sizeof(union skid));
 		return rule_parse_skgid_expr(expr->right, pktmeta->skgid);
 	default:
-		BUG();
+		return RULE_TYPE_NOT_SUPPORT;
 	}
 
 	return RULE_SUCCESS;
@@ -1498,7 +1498,8 @@ int rule_parse_expr(struct stmt *stmt, struct rule_create_data *p)
 
 	expr = stmt->expr;
 	left = expr->left;
-	assert(expr->ops->type == EXPR_RELATIONAL);
+	if (expr->ops->type != EXPR_RELATIONAL)
+		return RULE_TYPE_NOT_SUPPORT;
 
 	switch (left->ops->type) {
 	case EXPR_PAYLOAD:
@@ -1506,7 +1507,7 @@ int rule_parse_expr(struct stmt *stmt, struct rule_create_data *p)
 	case EXPR_META:
 		return rule_parse_pktmeta(expr, p->pktmeta);
 	default:
-		return RULE_SUCCESS;
+		return RULE_TYPE_NOT_SUPPORT;
 	}
 }
 
@@ -1549,6 +1550,8 @@ int rule_parse_verdict_stmt(struct stmt *stmt, struct rule_create_data *p)
 		return rule_parse_drop_expr(expr, p->actions);
 	case NFT_JUMP:
 		return rule_parse_jump_expr(expr, p->actions);
+	default:
+		return RULE_TYPE_NOT_SUPPORT;
 	}
 	return RULE_SUCCESS;
 }
@@ -1575,13 +1578,14 @@ int rule_parse_stmt(struct stmt *stmt, struct rule_create_data *p)
 	case STMT_COUNTER:
 		return rule_parse_counter_stmt(stmt, p);
 	default:
-		BUG("unknown statement type %s\n", stmt->ops->name);
+		return RULE_TYPE_NOT_SUPPORT;
 	}
 	return RULE_SUCCESS;
 }
 
 int rule_de_expressions(struct rule *rule, struct rule_create_data **data)
 {
+	int	res;
 	struct  stmt	*stmt;
 	struct rule_create_data *p;
 
@@ -1594,10 +1598,15 @@ int rule_de_expressions(struct rule *rule, struct rule_create_data **data)
 
 
 	list_for_each_entry(stmt, &rule->stmts, list) {
-		rule_parse_stmt(stmt, p);
+		res = rule_parse_stmt(stmt, p);
+		if (res != RULE_SUCCESS)
+			goto error;
 	}
 	*data = p;
 	return RULE_SUCCESS;
+error:
+	// rule_create_data_release(p);
+	return res;
 }
 
 int set_parse_expr(struct expr *expr, struct set_create_data *gui_set)

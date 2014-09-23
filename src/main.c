@@ -186,6 +186,10 @@ static void load_rules(GtkButton *button, gpointer data)
 
 	gtk_widget_destroy(dialog);
 	gnftables_table_list();
+	if (top_window->chain_set_container)
+		gtk_widget_hide(top_window->chain_set_container);
+	if (top_window->rule_container)
+		gtk_widget_hide(top_window->rule_container);
 }
 
 
@@ -219,7 +223,6 @@ static void save_rules(GtkButton *button, gpointer data)
 	}
 
 	gtk_widget_destroy(dialog);
-	gnftables_table_list();
 }
 
 

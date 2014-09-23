@@ -178,7 +178,8 @@ static int rule_snprint(char *str, size_t size, const struct rule *rule)
 	return res;
 }
 
-int gui_get_rules_list(struct list_head *head, int family, char *table, char *chain)
+int gui_get_rules_list(struct list_head *head, int family, char *table,
+			char *chain)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
@@ -235,7 +236,8 @@ int gui_get_rules_list(struct list_head *head, int family, char *table, char *ch
 }
 
 
-int gui_get_rule(int family, const char *table, const char *chain, int handle_no, struct rule_create_data  **content)
+int gui_get_rule(int family, const char *table, const char *chain,
+			int handle_no, struct rule_create_data  **content)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
@@ -287,7 +289,8 @@ int gui_get_rule(int family, const char *table, const char *chain, int handle_no
 	return res;
 }
 
-int gui_delete_rule(int family, const char *table, const char *chain, int handle_no)
+int gui_delete_rule(int family, const char *table, const char *chain,
+			int handle_no)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
@@ -399,7 +402,8 @@ int gui_add_rule(struct rule_create_data *data)
  * @table:   table name
  * @chain:   chain name
  */
-int gui_check_rule_exist(int family, const char *table, const char *chain, int handle_no)
+int gui_check_rule_exist(int family, const char *table, const char *chain,
+			int handle_no)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
@@ -489,7 +493,8 @@ int gui_get_sets_number(int family, char *table, int *nsets)
  * Actually，kernel doesn't support to get sets in certain types. We have to
  * get all sets and filter sets in a certain type.
  */
-int gui_get_sets_list(struct list_head *head, int family, char *table, const char *desc, int elements)
+int gui_get_sets_list(struct list_head *head, int family, char *table,
+			const char *desc, int elements)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
@@ -533,7 +538,8 @@ int gui_get_sets_list(struct list_head *head, int family, char *table, const cha
 			if (res < 0) {
 				struct  error_record *erec, *next;
 				res = SET_KERNEL_ERROR;
-				list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+				list_for_each_entry_safe(erec, next, ctx.msgs,
+					list) {
 					list_del(&erec->list);
 					erec_destroy(erec);
 				}
@@ -579,7 +585,8 @@ error:
  * @table:  table name
  * @type:   chain type, only show chains in this type
  */
-int gui_get_chains_list(struct list_head *head, int family, char *table, const char *type, int rules)
+int gui_get_chains_list(struct list_head *head, int family, char *table,
+			const char *type, int rules)
 {
 	struct netlink_ctx	ctx;
 	struct handle		handle;
@@ -608,8 +615,10 @@ int gui_get_chains_list(struct list_head *head, int family, char *table, const c
 
 	list_for_each_entry_safe(chain, c, &ctx.list, list) {
 		if (!strcmp(type, "all") ||
-			(!(chain->flags & CHAIN_F_BASECHAIN) && !strcmp(type, "user")) ||
-			((chain->flags & CHAIN_F_BASECHAIN) && !strcmp(type, chain->type))) {
+			(!(chain->flags & CHAIN_F_BASECHAIN) &&
+				!strcmp(type, "user")) ||
+				((chain->flags & CHAIN_F_BASECHAIN) &&
+				!strcmp(type, chain->type))) {
 			gui_chain = xmalloc(sizeof(struct chain_list_data));
 			gui_chain->family = chain->handle.family;
 			gui_chain->table = xstrdup(chain->handle.table);
@@ -625,7 +634,8 @@ int gui_get_chains_list(struct list_head *head, int family, char *table, const c
 				gui_chain->type = NULL;
 			}
 			if (rules) {
-				res = gui_get_rules_number(family, table, gui_chain->chain, &nrules);
+				res = gui_get_rules_number(family, table,
+						gui_chain->chain, &nrules);
 				if (res != RULE_SUCCESS) {
 					gui_chain_free(gui_chain);
 					goto error;
@@ -1326,7 +1336,8 @@ struct print_fmt_options {
 	const char      *stmt_separator;
 };
 
-static void do_set_fprint(FILE *f, const struct set *set, struct print_fmt_options *opts)
+static void do_set_fprint(FILE *f, const struct set *set,
+				struct print_fmt_options *opts)
 {
 	const char *delim = "";
 	const char *type;

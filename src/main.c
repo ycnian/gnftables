@@ -47,7 +47,7 @@
 
 
 unsigned int max_errors = 10;
-unsigned int numeric_output;
+unsigned int numeric_output = 1;
 unsigned int handle_output;
 #ifdef DEBUG
 unsigned int debug_level;

@@ -187,6 +187,7 @@ int gui_get_rules_list(struct list_head *head, int family, char *table,
 	struct rule		*rule, *r;
 	int			res;
 	struct gui_rule		*gui_rule;
+	struct set		*set, *s;
 
 	LIST_HEAD(msgs);
 	ctx.msgs = &msgs;
@@ -206,6 +207,23 @@ int gui_get_rules_list(struct list_head *head, int family, char *table,
 		tmp = table_alloc();
 		handle_merge(&tmp->handle, &handle);
 		table_add_hash(tmp);
+	}
+
+
+	if (netlink_list_sets(&ctx, &handle, &internal_location) < 0) {
+		struct  error_record *erec, *next;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
+		return RULE_KERNEL_ERROR;
+	}
+	list_for_each_entry_safe(set, s, &ctx.list, list) {
+		list_del(&set->list);
+		if (netlink_get_setelems(&ctx, &set->handle,
+				&internal_location, set) < 0)
+			return RULE_KERNEL_ERROR;
+		set_add_hash(set, tmp);
 	}
 
 	res = netlink_list_chain(&ctx, &handle, &internal_location);

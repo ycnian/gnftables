@@ -2159,6 +2159,7 @@ void gnftables_set_add(GtkButton *button, gpointer data)
 	name = gtk_label_new("Name:");
 	gtk_fixed_put(GTK_FIXED(fixed_chain), name, 30, 30);
 	name_value = gtk_entry_new();
+	gtk_widget_set_tooltip_text(name_value, "No more than 15 characters.");
 	gtk_entry_set_width_chars(GTK_ENTRY(name_value), 30);
 	gtk_entry_set_max_length(GTK_ENTRY(name_value), 32);
 	if (set_data) {
@@ -2724,6 +2725,7 @@ void gnftables_chain_add(GtkButton *button, gpointer data)
 	name = gtk_label_new("Name:");
 	gtk_fixed_put(GTK_FIXED(fixed_chain), name, 30, 30);
 	name_value = gtk_entry_new();
+	gtk_widget_set_tooltip_text(name_value, "No more than 30 characters.");
 	gtk_entry_set_width_chars(GTK_ENTRY(name_value), 30);
 	gtk_entry_set_max_length(GTK_ENTRY(name_value), 32);
 	gtk_fixed_put(GTK_FIXED(fixed_chain), name_value, 100, 30);
@@ -3292,6 +3294,7 @@ void gnftables_table_add(GtkButton *button, gpointer data)
 	name = gtk_label_new("Name:");
 	gtk_fixed_put(GTK_FIXED(fixed_info), name, 30, 60);
 	name_value = gtk_entry_new();
+	gtk_widget_set_tooltip_text(name_value, "No more than 30 characters.");
 	gtk_entry_set_width_chars(GTK_ENTRY(name_value), 30);
 	gtk_entry_set_max_length(GTK_ENTRY(name_value), 32);
 	gtk_fixed_put(GTK_FIXED(fixed_info), name_value, 100, 60);

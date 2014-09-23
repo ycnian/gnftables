@@ -29,7 +29,8 @@
 #include <erec.h>
 #include <gmputil.h>
 
-int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
+int rule_addrlist_gen_exprs(struct rule_create_data *data,
+			struct ip_addr_data *addr, int source)
 {
 	struct expr  *payload = NULL;
 	struct expr  *constant = NULL;
@@ -114,7 +115,8 @@ int rule_addrlist_gen_exprs(struct rule_create_data *data, struct ip_addr_data *
 	return RULE_SUCCESS;
 }
 
-int rule_addrsubnet_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
+int rule_addrsubnet_gen_exprs(struct rule_create_data *data,
+			struct ip_addr_data *addr, int source)
 {
 	struct expr  *payload = NULL;
 	struct expr  *symbol = NULL;
@@ -141,7 +143,8 @@ int rule_addrsubnet_gen_exprs(struct rule_create_data *data, struct ip_addr_data
 	type = source ? IPHDR_SADDR: IPHDR_DADDR;
 	op = (addr->exclude) ? OP_NEQ: OP_EQ;
 	payload = payload_expr_alloc(data->loc, &proto_ip, type);
-	symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, addr->subnet.ip);
+	symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL,
+			addr->subnet.ip);
 	expr_set_type(symbol, &ipaddr_type, BYTEORDER_BIG_ENDIAN);
 	erec = symbol_parse(symbol, &base);
 	if (erec) {
@@ -179,7 +182,8 @@ int rule_addrsubnet_gen_exprs(struct rule_create_data *data, struct ip_addr_data
 	return RULE_SUCCESS;
 }
 
-int rule_addrrange_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
+int rule_addrrange_gen_exprs(struct rule_create_data *data,
+			struct ip_addr_data *addr, int source)
 {
 	struct expr  *payload = NULL;
 	struct expr  *left = NULL;
@@ -223,7 +227,8 @@ int rule_addrrange_gen_exprs(struct rule_create_data *data, struct ip_addr_data 
 			res = RULE_HEADER_IP_RANGE_INVALID;
 			goto err;
 		}
-		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, range);
+		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload,
+						range);
 		rela->op = op;
 	} else if (from) {
 		op = (addr->exclude) ? OP_LT : OP_GTE;
@@ -235,7 +240,8 @@ int rule_addrrange_gen_exprs(struct rule_create_data *data, struct ip_addr_data 
 			goto err;
 		}
 		expr_free(symbol);
-		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, left);
+		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload,
+						left);
 		rela->op = op;
 	} else if (to) {
 		op = (addr->exclude) ? OP_GT : OP_LTE;
@@ -247,7 +253,8 @@ int rule_addrrange_gen_exprs(struct rule_create_data *data, struct ip_addr_data 
 			goto err;
 		}
 		expr_free(symbol);
-		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, right);
+		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload,
+						right);
 		rela->op = op;
 	} else
 		return RULE_SUCCESS;
@@ -277,7 +284,8 @@ err:
 	return res;
 }
 
-static int rule_addrset_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
+static int rule_addrset_gen_exprs(struct rule_create_data *data,
+			struct ip_addr_data *addr, int source)
 {
 	struct expr  *payload = NULL;
 	struct expr  *rela = NULL;
@@ -338,7 +346,8 @@ static int rule_addrset_gen_exprs(struct rule_create_data *data, struct ip_addr_
 	return RULE_SUCCESS;
 }
 
-int rule_addr_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr, int source)
+int rule_addr_gen_exprs(struct rule_create_data *data,
+			struct ip_addr_data *addr, int source)
 {
 	enum address_type	ip_type;
 	int	res = RULE_SUCCESS;
@@ -365,7 +374,8 @@ int rule_addr_gen_exprs(struct rule_create_data *data, struct ip_addr_data *addr
 }
 
 int rule_portlist_gen_exprs(struct rule_create_data *data,
-		struct trans_port_data *port, enum transport_type type, int source)
+		struct trans_port_data *port,
+		enum transport_type type, int source)
 {
 	struct expr  *payload = NULL;
 	struct expr  *constant = NULL;
@@ -409,7 +419,8 @@ int rule_portlist_gen_exprs(struct rule_create_data *data,
 	portlist = xstrdup(port->portlist);
 	portdata = string_skip_space(strtok(portlist, ","));
 	while (portdata) {
-		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, portdata);
+		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL,
+						portdata);
 		xfree(portdata);
 		expr_set_type(symbol, &inet_service_type, BYTEORDER_BIG_ENDIAN);
 		erec = symbol_parse(symbol, &constant);
@@ -462,7 +473,8 @@ int rule_portlist_gen_exprs(struct rule_create_data *data,
 }
 
 int rule_portrange_gen_exprs(struct rule_create_data *data,
-		struct trans_port_data *port, enum transport_type type, int source)
+		struct trans_port_data *port,
+		enum transport_type type, int source)
 {
 	struct expr  *payload = NULL;
 	struct expr  *left = NULL;
@@ -518,7 +530,8 @@ int rule_portrange_gen_exprs(struct rule_create_data *data,
 			res = RULE_HEADER_PORT_RANGE_INVALID;
 			goto err;
 		}
-		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, range);
+		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload,
+						range);
 		rela->op = op;
 	} else if (from) {
 		op = (port->exclude) ? OP_LT : OP_GTE;
@@ -530,7 +543,8 @@ int rule_portrange_gen_exprs(struct rule_create_data *data,
 			goto err;
 		}
 		expr_free(symbol);
-		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, left);
+		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload,
+						left);
 		rela->op = op;
 	} else if (to) {
 		op = (port->exclude) ? OP_GT : OP_LTE;
@@ -542,7 +556,8 @@ int rule_portrange_gen_exprs(struct rule_create_data *data,
 			goto err;
 		}
 		expr_free(symbol);
-		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, right);
+		rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload,
+						right);
 		rela->op = op;
 	} else
 		return RULE_SUCCESS;
@@ -573,7 +588,8 @@ err:
 }
 
 static int rule_portset_gen_exprs(struct rule_create_data *data,
-		struct trans_port_data *port, enum transport_type type, int source)
+		struct trans_port_data *port,
+		enum transport_type type, int source)
 {
 	struct expr  *payload = NULL;
 	struct expr  *rela = NULL;
@@ -646,7 +662,9 @@ static int rule_portset_gen_exprs(struct rule_create_data *data,
 	return RULE_SUCCESS;
 }
 
-int rule_port_gen_exprs(struct rule_create_data *data, struct trans_port_data *port, enum transport_type type, int source)
+int rule_port_gen_exprs(struct rule_create_data *data,
+		struct trans_port_data *port,
+		enum transport_type type, int source)
 {
 	enum port_type	port_type;
 	int	res = RULE_SUCCESS;
@@ -669,14 +687,16 @@ int rule_port_gen_exprs(struct rule_create_data *data, struct trans_port_data *p
 	return res;
 }
 
-int rule_transall_gen_exprs(struct rule_create_data *data, struct trans_all_data *all)
+int rule_transall_gen_exprs(struct rule_create_data *data,
+		struct trans_all_data *all)
 {
 
 	return RULE_SUCCESS;
 }
 
 
-int rule_ip_upper_expr(struct rule_create_data *data, enum transport_type upper)
+int rule_ip_upper_expr(struct rule_create_data *data,
+		enum transport_type upper)
 {
 	struct expr  *payload;
 	struct expr  *constant;
@@ -696,9 +716,10 @@ int rule_ip_upper_expr(struct rule_create_data *data, enum transport_type upper)
 	}
 
 	payload = payload_expr_alloc(data->loc, &proto_ip, IPHDR_PROTOCOL);
-	constant = constant_expr_alloc(data->loc, &inet_protocol_type, BYTEORDER_HOST_ENDIAN,
-			8, &proto);
-	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload, constant);
+	constant = constant_expr_alloc(data->loc, &inet_protocol_type,
+			BYTEORDER_HOST_ENDIAN, 8, &proto);
+	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, payload,
+			constant);
 	rela->op = OP_EQ;
 	stmt = expr_stmt_alloc(data->loc, rela);
 	list_add_tail(&stmt->list, &data->exprs);
@@ -706,7 +727,8 @@ int rule_ip_upper_expr(struct rule_create_data *data, enum transport_type upper)
 	return RULE_SUCCESS;
 }
 
-int rule_transtcp_gen_exprs(struct rule_create_data *data, struct trans_tcp_data *tcp, enum transport_type type)
+int rule_transtcp_gen_exprs(struct rule_create_data *data, 
+		struct trans_tcp_data *tcp, enum transport_type type)
 {
 	int	res = RULE_SUCCESS;
 
@@ -721,7 +743,8 @@ int rule_transtcp_gen_exprs(struct rule_create_data *data, struct trans_tcp_data
 	return res;
 }
 
-int rule_transudp_gen_exprs(struct rule_create_data *data, struct trans_udp_data *udp, enum transport_type type)
+int rule_transudp_gen_exprs(struct rule_create_data *data,
+		struct trans_udp_data *udp, enum transport_type type)
 {
 	int	res = RULE_SUCCESS;
 
@@ -737,7 +760,8 @@ int rule_transudp_gen_exprs(struct rule_create_data *data, struct trans_udp_data
 
 }
 
-int rule_trans_gen_exprs(struct rule_create_data *data, struct transport_data *trans)
+int rule_trans_gen_exprs(struct rule_create_data *data,
+		struct transport_data *trans)
 {
 	enum transport_type	type;
 	int	res = RULE_SUCCESS;
@@ -785,7 +809,8 @@ int rule_header_gen_exprs(struct rule_create_data *data, struct pktheader *heade
 /*
  * meta iftype doesn't support anonymous now.
  */
-int rule_ifname_gen_exprs(struct rule_create_data *data, struct list_head *head, int source)
+int rule_ifname_gen_exprs(struct rule_create_data *data, struct list_head *head,
+			int source)
 {
 	struct expr  *meta;
 	struct expr  *constant;
@@ -805,7 +830,8 @@ int rule_ifname_gen_exprs(struct rule_create_data *data, struct list_head *head,
 	meta = meta_expr_alloc(data->loc, key);
 
 	s_elem = list_first_entry(head, struct string_elem, list);
-	constant = constant_expr_alloc(data->loc, &string_type, BYTEORDER_HOST_ENDIAN,
+	constant = constant_expr_alloc(data->loc, &string_type,
+			BYTEORDER_HOST_ENDIAN,
 			(strlen(s_elem->value) + 1) * 8, s_elem->value);
 	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, meta, constant);
 	rela->op = op;
@@ -815,7 +841,8 @@ int rule_ifname_gen_exprs(struct rule_create_data *data, struct list_head *head,
 	return RULE_SUCCESS;
 }
 
-int rule_iftype_gen_exprs(struct rule_create_data *data, struct list_head *head, int source)
+int rule_iftype_gen_exprs(struct rule_create_data *data, struct list_head *head,
+			int source)
 {
 	struct expr  *meta;
 	struct expr  *constant;
@@ -845,8 +872,8 @@ int rule_iftype_gen_exprs(struct rule_create_data *data, struct list_head *head,
 
 	list_for_each_entry(s_elem, head, list) {
 		type = s_elem->value;
-		constant = constant_expr_alloc(data->loc, &arphrd_type, BYTEORDER_HOST_ENDIAN,
-			2 * 8, &type);
+		constant = constant_expr_alloc(data->loc, &arphrd_type,
+			BYTEORDER_HOST_ENDIAN, 2 * 8, &type);
 		compound_expr_add(elem, constant);
 	}
 
@@ -885,7 +912,8 @@ int rule_iftype_gen_exprs(struct rule_create_data *data, struct list_head *head,
 	return RULE_SUCCESS;
 }
 
-int rule_skid_gen_exprs(struct rule_create_data *data, struct list_head *head, int uid)
+int rule_skid_gen_exprs(struct rule_create_data *data, struct list_head *head,
+			int uid)
 {
 	struct expr  *meta;
 	struct expr  *constant;
@@ -922,8 +950,8 @@ int rule_skid_gen_exprs(struct rule_create_data *data, struct list_head *head, i
 
 	list_for_each_entry(i_elem, head, list) {
 		id = i_elem->value;
-		constant = constant_expr_alloc(data->loc, keytype, BYTEORDER_HOST_ENDIAN,
-			keylen, &id);
+		constant = constant_expr_alloc(data->loc, keytype,
+			BYTEORDER_HOST_ENDIAN, keylen, &id);
 		compound_expr_add(elem, constant);
 	}
 
@@ -963,7 +991,8 @@ int rule_skid_gen_exprs(struct rule_create_data *data, struct list_head *head, i
 	return RULE_SUCCESS;
 }
 
-int rule_pktmeta_gen_exprs(struct rule_create_data *data, struct pktmeta *pktmeta)
+int rule_pktmeta_gen_exprs(struct rule_create_data *data,
+			struct pktmeta *pktmeta)
 {
 	int	res = RULE_SUCCESS;
 
@@ -1132,7 +1161,8 @@ error:
 
 struct header_parse{
 	const char	*name;
-	int		(*parse)(struct expr *expr, struct pktheader *header, enum ops op);
+	int		(*parse)(struct expr *expr, struct pktheader *header,
+					enum ops op);
 };
 
 struct header_parse header_ip_parsers[IPHDR_DADDR + 1] = {
@@ -1150,7 +1180,8 @@ struct header_parse header_ip_parsers[IPHDR_DADDR + 1] = {
 	{ .name = "daddr",	.parse = rule_parse_ip_daddr_expr},
 };
 
-int rule_parse_ip_protocol_expr(struct expr *expr, struct pktheader *header, enum ops op)
+int rule_parse_ip_protocol_expr(struct expr *expr, struct pktheader *header,
+				enum ops op)
 {
 	char	proto[10];
 	struct transport_data   *trans;
@@ -1170,7 +1201,8 @@ int rule_parse_ip_protocol_expr(struct expr *expr, struct pktheader *header, enu
 	return RULE_SUCCESS;
 }
 
-int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr, enum ops op)
+int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr,
+				enum ops op)
 {
 	if (expr->ops->type == EXPR_PREFIX) {
 		int   size;
@@ -1241,14 +1273,16 @@ int rule_parse_ip_addr_expr(struct expr *expr, struct ip_addr_data *addr, enum o
 	return RULE_SUCCESS;
 }
 
-int rule_parse_ip_saddr_expr(struct expr *expr, struct pktheader *header, enum ops op)
+int rule_parse_ip_saddr_expr(struct expr *expr, struct pktheader *header,
+				enum ops op)
 {
 	if (!header->saddr)
 		header->saddr = xmalloc(sizeof(struct ip_addr_data));
 	return rule_parse_ip_addr_expr(expr, header->saddr, op);
 }
 
-int rule_parse_ip_daddr_expr(struct expr *expr, struct pktheader *header, enum ops op)
+int rule_parse_ip_daddr_expr(struct expr *expr, struct pktheader *header,
+				enum ops op)
 {
 	if(!header->daddr)
 		header->daddr = xmalloc(sizeof(struct ip_addr_data));
@@ -1269,7 +1303,8 @@ struct header_parse header_tcp_parsers[TCPHDR_URGPTR + 1] = {
 	{ .name = "urgptr",	.parse = NULL},
 };
 
-int rule_parse_port_expr(struct expr *expr,  struct trans_port_data *port, enum ops op)
+int rule_parse_port_expr(struct expr *expr,  struct trans_port_data *port,
+				enum ops op)
 {
 	if (expr->ops->type == EXPR_VALUE) {
 		int	size;
@@ -1321,28 +1356,36 @@ int rule_parse_port_expr(struct expr *expr,  struct trans_port_data *port, enum 
 	return RULE_SUCCESS;
 }
 
-int rule_parse_tcp_sport_expr(struct expr *expr, struct pktheader *header, enum ops op)
+int rule_parse_tcp_sport_expr(struct expr *expr, struct pktheader *header,
+				enum ops op)
 {
 	if (!header->transport_data)
 		header->transport_data = xzalloc(sizeof(struct transport_data));
 	if (!header->transport_data->tcp)
-		header->transport_data->tcp = xzalloc(sizeof(struct trans_tcp_data));
+		header->transport_data->tcp = xzalloc(
+				sizeof(struct trans_tcp_data));
 	if (!header->transport_data->tcp->sport)
-		header->transport_data->tcp->sport = xzalloc(sizeof(struct trans_port_data));
+		header->transport_data->tcp->sport = xzalloc(
+				sizeof(struct trans_port_data));
 	header->transport_data->trans_type = TRANSPORT_TCP;
-	return rule_parse_port_expr(expr, header->transport_data->tcp->sport, op);
+	return rule_parse_port_expr(expr, header->transport_data->tcp->sport,
+				op);
 }
 
-int rule_parse_tcp_dport_expr(struct expr *expr, struct pktheader *header, enum ops op)
+int rule_parse_tcp_dport_expr(struct expr *expr, struct pktheader *header,
+				enum ops op)
 {
 	if (!header->transport_data)
 		header->transport_data = xzalloc(sizeof(struct transport_data));
 	if (!header->transport_data->tcp)
-		header->transport_data->tcp = xzalloc(sizeof(struct trans_tcp_data));
+		header->transport_data->tcp = xzalloc(
+				sizeof(struct trans_tcp_data));
 	if (!header->transport_data->tcp->dport)
-		header->transport_data->tcp->dport = xzalloc(sizeof(struct trans_port_data));
+		header->transport_data->tcp->dport = xzalloc(
+				sizeof(struct trans_port_data));
 	header->transport_data->trans_type = TRANSPORT_TCP;
-	return rule_parse_port_expr(expr, header->transport_data->tcp->dport, op);
+	return rule_parse_port_expr(expr, header->transport_data->tcp->dport,
+				op);
 }
 
 struct header_parse header_udp_parsers[UDPHDR_CHECKSUM + 1] = {
@@ -1353,28 +1396,36 @@ struct header_parse header_udp_parsers[UDPHDR_CHECKSUM + 1] = {
 	{ .name = "checksum",	.parse = NULL},
 };
 
-int rule_parse_udp_sport_expr(struct expr *expr, struct pktheader *header, enum ops op)
+int rule_parse_udp_sport_expr(struct expr *expr, struct pktheader *header,
+			enum ops op)
 {
 	if (!header->transport_data)
 		header->transport_data = xzalloc(sizeof(struct transport_data));
 	if (!header->transport_data->udp)
-		header->transport_data->udp = xzalloc(sizeof(struct trans_udp_data));
+		header->transport_data->udp = xzalloc(
+				sizeof(struct trans_udp_data));
 	if (!header->transport_data->udp->sport)
-		header->transport_data->udp->sport = xzalloc(sizeof(struct trans_port_data));
+		header->transport_data->udp->sport = xzalloc(
+				sizeof(struct trans_port_data));
 	header->transport_data->trans_type = TRANSPORT_UDP;
-	return rule_parse_port_expr(expr, header->transport_data->udp->sport, op);
+	return rule_parse_port_expr(expr, header->transport_data->udp->sport,
+				op);
 }
 
-int rule_parse_udp_dport_expr(struct expr *expr, struct pktheader *header, enum ops op)
+int rule_parse_udp_dport_expr(struct expr *expr, struct pktheader *header,
+				enum ops op)
 {
 	if (!header->transport_data)
 		header->transport_data = xzalloc(sizeof(struct transport_data));
 	if (!header->transport_data->udp)
-		header->transport_data->udp = xzalloc(sizeof(struct trans_udp_data));
+		header->transport_data->udp = xzalloc(
+				sizeof(struct trans_udp_data));
 	if (!header->transport_data->udp->dport)
-		header->transport_data->udp->dport = xzalloc(sizeof(struct trans_port_data));
+		header->transport_data->udp->dport = xzalloc(
+				sizeof(struct trans_port_data));
 	header->transport_data->trans_type = TRANSPORT_UDP;
-	return rule_parse_port_expr(expr, header->transport_data->udp->dport, op);
+	return rule_parse_port_expr(expr, header->transport_data->udp->dport,
+				op);
 }
 
 

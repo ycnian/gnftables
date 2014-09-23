@@ -282,7 +282,7 @@ static void update_index_position(struct rule_create_widget  *widget)
 	len += 120;
 
 	gtk_fixed_move(GTK_FIXED(fixed), index, 20, len);
-	gtk_fixed_move(GTK_FIXED(fixed), index_value, 80, len);
+	gtk_fixed_move(GTK_FIXED(fixed), index_value, 100, len);
 }
 
 
@@ -1265,7 +1265,7 @@ static void rule_actions_add_jump(struct rule_create_widget *new_rule, struct ac
 	elem->label = gtk_label_new("Jump to:");
 
 	elem->widget1 = gtk_combo_box_text_new();
-	gtk_widget_set_size_request(elem->widget1, 150, 10);
+	gtk_widget_set_size_request(elem->widget1, 210, 10);
 	list_for_each_entry_safe(chain, c, &chain_list, list) {
 		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(elem->widget1),
 				xstrdup(chain->chain), xstrdup(chain->chain));
@@ -1351,7 +1351,7 @@ static void rule_actions_add(GtkButton *button, gpointer data)
 		rule_actions_add_accept(new_rule, NULL);
 	else if (!(strcmp(action, "drop")))
 		rule_actions_add_drop(new_rule, NULL);
-	else if (!(strcmp(action, "go to")))
+	else if (!(strcmp(action, "jump to")))
 		rule_actions_add_jump(new_rule, NULL);
 	else if (!(strcmp(action, "counter")))
 		rule_actions_add_counter(new_rule, NULL);
@@ -1403,7 +1403,7 @@ static void rule_add_content_actions(struct rule_create_widget *new_rule, struct
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(list),
 			"drop", "drop");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(list),
-			"go to", "go to");
+			"jump to", "jump to");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(list),
 			"counter", "counter");
 	gtk_combo_box_set_active(GTK_COMBO_BOX(list), 0);
@@ -1459,9 +1459,10 @@ static void rule_add_content_index(struct rule_create_widget *new_rule, struct r
 	gtk_fixed_put(GTK_FIXED(fixed), index, 20, offset);
 	new_rule->index = index;
 	index_value = gtk_entry_new();
-	gtk_fixed_put(GTK_FIXED(fixed), index_value, 80, offset);
+	gtk_fixed_put(GTK_FIXED(fixed), index_value, 100, offset);
 	if (rule_arg)
 		gtk_widget_set_sensitive(index_value, FALSE);
+	gtk_entry_set_width_chars(GTK_ENTRY(index_value), 33);
 		
 	new_rule->index = index;
 	new_rule->index_value = index_value;
@@ -2997,8 +2998,8 @@ void gnftables_chain_update(struct page_info *args, GtkTreeStore *store)
 void gnftables_chain_list(void)
 {
 	GtkWidget	*fixed;
-	GtkWidget	*type;
-	GtkWidget	*combo_type;
+//	GtkWidget	*type;
+//	GtkWidget	*combo_type;
 	GtkWidget	*set_list;
 	GtkWidget	*create_chain;
 	GtkWidget	*list_chains;
@@ -3046,23 +3047,23 @@ void gnftables_chain_list(void)
 
 	fixed = gtk_fixed_new();
 
-	type = gtk_label_new("Type");
-	gtk_fixed_put(GTK_FIXED(fixed), type, 20, 10);
-	combo_type = gtk_combo_box_text_new();
-	gtk_widget_set_size_request(combo_type, 100, 10);
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
-			"all", "all");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
-			"user", "user");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
-			"filter", "filter");
+//	type = gtk_label_new("Type");
+//	gtk_fixed_put(GTK_FIXED(fixed), type, 20, 10);
+//	combo_type = gtk_combo_box_text_new();
+//	gtk_widget_set_size_request(combo_type, 100, 10);
+//	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
+//			"all", "all");
+//	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
+//			"user", "user");
+//	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
+//			"filter", "filter");
 //	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
 //			"nat", "nat");
 //	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combo_type),
 //			"route", "route");
-	gtk_combo_box_set_active(GTK_COMBO_BOX(combo_type), 0);
+//	gtk_combo_box_set_active(GTK_COMBO_BOX(combo_type), 0);
 //	chain_arg->type = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combo_type));
-	gtk_fixed_put(GTK_FIXED(fixed), combo_type, 60, 10);
+//	gtk_fixed_put(GTK_FIXED(fixed), combo_type, 60, 10);
 
     	set_list = gtk_button_new_with_label("Go to set list page");
 	gtk_widget_set_size_request(set_list, 150, 10);
@@ -3653,7 +3654,7 @@ void gnftables_addpage_about(void)
 
 	content = gtk_label_new(NULL);
 	gtk_label_set_width_chars(GTK_LABEL(content), 100);
-	gtk_misc_set_alignment(GTK_MISC(content), 0.2, 0.3);
+	gtk_misc_set_alignment(GTK_MISC(content), 0.5, 0.3);
 	gtk_label_set_line_wrap(GTK_LABEL(content), TRUE);
 	gtk_label_set_selectable(GTK_LABEL(content), FALSE);
 	gtk_label_set_markup(GTK_LABEL(content), text);

@@ -226,12 +226,16 @@ int chain_create_getdata(struct chain_submit_argsnnn  *widget,
 	name = get_data_from_entry(GTK_ENTRY(widget->name));
 	if (!name)
 		return CHAIN_NAME_EMPTY;
-	basechain = !!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget->basechain));
+	basechain = !!gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(widget->basechain));
 	if (basechain) {
-		type = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget->type));
-		hook_str = (const char *)gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget->hook));
+		type = gtk_combo_box_text_get_active_text(
+			GTK_COMBO_BOX_TEXT(widget->type));
+		hook_str = (const char *)gtk_combo_box_text_get_active_text(
+			GTK_COMBO_BOX_TEXT(widget->hook));
 		hook = str2hooknum(widget->family, hook_str);
-		priority_str = get_data_from_entry(GTK_ENTRY(widget->priority));
+		priority_str = get_data_from_entry(
+			GTK_ENTRY(widget->priority));
 	}
 
 	res = name_check(name);
@@ -309,22 +313,28 @@ int get_header_addr_from_page(struct ip_address  *widget,
 	data->exclude = widget->exclude;
 	switch (widget->type) {
 	case ADDRESS_EXACT:
-		data->iplist = get_data_from_entry(GTK_ENTRY(widget->exact_ip.ip));
+		data->iplist = get_data_from_entry(
+			GTK_ENTRY(widget->exact_ip.ip));
 		break;
 	case ADDRESS_SUBNET:
-		data->subnet.ip = get_data_from_entry(GTK_ENTRY(widget->subnet.ip));
-		data->subnet.mask = get_data_from_entry(GTK_ENTRY(widget->subnet.mask));
+		data->subnet.ip = get_data_from_entry(
+			GTK_ENTRY(widget->subnet.ip));
+		data->subnet.mask = get_data_from_entry(
+			GTK_ENTRY(widget->subnet.mask));
 		if (data->subnet.ip && !data->subnet.mask)
 			res = RULE_HEADER_MASK_EMPTY;
 		if (!data->subnet.ip && data->subnet.mask)
 			res = RULE_HEADER_IP_EMPTY;
 		break;
 	case ADDRESS_RANGE:
-		data->range.from = get_data_from_entry(GTK_ENTRY(widget->range.from));
-		data->range.to = get_data_from_entry(GTK_ENTRY(widget->range.to));
+		data->range.from = get_data_from_entry(
+			GTK_ENTRY(widget->range.from));
+		data->range.to = get_data_from_entry(
+			GTK_ENTRY(widget->range.to));
 		break;
 	case ADDRESS_SET:
-		data->set = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget->sets.set));
+		data->set = gtk_combo_box_text_get_active_text(
+			GTK_COMBO_BOX_TEXT(widget->sets.set));
 		if (!data->set)
 			res = RULE_HEADER_SET_EMPTY;
 		break;
@@ -349,14 +359,18 @@ int get_header_port_from_page(struct transport_port_info *widget,
 	data->exclude = widget->value->exclude;
 	switch (widget->value->type) {
 	case PORT_EXACT:
-		data->portlist = get_data_from_entry(GTK_ENTRY(widget->value->portlist.port));
+		data->portlist = get_data_from_entry(
+			GTK_ENTRY(widget->value->portlist.port));
 		break;
 	case PORT_RANGE:
-		data->range.from = get_data_from_entry(GTK_ENTRY(widget->value->range.from));
-		data->range.to = get_data_from_entry(GTK_ENTRY(widget->value->range.to));
+		data->range.from = get_data_from_entry(
+			GTK_ENTRY(widget->value->range.from));
+		data->range.to = get_data_from_entry(
+			GTK_ENTRY(widget->value->range.to));
 		break;
 	case PORT_SET:
-		data->set = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget->value->sets.set));
+		data->set = gtk_combo_box_text_get_active_text(
+			GTK_COMBO_BOX_TEXT(widget->value->sets.set));
 		if (!data->set)
 			res = RULE_HEADER_SET_EMPTY;
 		break;
@@ -452,7 +466,8 @@ int get_header_trans_from_page(struct transport_info *widget,
  * networking layer and transport layer.
  *
  */
-int get_header_data_from_page(struct match_header *widget, struct pktheader *data)
+int get_header_data_from_page(struct match_header *widget,
+				struct pktheader *data)
 {
 	int	res;
 
@@ -468,7 +483,8 @@ int get_header_data_from_page(struct match_header *widget, struct pktheader *dat
 		return res;
 	if (data->transport_data)
 		data->transport_data = xzalloc(sizeof(struct transport_data));
-	res = get_header_trans_from_page(widget->transport.value, data->transport_data);
+	res = get_header_trans_from_page(
+			widget->transport.value, data->transport_data);
 	return res;
 }
 
@@ -696,7 +712,8 @@ int get_jump_data_from_page(struct action_elem *elem, struct actions *data)
 	struct action *action;
 	action = xzalloc(sizeof(struct action));
 	action->type = ACTION_JUMP;
-	action->chain = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(elem->widget1));
+	action->chain = gtk_combo_box_text_get_active_text(
+			GTK_COMBO_BOX_TEXT(elem->widget1));
 	list_add_tail(&action->list, &data->list);
 	return RULE_SUCCESS;
 }
@@ -888,7 +905,8 @@ static int set_get_type_from_page(struct set_submit_argsnnn *widget,
 		struct set_create_data *data)
 {
 	char	*type;
-	type = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(widget->type));
+	type = gtk_combo_box_text_get_active_text(
+			GTK_COMBO_BOX_TEXT(widget->type));
 	data->keytype = datatype_lookup_bydesc(type);
 	data->keylen = data->keytype->size;
 	return SET_SUCCESS;

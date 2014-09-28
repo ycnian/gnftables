@@ -27,6 +27,7 @@ gnftables-obj			+= mnl.o
 gnftables-obj			+= gui_error.o
 gnftables-obj			+= gui_expression.o
 gnftables-obj			+= gui_datacheck.o
+gnftables-obj			+= gtkcellrendererpixbufclicked.o
 
 gnftables-obj			+= parser.o
 gnftables-extra-clean-files	+= parser.c parser.h

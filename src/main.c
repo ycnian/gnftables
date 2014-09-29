@@ -42,6 +42,7 @@
 #include <gui_rule.h>
 #include <gui_expression.h>
 #include <gui_datacheck.h>
+#include <gtkcellrendererpixbufclicked.h>
 ///////////////////////////   end added for gnftables   /////////////////////////////////////
 
 
@@ -1787,12 +1788,20 @@ void gnftables_rule_update(struct page_info *args, GtkTreeStore *store)
 	int	family;
 	char	*table;
 	char	*chain;
+	GdkPixbuf *icon_details = NULL;
+	GdkPixbuf *icon_delete = NULL;
 
 	struct gui_rule   *rule, *r;
 	LIST_HEAD(rule_list);
 	family = args->family;
 	table = args->table;
 	chain = args->chain;
+	icon_details = gdk_pixbuf_new_from_file(
+			DEFAULT_DATAROOT_PATH"/pixmaps/preferences-system.png",
+			NULL);
+	icon_delete = gdk_pixbuf_new_from_file(
+			DEFAULT_DATAROOT_PATH"/pixmaps/user-trash.png",
+			NULL);
 
 	res = gui_get_rules_list(&rule_list, family, table, chain);
 	if (res != RULE_SUCCESS) {
@@ -1822,8 +1831,8 @@ void gnftables_rule_update(struct page_info *args, GtkTreeStore *store)
 			RULE_TABLE, rule->table,
 			RULE_CHAIN, rule->chain,
 			RULE_CONTENT, rule->stmt,
-			RULE_DETAIL, TRUE,
-			RULE_DELETE, TRUE,
+			RULE_DETAIL, icon_details,
+			RULE_DELETE, icon_delete,
 			-1);
 		gui_rule_free(rule);	
 	}
@@ -1847,6 +1856,8 @@ void gnftables_rule_list(void)
 	int	family;
 	char	*table;
 	char	*chain;
+	GtkCellRendererMode     mode = GTK_CELL_RENDERER_MODE_ACTIVATABLE;
+	GValue val = {mode, };
 
 	notebook = top_window->notebook;
 	container = top_window->rule_container;
@@ -1884,7 +1895,7 @@ void gnftables_rule_list(void)
 
 	store = gtk_tree_store_new(RULE_TOTAL, G_TYPE_INT, G_TYPE_INT,
 			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
-			G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
+			GDK_TYPE_PIXBUF, GDK_TYPE_PIXBUF);
 
 	fixed = gtk_fixed_new();
 
@@ -1932,21 +1943,25 @@ void gnftables_rule_list(void)
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_rules), column);
 
 
-	renderer_details = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer_details, "toggled",
+	renderer_details = gtk_cell_renderer_pixbuf_clicked_new();
+	g_object_set(G_OBJECT(renderer_details), "mode", val, "activatable",
+			TRUE, NULL);
+	g_signal_connect(renderer_details, "clicked",
 			G_CALLBACK(gnftables_rule_details), list_rules) ;
 	column = gtk_tree_view_column_new_with_attributes("Details",
-			renderer_details, "active", RULE_DETAIL, NULL);
+			renderer_details, "pixbuf", RULE_DETAIL, NULL);
 	gtk_tree_view_column_set_min_width(column, 100);
 	gtk_tree_view_column_set_max_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_rules), column);
 
-	renderer_delete = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer_delete, "toggled",
+	renderer_delete = gtk_cell_renderer_pixbuf_clicked_new();
+	g_object_set(G_OBJECT(renderer_delete), "mode", val, "activatable",
+			TRUE, NULL);
+	g_signal_connect(renderer_delete, "clicked",
 			G_CALLBACK(gnftables_rule_delete), list_rules);
 	column = gtk_tree_view_column_new_with_attributes("Delete",
-			renderer_delete, "active", RULE_DELETE, NULL);
+			renderer_delete, "pixbuf", RULE_DELETE, NULL);
 	gtk_tree_view_column_set_min_width(column, 100);
 	gtk_tree_view_column_set_max_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
@@ -2377,8 +2392,17 @@ void gnftables_set_update(struct page_info *args, GtkTreeStore *store)
 	gchar	*table = args->table;
 	gchar	*type = args->type;
 	int		res;
+	GdkPixbuf *icon_details = NULL;
+	GdkPixbuf *icon_delete = NULL;
 
 	LIST_HEAD(set_list);
+	icon_details = gdk_pixbuf_new_from_file(
+			DEFAULT_DATAROOT_PATH"/pixmaps/preferences-system.png",
+			NULL);
+	icon_delete = gdk_pixbuf_new_from_file(
+			DEFAULT_DATAROOT_PATH"/pixmaps/user-trash.png",
+			NULL);
+
 	res = gui_get_sets_list(&set_list, family, table, type, 1);
 	if (res != SET_SUCCESS) {
 		GtkWidget *dialog;
@@ -2407,8 +2431,8 @@ void gnftables_set_update(struct page_info *args, GtkTreeStore *store)
 			SET_KEYTYPE, xstrdup(set->keytype),
 			SET_DATATYPE, set->datatype ? xstrdup(set->datatype) : "X",
 			SET_ELEMS, set->nelems,
-			SET_DETAIL, TRUE,
-			SET_DELETE, TRUE, -1);
+			SET_DETAIL, icon_details,
+			SET_DELETE, icon_delete, -1);
 		xfree(set->table);
 		xfree(set->name);
 		xfree(set);
@@ -2436,6 +2460,8 @@ void gnftables_set_list(void)
 	int	res;
 	int	family;
 	char	*table;
+	GtkCellRendererMode	mode = GTK_CELL_RENDERER_MODE_ACTIVATABLE;
+	GValue val = {mode, };
 
 	notebook = top_window->notebook;
 	container = top_window->chain_set_container;
@@ -2460,7 +2486,8 @@ void gnftables_set_list(void)
 	}
 
 	store = gtk_tree_store_new(SET_TOTAL, G_TYPE_INT, G_TYPE_STRING,
-			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INT, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN);
+			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INT,
+			GDK_TYPE_PIXBUF, GDK_TYPE_PIXBUF);
 
 	title = gtk_label_new("Sets");
 	gtk_widget_set_size_request(title, 200, 10);
@@ -2510,20 +2537,24 @@ void gnftables_set_list(void)
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
 
-	renderer_details = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer_details, "toggled",
+	renderer_details = gtk_cell_renderer_pixbuf_clicked_new();
+	g_object_set(G_OBJECT(renderer_details), "mode", val, "activatable",
+			TRUE, NULL);
+	g_signal_connect(renderer_details, "clicked",
 			G_CALLBACK(gnftables_set_details), list_sets) ;
 	column = gtk_tree_view_column_new_with_attributes("Details",
-			renderer_details, "active", SET_DETAIL, NULL);
+			renderer_details, "pixbuf", SET_DETAIL, NULL);
 	gtk_tree_view_column_set_min_width(column, 80);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
 
-	renderer_delete = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer_delete, "toggled",
+	renderer_delete = gtk_cell_renderer_pixbuf_clicked_new();
+	g_object_set(G_OBJECT(renderer_delete), "mode", val, "activatable",
+			TRUE, NULL);
+	g_signal_connect(renderer_delete, "clicked",
 			G_CALLBACK(gnftables_set_delete), list_sets);
 	column = gtk_tree_view_column_new_with_attributes("Delete",
-			renderer_delete, "active", SET_DELETE, NULL);
+			renderer_delete, "pixbuf", SET_DELETE, NULL);
 	gtk_tree_view_column_set_min_width(column, 80);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
@@ -2938,8 +2969,16 @@ void gnftables_chain_update(struct page_info *args, GtkTreeStore *store)
 	gchar	*type = args->type;
 	GtkTreeIter	iter;
 	struct chain_list_data   *chain, *c;
+	GdkPixbuf *icon_details = NULL;
+	GdkPixbuf *icon_delete = NULL;
 
 	LIST_HEAD(chain_list);
+	icon_details = gdk_pixbuf_new_from_file(
+			DEFAULT_DATAROOT_PATH"/pixmaps/folder.png",
+			NULL);
+	icon_delete = gdk_pixbuf_new_from_file(
+			DEFAULT_DATAROOT_PATH"/pixmaps/user-trash.png",
+			NULL);
 
 	res = gui_get_chains_list(&chain_list, family, table, type, 1);
 	if (res != CHAIN_SUCCESS) {
@@ -2974,8 +3013,8 @@ void gnftables_chain_update(struct page_info *args, GtkTreeStore *store)
 				CHAIN_TYPE, xstrdup(chain->type),
 				CHAIN_HOOK, hooknum2str(family, chain->hook),
 				CHAIN_PRIORITY, priority,
-				CHAIN_DETAIL, TRUE,
-				CHAIN_DELETE, TRUE, -1);
+				CHAIN_DETAIL, icon_details,
+				CHAIN_DELETE, icon_delete, -1);
 		} else 
 			gtk_tree_store_set(store, &iter,
 				CHAIN_ID, index,
@@ -2985,8 +3024,8 @@ void gnftables_chain_update(struct page_info *args, GtkTreeStore *store)
 				CHAIN_TYPE, "x",
 				CHAIN_HOOK, "x",
 				CHAIN_PRIORITY, "x",
-				CHAIN_DETAIL, TRUE,
-				CHAIN_DELETE, TRUE, -1);
+				CHAIN_DETAIL, icon_details,
+				CHAIN_DELETE, icon_delete, -1);
 		gui_chain_free(chain);	
 	}
 }
@@ -3011,6 +3050,8 @@ void gnftables_chain_list(void)
 	GtkCellRenderer	*renderer_details;
 	GtkCellRenderer	*renderer_delete;
 	GtkTreeViewColumn	*column;
+	GtkCellRendererMode	mode = GTK_CELL_RENDERER_MODE_ACTIVATABLE;
+	GValue val = {mode, };
 
 	int	res;
 	struct page_info     *list_args;
@@ -3042,8 +3083,8 @@ void gnftables_chain_list(void)
 
 	store = gtk_tree_store_new(CHAIN_TOTAL, G_TYPE_INT, G_TYPE_STRING,
 			G_TYPE_INT, G_TYPE_STRING, G_TYPE_STRING,
-			G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN,
-			G_TYPE_BOOLEAN);
+			G_TYPE_STRING, G_TYPE_STRING, GDK_TYPE_PIXBUF,
+			GDK_TYPE_PIXBUF);
 
 	fixed = gtk_fixed_new();
 
@@ -3120,23 +3161,28 @@ void gnftables_chain_list(void)
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 
-	renderer_details = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer_details, "toggled",
+	renderer_details = gtk_cell_renderer_pixbuf_clicked_new();
+	g_object_set(G_OBJECT(renderer_details), "mode", val, "activatable",
+			TRUE, NULL);
+	g_signal_connect(renderer_details, "clicked",
 			G_CALLBACK(gnftables_chain_details), list_chains) ;
 	column = gtk_tree_view_column_new_with_attributes("Details",
-			renderer_details, "active", CHAIN_DETAIL, NULL);
+			renderer_details, "pixbuf", CHAIN_DETAIL, NULL);
 	gtk_tree_view_column_set_min_width(column, 80);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 
-	renderer_delete = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer_delete, "toggled",
-			G_CALLBACK(gnftables_chain_delete), list_chains);
+	renderer_delete = gtk_cell_renderer_pixbuf_clicked_new();
+	g_object_set(G_OBJECT(renderer_delete), "mode", val, "activatable",
+			TRUE, NULL);
+	g_signal_connect(renderer_delete, "clicked",
+			G_CALLBACK(gnftables_chain_delete), list_chains) ;
 	column = gtk_tree_view_column_new_with_attributes("Delete",
-			renderer_delete, "active", CHAIN_DELETE, NULL);
+			renderer_delete, "pixbuf", CHAIN_DELETE, NULL);
 	gtk_tree_view_column_set_min_width(column, 80);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
+
 
         scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
 	gtk_scrolled_window_set_min_content_width(
@@ -3434,9 +3480,17 @@ void gnftables_table_update(gint family, GtkTreeStore *store)
 	gint		index = 0;
 	GtkTreeIter	iter;
 	gint		res;
+	GdkPixbuf *icon_details = NULL;
+	GdkPixbuf *icon_delete = NULL;
 
 	struct table_list_data   *table, *tmp;
 	LIST_HEAD(table_list);
+	icon_details = gdk_pixbuf_new_from_file(
+			DEFAULT_DATAROOT_PATH"/pixmaps/folder.png",
+			NULL);
+	icon_delete = gdk_pixbuf_new_from_file(
+			DEFAULT_DATAROOT_PATH"/pixmaps/user-trash.png",
+			NULL);
 
 	// only ipv4 is supported now.
 	// top_window->data->family = family;
@@ -3468,14 +3522,14 @@ void gnftables_table_update(gint family, GtkTreeStore *store)
 				TABLE_ID, index, TABLE_NAME, xstrdup(table->table),
 				TABLE_FAMILY, "ipv4", TABLE_SETS, table->nsets,
 				TABLE_CHAINS, table->nchains, TABLE_DETAIL,
-				TRUE, TABLE_DELETE, TRUE, -1);
+				icon_details, TABLE_DELETE, icon_delete, -1);
 		else
 			gtk_tree_store_set(store, &iter,
 				TABLE_ID, index, TABLE_NAME, xstrdup(table->table),
 				TABLE_FAMILY, family2str(table->family),
 				TABLE_SETS, table->nsets, TABLE_CHAINS,
-				table->nchains, TABLE_DETAIL, TRUE,
-				TABLE_DELETE, TRUE, -1);
+				table->nchains, TABLE_DETAIL, icon_details,
+				TABLE_DELETE, icon_delete, -1);
 		xfree(table->table);
 		xfree(table);
 	}
@@ -3500,6 +3554,8 @@ void gnftables_table_list(void)
 	GtkCellRenderer	*renderer_details;
 	GtkCellRenderer	*renderer_delete;
 	GtkTreeViewColumn *column;
+	GtkCellRendererMode     mode = GTK_CELL_RENDERER_MODE_ACTIVATABLE;
+	GValue val = {mode, };
 
 	notebook = top_window->notebook;
 	container = top_window->table_container;
@@ -3524,8 +3580,8 @@ void gnftables_table_list(void)
 	gtk_fixed_put(GTK_FIXED(container), fixed, 0, 0);
 
 	store = gtk_tree_store_new(TABLE_TOTAL, G_TYPE_INT, G_TYPE_STRING, 
-			G_TYPE_STRING, G_TYPE_INT, G_TYPE_INT,G_TYPE_BOOLEAN,
-			G_TYPE_BOOLEAN);
+			G_TYPE_STRING, G_TYPE_INT, G_TYPE_INT, GDK_TYPE_PIXBUF,
+			GDK_TYPE_PIXBUF);
 
 
 	/* family and combo are hidden for only ipv4 is supported now */
@@ -3572,21 +3628,24 @@ void gnftables_table_list(void)
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
 
-	// use toggle temporarily，it will be changed when gnftables release.
-	renderer_details = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer_details, "toggled",
+	renderer_details = gtk_cell_renderer_pixbuf_clicked_new();
+	g_object_set(G_OBJECT(renderer_details), "mode", val, "activatable",
+			TRUE, NULL);
+	g_signal_connect(renderer_details, "clicked",
 			G_CALLBACK(gnftables_table_details), list_tables) ;
 	column = gtk_tree_view_column_new_with_attributes("Details",
-			renderer_details, "active", TABLE_DETAIL, NULL);
+			renderer_details, "pixbuf", TABLE_DETAIL, NULL);
 	gtk_tree_view_column_set_min_width(column, 140);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
 
-	renderer_delete = gtk_cell_renderer_toggle_new();
-	g_signal_connect(renderer_delete, "toggled",
+	renderer_delete = gtk_cell_renderer_pixbuf_clicked_new();
+	g_object_set(G_OBJECT(renderer_delete), "mode", val, "activatable",
+			TRUE, NULL);
+	g_signal_connect(renderer_delete, "clicked",
 			G_CALLBACK(gnftables_table_delete), list_tables) ;
 	column = gtk_tree_view_column_new_with_attributes("Delete",
-			renderer_delete, "active", TABLE_DELETE, NULL);
+			renderer_delete, "pixbuf", TABLE_DELETE, NULL);
 	gtk_tree_view_column_set_min_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);

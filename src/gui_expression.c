@@ -141,7 +141,8 @@ int rule_addrsubnet_gen_exprs(struct rule_create_data *data,
 		return RULE_HEADER_MASK_INVALID;
 
 	type = source ? IPHDR_SADDR: IPHDR_DADDR;
-	op = (addr->exclude) ? OP_NEQ: OP_EQ;
+	op = OP_EQ;
+//	op = (addr->exclude) ? OP_NEQ: OP_EQ;
 	payload = payload_expr_alloc(data->loc, &proto_ip, type);
 	symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL,
 			addr->subnet.ip);
@@ -203,7 +204,8 @@ int rule_addrrange_gen_exprs(struct rule_create_data *data,
 	payload = payload_expr_alloc(data->loc, &proto_ip, type);
 
 	if (from && to) {
-		op = (addr->exclude) ? OP_NEQ : OP_EQ;
+		op = OP_EQ;
+//		op = (addr->exclude) ? OP_NEQ : OP_EQ;
 		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, from);
 		expr_set_type(symbol, &ipaddr_type, BYTEORDER_BIG_ENDIAN);
 		erec = symbol_parse(symbol, &left);
@@ -231,7 +233,8 @@ int rule_addrrange_gen_exprs(struct rule_create_data *data,
 						range);
 		rela->op = op;
 	} else if (from) {
-		op = (addr->exclude) ? OP_LT : OP_GTE;
+		op = OP_GTE;
+//		op = (addr->exclude) ? OP_LT : OP_GTE;
 		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, from);
 		expr_set_type(symbol, &ipaddr_type, BYTEORDER_BIG_ENDIAN);
 		erec = symbol_parse(symbol, &left);
@@ -244,7 +247,8 @@ int rule_addrrange_gen_exprs(struct rule_create_data *data,
 						left);
 		rela->op = op;
 	} else if (to) {
-		op = (addr->exclude) ? OP_GT : OP_LTE;
+		op = OP_LTE;
+//		op = (addr->exclude) ? OP_GT : OP_LTE;
 		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, to);
 		expr_set_type(symbol, &ipaddr_type, BYTEORDER_BIG_ENDIAN);
 		erec = symbol_parse(symbol, &right);
@@ -305,7 +309,6 @@ static int rule_addrset_gen_exprs(struct rule_create_data *data,
 		return RULE_SUCCESS;
 
 	type = source ? IPHDR_SADDR: IPHDR_DADDR;
-//	op = (addr->exclude) ? OP_NEQ: OP_EQ;
 	op = OP_LOOKUP;
 
 	handle = xzalloc(sizeof(struct handle));
@@ -411,7 +414,6 @@ int rule_portlist_gen_exprs(struct rule_create_data *data,
 	default:
 		BUG("invalid transport protocol.");
 	}
-//	op = (addr->exclude) ? OP_NEQ: OP_EQ;
 	op = OP_LOOKUP;
 	payload = payload_expr_alloc(data->loc, desc, sport);
 	elem = set_expr_alloc(data->loc);
@@ -506,7 +508,8 @@ int rule_portrange_gen_exprs(struct rule_create_data *data,
 	payload = payload_expr_alloc(data->loc, desc, sport);
 
 	if (from && to) {
-		op = (port->exclude) ? OP_NEQ : OP_EQ;
+		op = OP_EQ;
+//		op = (port->exclude) ? OP_NEQ : OP_EQ;
 		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, from);
 		expr_set_type(symbol, &inet_service_type, BYTEORDER_BIG_ENDIAN);
 		erec = symbol_parse(symbol, &left);
@@ -534,7 +537,8 @@ int rule_portrange_gen_exprs(struct rule_create_data *data,
 						range);
 		rela->op = op;
 	} else if (from) {
-		op = (port->exclude) ? OP_LT : OP_GTE;
+		op = OP_GTE;
+//		op = (port->exclude) ? OP_LT : OP_GTE;
 		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, from);
 		expr_set_type(symbol, &inet_service_type, BYTEORDER_BIG_ENDIAN);
 		erec = symbol_parse(symbol, &left);
@@ -547,7 +551,8 @@ int rule_portrange_gen_exprs(struct rule_create_data *data,
 						left);
 		rela->op = op;
 	} else if (to) {
-		op = (port->exclude) ? OP_GT : OP_LTE;
+		op = OP_LTE;
+//		op = (port->exclude) ? OP_GT : OP_LTE;
 		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, to);
 		expr_set_type(symbol, &inet_service_type, BYTEORDER_BIG_ENDIAN);
 		erec = symbol_parse(symbol, &right);
@@ -621,7 +626,6 @@ static int rule_portset_gen_exprs(struct rule_create_data *data,
 	default:
 		BUG("invalid transport protocol.");
 	}
-//	op = (addr->exclude) ? OP_NEQ: OP_EQ;
 	op = OP_LOOKUP;
 
 	handle = xzalloc(sizeof(struct handle));

@@ -144,15 +144,28 @@ static void select_page(GtkNotebook *notebook, GtkWidget *page, guint page_num, 
 
 	switch (page_num) {
 	case 0:
-		if (top_window->page_current != NOTEBOOK_TABLE_CREATE)
+		if (top_window->page_current != NOTEBOOK_TABLE_CREATE) {
+			top_window->data->table = NULL;
+			top_window->data->chain = NULL;
+			top_window->data->set = NULL;
+			top_window->data->type = NULL;
 			gnftables_table_list();
+		}
 		break;
 	case 1:
-		if (top_window->page_current == NOTEBOOK_SET_LIST)
+		if (top_window->page_current == NOTEBOOK_SET_LIST) {
+			top_window->data->chain = NULL;
+			top_window->data->set = NULL;
+			top_window->data->type = NULL;
 			gnftables_set_list();
+		}
 		if (top_window->page_current == NOTEBOOK_CHAIN_LIST ||
-			top_window->page_current == NOTEBOOK_RULE)
+			top_window->page_current == NOTEBOOK_RULE) {
+			top_window->data->chain = NULL;
+			top_window->data->set = NULL;
+			top_window->data->type = NULL;
 			gnftables_chain_list();
+		}
 		break;
 	case 2:
 		if (top_window->page_current == NOTEBOOK_RULE_LIST)
@@ -447,7 +460,7 @@ static void header_addr_callback(GtkComboBoxText *widget, gpointer data)
 		addr = args->daddr.value;
 
 	type = gtk_combo_box_text_get_active_text(widget);
-	if (!(strcmp(type, "exact ip"))) {
+	if (!(strcmp(type, "ip list"))) {
 		addr->type = ADDRESS_EXACT;
 		header_addr_subnet_hide(addr);
 		header_addr_range_hide(addr);
@@ -511,7 +524,7 @@ static void rule_add_content_header_addr(struct match_header *header, struct ip_
 	addr_type = gtk_combo_box_text_new();
 	gtk_widget_set_size_request(addr_type, 100, 10);
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(addr_type),
-			"exact ip", "exact ip");
+			"ip list", "ip list");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(addr_type),
 			"subnet", "subnet");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(addr_type),
@@ -597,7 +610,7 @@ static void rule_add_content_header_addr(struct match_header *header, struct ip_
 	}
 	gtk_widget_show(GTK_WIDGET(addr_label));
 	gtk_widget_show(GTK_WIDGET(addr_type));
-	gtk_widget_show(GTK_WIDGET(addr_not));
+//	gtk_widget_show(GTK_WIDGET(addr_not));
 }
 
 
@@ -810,7 +823,7 @@ static void rule_add_content_header_port(GtkWidget *fixed,
 
 	gtk_widget_show(GTK_WIDGET(port_label));
 	gtk_widget_show(GTK_WIDGET(port_type));
-	gtk_widget_show(GTK_WIDGET(port_not));
+//	gtk_widget_show(GTK_WIDGET(port_not));
 }
 
 
@@ -2512,12 +2525,12 @@ void gnftables_set_list(void)
 	column = gtk_tree_view_column_new_with_attributes("Id", renderer,
 			"text", SET_ID, NULL);
 	gtk_tree_view_column_set_clickable(column, TRUE);
-	gtk_tree_view_column_set_min_width(column, 50);
+	gtk_tree_view_column_set_min_width(column, 100);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
 	column = gtk_tree_view_column_new_with_attributes("Name", renderer,
 			"text", SET_NAME, NULL);
-	gtk_tree_view_column_set_min_width(column, 200);
+	gtk_tree_view_column_set_min_width(column, 250);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
 	column = gtk_tree_view_column_new_with_attributes("Key Type", renderer,
@@ -2544,7 +2557,7 @@ void gnftables_set_list(void)
 			G_CALLBACK(gnftables_set_details), list_sets) ;
 	column = gtk_tree_view_column_new_with_attributes("Details",
 			renderer_details, "pixbuf", SET_DETAIL, NULL);
-	gtk_tree_view_column_set_min_width(column, 80);
+	gtk_tree_view_column_set_min_width(column, 110);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
 
@@ -2555,7 +2568,7 @@ void gnftables_set_list(void)
 			G_CALLBACK(gnftables_set_delete), list_sets);
 	column = gtk_tree_view_column_new_with_attributes("Delete",
 			renderer_delete, "pixbuf", SET_DELETE, NULL);
-	gtk_tree_view_column_set_min_width(column, 80);
+	gtk_tree_view_column_set_min_width(column, 110);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_sets), column);
 

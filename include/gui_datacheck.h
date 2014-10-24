@@ -238,10 +238,6 @@ int get_pktmeta_oiftype_from_page(GtkWidget *oiftype, struct pktmeta *data);
 int get_pktmeta_skuid_from_page(GtkWidget *skuid, struct pktmeta *data);
 int get_pktmeta_skgid_from_page(GtkWidget *skgid, struct pktmeta *data);
 
-int get_accept_data_from_page(struct action_elem *elem, struct actions *data);
-int get_drop_data_from_page(struct action_elem *elem, struct actions *data);
-int get_jump_data_from_page(struct action_elem *elem, struct actions *data);
-int get_counter_data_from_page(struct action_elem *elem, struct actions *data);
 int get_actions_data_from_page(struct actions_all *widget, struct actions *data);
 
 char *string_skip_space(char *str);

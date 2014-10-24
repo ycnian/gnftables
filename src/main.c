@@ -269,7 +269,7 @@ static void update_pktmeta_position(struct rule_create_widget  *widget)
 static void update_actions_position(struct rule_create_widget  *widget)
 {
 	GtkWidget  *fixed = widget->fixed;
-	GtkWidget  *expander = widget->actions->expander;
+	GtkWidget  *actions_fixed = widget->actions->fixed;
 	int	len = 0;
 	if (widget->header->expanded)
 		len += widget->header->len;
@@ -277,26 +277,7 @@ static void update_actions_position(struct rule_create_widget  *widget)
 		len += widget->meta->len;
 	len += 80;
 
-	gtk_fixed_move(GTK_FIXED(fixed), expander, 0, len);
-}
-
-
-static void update_index_position(struct rule_create_widget  *widget)
-{
-	GtkWidget  *fixed = widget->fixed;
-	GtkWidget  *index = widget->index;
-	GtkWidget  *index_value = widget->index_value;
-	int	len = 0;
-	if (widget->header->expanded)
-		len +=  widget->header->len;
-	if (widget->meta->expanded)
-		len +=  widget->meta->len;
-	if (widget->actions->expanded)
-		len +=  widget->actions->len;
-	len += 120;
-
-	gtk_fixed_move(GTK_FIXED(fixed), index, 20, len);
-	gtk_fixed_move(GTK_FIXED(fixed), index_value, 100, len);
+	gtk_fixed_move(GTK_FIXED(fixed), actions_fixed, 0, len);
 }
 
 
@@ -311,9 +292,7 @@ static void update_cancel_ok_position(struct rule_create_widget  *widget)
 		len +=  widget->header->len;
 	if (widget->meta->expanded)
 		len +=  widget->meta->len;
-	if (widget->actions->expanded)
-		len +=  widget->actions->len;
-	len += 160;
+	len += 240;
 	if (len < 360)
 		len = 360;
 	gtk_fixed_move(GTK_FIXED(fixed), msg, 40, len);
@@ -338,7 +317,6 @@ static void expander_callback(GObject *object,
 			widget->header->expanded = 0;
 		update_pktmeta_position(widget);
 		update_actions_position(widget);
-		update_index_position(widget);
 		update_cancel_ok_position(widget);
 	} else if ((void *)expander == (void *)(widget->meta->expander)) {
 		if (gtk_expander_get_expanded(expander))
@@ -346,14 +324,6 @@ static void expander_callback(GObject *object,
 		else
 			widget->meta->expanded = 0;
 		update_actions_position(widget);
-		update_index_position(widget);
-		update_cancel_ok_position(widget);
-	} else if ((void *)expander == (void *)(widget->actions->expander)) {
-		if (gtk_expander_get_expanded(expander))
-			widget->actions->expanded = 1;
-		else
-			widget->actions->expanded = 0;
-		update_index_position(widget);
 		update_cancel_ok_position(widget);
 	}
 }
@@ -914,7 +884,6 @@ static void header_transport_callback(GtkComboBoxText *widget, gpointer data)
 
 	update_pktmeta_position(rule);
 	update_actions_position(rule);
-	update_index_position(rule);
 	update_cancel_ok_position(rule);
 }
 
@@ -1113,147 +1082,49 @@ static void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct
 	gtk_widget_show_all(GTK_WIDGET(expander_pktmeta));
 }
 
-
-static void rule_actions_remove(GtkButton *button, gpointer data)
+static void rule_add_content_actions(struct rule_create_widget *new_rule, struct rule_create_data *rule_arg)
 {
-	struct rule_create_widget *rule;
-	struct actions_all	*actions;
-	struct action_elem *elem;
-	int	offset = 40;	
-
-	elem = (struct action_elem *)data;
-	rule = elem->rule;
-	actions = rule->actions;
-	list_del(&elem->list);
-	actions->len = 40;
-	switch (elem->type) {
-	case ACTION_ACCEPT:
-		gtk_widget_destroy(elem->label);
-		gtk_widget_destroy(elem->remove);
-		gtk_widget_set_sensitive(actions->action_list, TRUE);
-		gtk_widget_set_sensitive(actions->action, TRUE);
-		break;
-	case ACTION_DROP:
-		gtk_widget_destroy(elem->label);
-		gtk_widget_destroy(elem->remove);
-		gtk_widget_set_sensitive(actions->action_list, TRUE);
-		gtk_widget_set_sensitive(actions->action, TRUE);
-		break;
-	case ACTION_JUMP:
-		gtk_widget_destroy(elem->label);
-		gtk_widget_destroy(elem->widget1);
-		gtk_widget_destroy(elem->remove);
-		gtk_widget_set_sensitive(actions->action_list, TRUE);
-		gtk_widget_set_sensitive(actions->action, TRUE);
-		break;
-	case ACTION_COUNTER:
-		gtk_widget_destroy(elem->label);
-		gtk_widget_destroy(elem->widget1);
-		gtk_widget_destroy(elem->widget2);
-		gtk_widget_destroy(elem->widget3);
-		gtk_widget_destroy(elem->widget4);
-		gtk_widget_destroy(elem->remove);
-		break;
-	default:
-		BUG();
-	}
-
-	list_for_each_entry(elem, &actions->list, list) {
-		switch (elem->type) {
-		case ACTION_ACCEPT:
-			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->label, 100, offset);
-			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->remove, 40, offset);
-			offset += 40;
-			actions->len += 40;
-			break;
-		case ACTION_DROP:
-			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->label, 100, offset);
-			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->remove, 40, offset);
-			offset += 40;
-			actions->len += 40;
-			break;
-		case ACTION_JUMP:
-			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->label, 100, offset);
-			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->widget1, 160, offset);
-			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->remove, 40, offset);
-			offset += 40;
-			actions->len += 40;
-			break;
-		case ACTION_COUNTER:
-			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->label, 100, offset);
-			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->widget1, 380, offset);
-			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->widget2, 160, offset);
-			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->widget3, 700, offset);
-			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->widget4, 480, offset);
-			gtk_fixed_move(GTK_FIXED(actions->fixed), elem->remove, 40, offset);
-			offset += 40;
-			actions->len += 40;
-			break;
-		default:
-			BUG();
-		}
-	}
-
-	update_index_position(rule);
-	update_cancel_ok_position(rule);
-}
-
-
-static void rule_actions_add_accept(struct rule_create_widget *new_rule, struct action *action)
-{
-	struct action_elem *elem;
-	struct actions_all	*actions;
-
-	actions = new_rule->actions;
-	elem = xzalloc(sizeof(struct action_elem));
-	elem->rule = new_rule;
-	elem->type = ACTION_ACCEPT;
-	elem->label = gtk_label_new("Accept:");
-	elem->remove = gtk_button_new_with_label("X");
-	g_signal_connect(G_OBJECT(elem->remove), "clicked", G_CALLBACK(rule_actions_remove), elem);
-	list_add_tail(&elem->list, &actions->list);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->label, 100, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->remove, 40, actions->len);
-	actions->len += 40;
-	gtk_widget_show(elem->label);
-	gtk_widget_show(elem->remove);
-	gtk_widget_set_sensitive(actions->action_list, FALSE);
-	gtk_widget_set_sensitive(actions->action, FALSE);
-}
-
-
-static void rule_actions_add_drop(struct rule_create_widget *new_rule, struct action *action)
-{
-	struct action_elem *elem;
-	struct actions_all	*actions;
-
-	actions = new_rule->actions;
-	elem = xzalloc(sizeof(struct action_elem));
-	elem->rule = new_rule;
-	elem->type = ACTION_DROP;
-	elem->label = gtk_label_new("Drop:");
-	elem->remove = gtk_button_new_with_label("X");
-	g_signal_connect(G_OBJECT(elem->remove), "clicked", G_CALLBACK(rule_actions_remove), elem);
-	list_add_tail(&elem->list, &actions->list);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->label, 100, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->remove, 40, actions->len);
-	actions->len += 40;
-	gtk_widget_show(elem->label);
-	gtk_widget_show(elem->remove);
-	gtk_widget_set_sensitive(actions->action_list, FALSE);
-	gtk_widget_set_sensitive(actions->action, FALSE);
-}
-
-
-static void rule_actions_add_jump(struct rule_create_widget *new_rule, struct action *action)
-{
-	struct action_elem *elem;
+	GtkWidget	*fixed_actions;
+	GtkWidget	*fixed;
+	GtkWidget	*accept;
+	GtkWidget	*drop;
+	GtkWidget	*jump;
+	GtkWidget	*jump_to;
+	GtkWidget	*counter;
+	GtkWidget	*counter_value;
+	GtkWidget	*counter_label;
+	GtkWidget	*index;
+	GtkWidget	*index_value;
+	GtkWidget	*line;
+	int	offset = 80;
 	struct actions_all	*actions;
 	LIST_HEAD(chain_list);
 	struct chain_list_data   *chain, *c;
 	int	res;
-	int	index = 0;
-	int	selected = 0;
+	struct actions  *data = NULL;
+	struct action   *data_act;
+	char  stats[100];
+	int   len;
+	char  *to_chain = NULL;
+	int   iter = 0;
+	int   selected = 0;
+
+	actions = new_rule->actions;
+	actions->len = 40;
+	actions->expanded = 0;
+	fixed = new_rule->fixed;
+	if (rule_arg) {
+		data = rule_arg->actions;
+	}
+
+	if (new_rule->header->expanded)
+		offset += new_rule->header->len;
+	if (new_rule->meta->expanded)
+		offset += new_rule->meta->len;
+
+	fixed_actions = gtk_fixed_new();
+	gtk_fixed_put(GTK_FIXED(fixed), fixed_actions, 0, offset);
+	actions->fixed = fixed_actions;
 
 	res = gui_get_chains_list(&chain_list, new_rule->family, new_rule->table, (char *)"user", 0);
 	if (res != CHAIN_SUCCESS) {
@@ -1271,217 +1142,106 @@ static void rule_actions_add_jump(struct rule_create_widget *new_rule, struct ac
 		return;
 	}
 
-
-	actions = new_rule->actions;
-	elem = xzalloc(sizeof(struct action_elem));
-	elem->rule = new_rule;
-	elem->type = ACTION_JUMP;
-	elem->label = gtk_label_new("Jump to:");
-
-	elem->widget1 = gtk_combo_box_text_new();
-	gtk_widget_set_size_request(elem->widget1, 210, 10);
-	list_for_each_entry_safe(chain, c, &chain_list, list) {
-		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(elem->widget1),
-				xstrdup(chain->chain), xstrdup(chain->chain));
-		list_del(&chain->list);
-		gui_chain_free(chain);	
-		if (action) {
-			if (!strcpy(action->chain, chain->chain))
-				selected = index;
-		}
-		index++;
-	}
-	gtk_combo_box_set_active(GTK_COMBO_BOX(elem->widget1), selected);
-	elem->remove = gtk_button_new_with_label("X");
-	g_signal_connect(G_OBJECT(elem->remove), "clicked", G_CALLBACK(rule_actions_remove), elem);
-	list_add_tail(&elem->list, &actions->list);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->label, 100, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->widget1, 160, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->remove, 40, actions->len);
-	actions->len += 40;
-	gtk_widget_show(elem->label);
-	gtk_widget_show(elem->widget1);
-	gtk_widget_show(elem->remove);
-	gtk_widget_set_sensitive(actions->action_list, FALSE);
-	gtk_widget_set_sensitive(actions->action, FALSE);
-}
-
-
-static void rule_actions_add_counter(struct rule_create_widget *new_rule, struct action *action)
-{
-	struct action_elem *elem;
-	struct actions_all	*actions;
-
-	actions = new_rule->actions;
-	elem = xzalloc(sizeof(struct action_elem));
-	elem->rule = new_rule;
-	elem->type = ACTION_COUNTER;
-	elem->label = gtk_label_new("Counter:");
-	elem->widget1 = gtk_label_new("(packets)");
-	elem->widget2 = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(elem->widget2), 25);
-	gtk_entry_set_max_length(GTK_ENTRY(elem->widget2), 30);
-	elem->widget3 = gtk_label_new("(bytes)");
-	elem->widget4 = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(elem->widget4), 25);
-	gtk_entry_set_max_length(GTK_ENTRY(elem->widget4), 30);
-	elem->remove = gtk_button_new_with_label("X");
-	g_signal_connect(G_OBJECT(elem->remove), "clicked", G_CALLBACK(rule_actions_remove), elem);
-	list_add_tail(&elem->list, &actions->list);
-	if (action) {
-		char  packets[100];
-		char  bytes[100];
-		snprintf(packets, 100, "%"PRIu64, action->packets);
-		snprintf(bytes, 100, "%"PRIu64, action->bytes);
-		gtk_entry_set_text(GTK_ENTRY(elem->widget2), packets);
-		gtk_entry_set_text(GTK_ENTRY(elem->widget4), bytes);
-	}
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->label, 100, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->widget1, 380, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->widget2, 160, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->widget3, 700, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->widget4, 480, actions->len);
-	gtk_fixed_put(GTK_FIXED(actions->fixed), elem->remove, 40, actions->len);
-	actions->len += 40;
-	gtk_widget_show(elem->label);
-	gtk_widget_show(elem->widget1);
-	gtk_widget_show(elem->widget2);
-	gtk_widget_show(elem->widget3);
-	gtk_widget_show(elem->widget4);
-	gtk_widget_show(elem->remove);
-}
-
-
-static void rule_actions_add(GtkButton *button, gpointer data)
-{
-	struct rule_create_widget *new_rule;
-	GtkComboBoxText  *combo;
-	char *action;
-
-	new_rule = (struct rule_create_widget *)data;
-	combo = GTK_COMBO_BOX_TEXT(new_rule->actions->action_list);
-	action = gtk_combo_box_text_get_active_text(combo);
-	if (!(strcmp(action, "accept")))
-		rule_actions_add_accept(new_rule, NULL);
-	else if (!(strcmp(action, "drop")))
-		rule_actions_add_drop(new_rule, NULL);
-	else if (!(strcmp(action, "jump to")))
-		rule_actions_add_jump(new_rule, NULL);
-	else if (!(strcmp(action, "counter")))
-		rule_actions_add_counter(new_rule, NULL);
-	else
-		BUG();
-	update_index_position(new_rule);
-	update_cancel_ok_position(new_rule);
-}
-
-
-static void rule_add_content_actions(struct rule_create_widget *new_rule, struct rule_create_data *rule_arg)
-{
-	GtkWidget	*fixed_actions;
-	GtkWidget	*expander_actions;
-	GtkWidget	*fixed;
-	GtkWidget	*list;
-	GtkWidget	*add;
-	int	offset = 80;
-	struct actions_all	*actions;
-	struct actions	*data = NULL;
-	struct action	*data_act;
-
-	actions = new_rule->actions;
-	actions->len = 40;
-	actions->expanded = 0;
-	fixed = new_rule->fixed;
-	if (rule_arg) {
-		data = rule_arg->actions;
-	}
-
-	if (new_rule->header->expanded)
-		offset += new_rule->header->len;
-	if (new_rule->meta->expanded)
-		offset += new_rule->meta->len;
-
-
-	fixed_actions = gtk_fixed_new();
-	expander_actions = gtk_expander_new("Actions");
-	gtk_fixed_put(GTK_FIXED(fixed), expander_actions, 0, offset);
-	gtk_container_add(GTK_CONTAINER(expander_actions), fixed_actions);
-	g_signal_connect(expander_actions, "notify::expanded", G_CALLBACK(expander_callback), new_rule);
-	actions->fixed = fixed_actions;
-	actions->expander = expander_actions;
-
-	list = gtk_combo_box_text_new();
-	gtk_widget_set_size_request(list, 150, 10);
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(list),
-			"accept", "accept");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(list),
-			"drop", "drop");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(list),
-			"jump to", "jump to");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(list),
-			"counter", "counter");
-	gtk_combo_box_set_active(GTK_COMBO_BOX(list), 0);
-	gtk_fixed_put(GTK_FIXED(fixed_actions), list, 40, 0);
-    	add = gtk_button_new_with_label("Add action");
-	g_signal_connect(G_OBJECT(add), "clicked", G_CALLBACK(rule_actions_add), new_rule);
-	gtk_fixed_put(GTK_FIXED(fixed_actions), add, 240, 0);
-	actions->action_list = list;
-	actions->action = add;
+	accept = gtk_radio_button_new_with_label(NULL, "Accept");
+	drop = gtk_radio_button_new_with_label(gtk_radio_button_get_group(GTK_RADIO_BUTTON(accept)), "Drop");
+	jump = gtk_radio_button_new_with_label(gtk_radio_button_get_group(GTK_RADIO_BUTTON(drop)), "Jump to");
+	jump_to = gtk_combo_box_text_new();
+	counter = gtk_check_button_new_with_label("Counter");
+	counter_value = gtk_entry_new();
+	counter_label = gtk_label_new("(packets/bytes)");
 
 	if (data && !list_empty(&data->list)) {
-		actions->expanded = 1;
 		list_for_each_entry(data_act, &data->list, list) {
 			switch (data_act->type) {
 			case ACTION_ACCEPT:
-				rule_actions_add_accept(new_rule, data_act);
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(accept), TRUE);
 				break;
 			case ACTION_DROP:
-				rule_actions_add_drop(new_rule, data_act);
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(drop), TRUE);
 				break;
 			case ACTION_JUMP:
-				rule_actions_add_jump(new_rule, data_act);
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(jump), TRUE);
+				to_chain = data_act->chain;
 				break;
 			case ACTION_COUNTER:
-				rule_actions_add_counter(new_rule, data_act);
+				len = snprintf(stats, 100, "%"PRIu64, data_act->packets);
+				len += snprintf(stats + len, 100 - len, "%s", "/");
+				snprintf(stats + len, 100 - len, "%"PRIu64, data_act->bytes);
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(counter), TRUE);
+				gtk_entry_set_text(GTK_ENTRY(counter_value), stats);
 				break;
 			default:
-				BUG();
+			        BUG();
 			}
 		}
 	}
 
-	gtk_widget_show_all(GTK_WIDGET(expander_actions));
-}
+	list_for_each_entry_safe(chain, c, &chain_list, list) {
+		gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(jump_to),
+				xstrdup(chain->chain), xstrdup(chain->chain));
+		list_del(&chain->list);
+		if (to_chain) {
+			if (!strcmp(to_chain, chain->chain))
+				selected = iter;
+		}
+		iter++;
+		gui_chain_free(chain);	
+	}
+	gtk_combo_box_set_active(GTK_COMBO_BOX(jump_to), selected);
 
+//	line = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+	line = gtk_label_new("------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+	gtk_fixed_put(GTK_FIXED(fixed_actions), line, 20, 0);
+	
+	actions->accept = accept;
+	actions->drop = drop;
+	actions->jump = jump;
+	actions->jump_to = jump_to;
+	gtk_fixed_put(GTK_FIXED(fixed_actions), accept, 20, 40);
+	gtk_fixed_put(GTK_FIXED(fixed_actions), drop, 130, 40);
+	gtk_fixed_put(GTK_FIXED(fixed_actions), jump, 240, 40);
+	gtk_fixed_put(GTK_FIXED(fixed_actions), jump_to, 340, 40);
 
-static void rule_add_content_index(struct rule_create_widget *new_rule, struct rule_create_data *rule_arg)
-{
-	GtkWidget	*fixed;
-	GtkWidget	*index;
-	GtkWidget	*index_value;
-	int		offset = 0;
-	int		header_expanded;
-	int		pktmeta_expanded;
-
-	fixed = new_rule->fixed;
-	header_expanded = new_rule->header->expanded;
-	pktmeta_expanded = new_rule->meta->expanded;
-	offset = new_rule->header->len * header_expanded + new_rule->meta->len * pktmeta_expanded;
-	offset += 120;
-
+	actions->counter = counter;
+	actions->counter_value = counter_value;
+	gtk_fixed_put(GTK_FIXED(fixed_actions), counter, 20, 80);
+	gtk_fixed_put(GTK_FIXED(fixed_actions), counter_value, 120, 80);
+	gtk_fixed_put(GTK_FIXED(fixed_actions), counter_label, 290, 80);
+	
 	index = gtk_label_new("Index:");
-	gtk_fixed_put(GTK_FIXED(fixed), index, 20, offset);
-	new_rule->index = index;
+	gtk_fixed_put(GTK_FIXED(fixed_actions), index, 20, 120);
+	actions->index = index;
 	index_value = gtk_entry_new();
-	gtk_fixed_put(GTK_FIXED(fixed), index_value, 100, offset);
-	if (rule_arg)
-		gtk_widget_set_sensitive(index_value, FALSE);
-	gtk_entry_set_width_chars(GTK_ENTRY(index_value), 33);
-		
-	new_rule->index = index;
-	new_rule->index_value = index_value;
-	gtk_widget_show(GTK_WIDGET(index));
-	gtk_widget_show(GTK_WIDGET(index_value));
+	gtk_fixed_put(GTK_FIXED(fixed_actions), index_value, 120, 120);
+	actions->index = index_value;
+
+	if (data && !list_empty(&data->list)) {
+		list_for_each_entry(data_act, &data->list, list) {
+			switch (data_act->type) {
+			case ACTION_ACCEPT:
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(accept), TRUE);
+				break;
+			case ACTION_DROP:
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(drop), TRUE);
+				break;
+			case ACTION_JUMP:
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(jump), TRUE);
+				gtk_entry_set_text(GTK_ENTRY(jump_to), data_act->chain);
+				break;
+			case ACTION_COUNTER:
+				len = snprintf(stats, 100, "%"PRIu64, data_act->packets);
+				len += snprintf(stats + len, 100 - len, "%s", "/");
+				snprintf(stats + len, 100 - len, "%"PRIu64, data_act->bytes);
+				gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(counter), TRUE);
+				gtk_entry_set_text(GTK_ENTRY(counter_value), stats);
+				break;
+			default:
+			        BUG();
+			}
+		}
+	}
+
+	gtk_widget_show_all(GTK_WIDGET(fixed_actions));
 }
 
 
@@ -1529,11 +1289,9 @@ static void rule_add_content(struct rule_create_widget *new_rule, struct rule_cr
 	rule_add_content_header(new_rule, rule_arg);
 	rule_add_content_pktmeta(new_rule, rule_arg);
 	rule_add_content_actions(new_rule, rule_arg);
-	rule_add_content_index(new_rule, rule_arg);
 	rule_add_content_submit(new_rule);
 	gtk_expander_set_expanded(GTK_EXPANDER(new_rule->header->expander), new_rule->header->expanded);
 	gtk_expander_set_expanded(GTK_EXPANDER(new_rule->meta->expander), new_rule->meta->expanded);
-	gtk_expander_set_expanded(GTK_EXPANDER(new_rule->actions->expander), new_rule->actions->expanded);
 }
 
 static struct rule_create_widget *rule_widget_container_create(void)
@@ -1877,6 +1635,7 @@ void gnftables_rule_list(void)
 	family = top_window->data->family;
 	table = top_window->data->table;
 	chain = top_window->data->chain;
+	top_window->data->handle = 0;
 
 	res = gui_check_chain_exist(family, table, chain);
 	if (res != CHAIN_SUCCESS) {
@@ -3140,27 +2899,27 @@ void gnftables_chain_list(void)
 	column = gtk_tree_view_column_new_with_attributes("Id", renderer,
 			"text", CHAIN_ID, NULL);
 	gtk_tree_view_column_set_clickable(column, TRUE);
-	gtk_tree_view_column_set_min_width(column, 50);
+	gtk_tree_view_column_set_min_width(column, 40);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 	column = gtk_tree_view_column_new_with_attributes("Name", renderer,
 			"text", CHAIN_NAME, NULL);
-	gtk_tree_view_column_set_min_width(column, 200);
+	gtk_tree_view_column_set_min_width(column, 320);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 	column = gtk_tree_view_column_new_with_attributes("Rules", renderer,
 			"text", CHAIN_RULES, NULL);
-	gtk_tree_view_column_set_min_width(column, 90);
+	gtk_tree_view_column_set_min_width(column, 50);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 	column = gtk_tree_view_column_new_with_attributes("Base Chain",
 			renderer, "text", CHAIN_BASECHAIN, NULL);
-	gtk_tree_view_column_set_min_width(column, 90);
+	gtk_tree_view_column_set_min_width(column, 80);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 	column = gtk_tree_view_column_new_with_attributes("Type", renderer,
 			"text", CHAIN_TYPE, NULL);
-	gtk_tree_view_column_set_min_width(column, 90);
+	gtk_tree_view_column_set_min_width(column, 60);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 	column = gtk_tree_view_column_new_with_attributes("Hook", renderer,
@@ -3170,7 +2929,7 @@ void gnftables_chain_list(void)
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 	column = gtk_tree_view_column_new_with_attributes("Priority", renderer,
 			"text", CHAIN_PRIORITY, NULL);
-	gtk_tree_view_column_set_min_width(column, 80);
+	gtk_tree_view_column_set_min_width(column, 60);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 
@@ -3181,7 +2940,7 @@ void gnftables_chain_list(void)
 			G_CALLBACK(gnftables_chain_details), list_chains) ;
 	column = gtk_tree_view_column_new_with_attributes("Details",
 			renderer_details, "pixbuf", CHAIN_DETAIL, NULL);
-	gtk_tree_view_column_set_min_width(column, 80);
+	gtk_tree_view_column_set_min_width(column, 60);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 
@@ -3192,7 +2951,7 @@ void gnftables_chain_list(void)
 			G_CALLBACK(gnftables_chain_delete), list_chains) ;
 	column = gtk_tree_view_column_new_with_attributes("Delete",
 			renderer_delete, "pixbuf", CHAIN_DELETE, NULL);
-	gtk_tree_view_column_set_min_width(column, 80);
+	gtk_tree_view_column_set_min_width(column, 60);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_chains), column);
 
@@ -3617,27 +3376,27 @@ void gnftables_table_list(void)
 	column = gtk_tree_view_column_new_with_attributes("Id", renderer, 
 			"text", TABLE_ID, NULL);
 	gtk_tree_view_column_set_clickable(column, TRUE);
-	gtk_tree_view_column_set_min_width(column, 100);
+	gtk_tree_view_column_set_min_width(column, 70);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
 	column = gtk_tree_view_column_new_with_attributes("Name", renderer,
 			"text", TABLE_NAME, NULL);
-	gtk_tree_view_column_set_min_width(column, 200);
+	gtk_tree_view_column_set_min_width(column, 340);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
 	column = gtk_tree_view_column_new_with_attributes("Family", renderer,
 			"text", TABLE_FAMILY, NULL);
-	gtk_tree_view_column_set_min_width(column, 100);
+	gtk_tree_view_column_set_min_width(column, 90);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
 	column = gtk_tree_view_column_new_with_attributes("Sets", renderer,
 			"text", TABLE_SETS, NULL);
-	gtk_tree_view_column_set_min_width(column, 100);
+	gtk_tree_view_column_set_min_width(column, 80);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
 	column = gtk_tree_view_column_new_with_attributes("Chains", renderer,
 			"text", TABLE_CHAINS, NULL);
-	gtk_tree_view_column_set_min_width(column, 100);
+	gtk_tree_view_column_set_min_width(column, 80);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
 
@@ -3648,7 +3407,7 @@ void gnftables_table_list(void)
 			G_CALLBACK(gnftables_table_details), list_tables) ;
 	column = gtk_tree_view_column_new_with_attributes("Details",
 			renderer_details, "pixbuf", TABLE_DETAIL, NULL);
-	gtk_tree_view_column_set_min_width(column, 140);
+	gtk_tree_view_column_set_min_width(column, 90);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
 
@@ -3659,7 +3418,7 @@ void gnftables_table_list(void)
 			G_CALLBACK(gnftables_table_delete), list_tables) ;
 	column = gtk_tree_view_column_new_with_attributes("Delete",
 			renderer_delete, "pixbuf", TABLE_DELETE, NULL);
-	gtk_tree_view_column_set_min_width(column, 100);
+	gtk_tree_view_column_set_min_width(column, 90);
 	gtk_tree_view_column_set_alignment(column, 0.0);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list_tables), column);
 

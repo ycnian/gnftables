@@ -66,6 +66,7 @@ const char *rule_error[RULE_ERROR_NUM] = {
 	[RULE_INDEX_INVALID]		= "Index error.",
 	[RULE_NOT_EXIST]		= "Rule doesn't exist.",
 	[RULE_TYPE_NOT_SUPPORT]		= "I'm sorry that I cannot parse this rule.",
+	[RULE_COUNTER_INVALID]		= "Counter is invalid.",
 };
 
 

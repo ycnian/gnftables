@@ -184,6 +184,8 @@ int gui_get_rules_list(struct list_head *head, int family, char *table,
 	struct netlink_ctx	ctx;
 	struct handle		handle;
 	struct table		*tmp = NULL;
+	struct chain		*tmp_chain, *tmp_nchain;
+	struct set		*tmp_set, *tmp_nset;
 	struct rule		*rule, *r;
 	int			res;
 	struct gui_rule		*gui_rule;
@@ -248,6 +250,16 @@ int gui_get_rules_list(struct list_head *head, int family, char *table,
 		rule_snprint(gui_rule->stmt, rule_len + 1, rule);
 		list_del(&rule->list);
 		list_add_tail(&gui_rule->list, head);
+	}
+
+	list_for_each_entry_safe(tmp_chain, tmp_nchain, &tmp->chains, list) {
+		list_del(&tmp_chain->list);
+		chain_free(tmp_chain);
+	}
+
+	list_for_each_entry_safe(tmp_set, tmp_nset, &tmp->sets, list) {
+		list_del(&tmp_set->list);
+		set_free(tmp_set);
 	}
 
 	return RULE_SUCCESS;
@@ -1490,6 +1502,8 @@ int tables_fprint(char *filename)
 	struct table *tmp = NULL;
 	struct chain *chain, *nchain;
 	struct set *set, *nset;
+	struct chain		*tmp_chain, *tmp_nchain;
+	struct set		*tmp_set, *tmp_nset;
 
 	init_list_head(&ctx.list);
 	f = fopen(filename, "w+");
@@ -1521,6 +1535,16 @@ int tables_fprint(char *filename)
 		}
 	}
 	fclose(f);
+
+	list_for_each_entry_safe(tmp_chain, tmp_nchain, &tmp->chains, list) {
+		list_del(&tmp_chain->list);
+		chain_free(tmp_chain);
+	}
+	list_for_each_entry_safe(tmp_set, tmp_nset, &tmp->sets, list) {
+		list_del(&tmp_set->list);
+		set_free(tmp_set);
+	}
+
 	return 0;
 }
 

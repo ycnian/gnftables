@@ -689,7 +689,7 @@ int get_pktmeta_data_from_page(struct match_pktmeta  *widget,
 	return res;
 }
 
-int get_accept_data_from_page(struct action_elem *elem, struct actions *data)
+static int get_accept_data_from_page(struct actions *data)
 {
 	struct action *action;
 	action = xzalloc(sizeof(struct action));
@@ -698,7 +698,7 @@ int get_accept_data_from_page(struct action_elem *elem, struct actions *data)
 	return RULE_SUCCESS;
 }
 
-int get_drop_data_from_page(struct action_elem *elem, struct actions *data)
+static int get_drop_data_from_page(struct actions *data)
 {
 	struct action *action;
 	action = xzalloc(sizeof(struct action));
@@ -707,70 +707,91 @@ int get_drop_data_from_page(struct action_elem *elem, struct actions *data)
 	return RULE_SUCCESS;
 }
 
-int get_jump_data_from_page(struct action_elem *elem, struct actions *data)
+static int get_jump_data_from_page(GtkWidget *jump_to, struct actions *data)
 {
 	struct action *action;
 	action = xzalloc(sizeof(struct action));
 	action->type = ACTION_JUMP;
 	action->chain = gtk_combo_box_text_get_active_text(
-			GTK_COMBO_BOX_TEXT(elem->widget1));
+			GTK_COMBO_BOX_TEXT(jump_to));
 	list_add_tail(&action->list, &data->list);
 	return RULE_SUCCESS;
 }
 
-int get_counter_data_from_page(struct action_elem *elem, struct actions *data)
+static int get_counter_data_from_page(GtkWidget *counter, struct actions *data)
 {
 	unsigned int	packets;
 	unsigned int	bytes;
-	char	*packets_str;
-	char	*bytes_str;
+	char	*counter_str;
+	char	*packets_str = NULL;
+	char	*bytes_str = NULL;
 	struct action *action;
+	int	res = RULE_COUNTER_INVALID;
+
 	action = xzalloc(sizeof(struct action));
 	action->type = ACTION_COUNTER;
-	packets_str = get_data_from_entry(GTK_ENTRY(elem->widget2));
-	bytes_str = get_data_from_entry(GTK_ENTRY(elem->widget4));
-	strtouint(packets_str, &packets);
-	strtouint(bytes_str, &bytes);
+	counter_str = get_data_from_entry(GTK_ENTRY(counter));
+	if (!counter_str) {
+		list_add_tail(&action->list, &data->list);
+		return RULE_SUCCESS;
+	}
+	bytes_str = strchr(counter_str, '/');
+	if (!bytes_str)
+		goto out;
+	packets_str = strndup(counter_str, bytes_str - counter_str);
+	bytes_str++;
+
+	if (strtouint(packets_str, &packets) != 0)
+		goto out;
+	if (strtouint(bytes_str, &bytes) != 0)
+		goto out;
 	action->packets = packets;
 	action->bytes = bytes;
 	list_add_tail(&action->list, &data->list);
-	return RULE_SUCCESS;
+	res = RULE_SUCCESS;
+out:
+	free(counter_str);
+	free(packets_str);
+	if (res != RULE_SUCCESS)
+		xfree(action);
+	return res;
+
 }
 
 int get_actions_data_from_page(struct actions_all *widget, struct actions *data)
 {
 	int	res = RULE_SUCCESS;
-	struct action_elem	*elem;
+	int	active;
 
-	if (list_empty(&widget->list))
-		return RULE_SUCCESS;
-	list_for_each_entry(elem, &widget->list, list) {
-		switch(elem->type) {
-		case ACTION_ACCEPT:
-			res = get_accept_data_from_page(elem, data);
-			if (res != RULE_SUCCESS)
-				goto out;
-			break;
-		case ACTION_DROP:
-			res = get_drop_data_from_page(elem, data);
-			if (res != RULE_SUCCESS)
-				goto out;
-			break;
-		case ACTION_JUMP:
-			res = get_jump_data_from_page(elem, data);
-			if (res != RULE_SUCCESS)
-				goto out;
-			break;
-		case ACTION_COUNTER:
-			res = get_counter_data_from_page(elem, data);
-			if (res != RULE_SUCCESS)
-				goto out;
-			break;
-		default:
-			BUG();
-		}
+	active = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(widget->counter));
+	if (active) {
+		res = get_counter_data_from_page(widget->counter_value, data);
+		if (res != RULE_SUCCESS)
+			goto out;
 	}
-
+	active = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(widget->accept));
+	if (active) {
+		res = get_accept_data_from_page(data);
+		if (res != RULE_SUCCESS)
+			goto out;
+	}
+	active = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(widget->drop));
+	if (active) {
+		res = get_drop_data_from_page(data);
+		if (res != RULE_SUCCESS)
+			goto out;
+	}
+	active = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(widget->jump));
+	if (active) {
+		res = get_jump_data_from_page(widget->jump_to, data);
+		if (res != RULE_SUCCESS)
+			goto out;
+	}
+	
 out:
 	return res;
 }
@@ -787,7 +808,7 @@ static int get_position_from_page(struct rule_create_widget  *widget,
 
 	if (data->handle)
 		return RULE_SUCCESS;
-	index = get_data_from_entry(GTK_ENTRY(widget->index_value));
+	index = get_data_from_entry(GTK_ENTRY(widget->actions->index));
 	if (!index) {
 		data->position = 0;
 		return RULE_SUCCESS;

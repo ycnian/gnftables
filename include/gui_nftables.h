@@ -366,9 +366,14 @@ struct actions_all {
 	GtkWidget	*expander;
 	GtkWidget	*fixed;
 	int		expanded;
-	GtkWidget	*action_list;
-	GtkWidget	*action;
 	struct list_head	list;
+	GtkWidget	*accept;
+	GtkWidget	*drop;
+	GtkWidget	*jump;
+	GtkWidget	*jump_to;
+	GtkWidget	*counter;
+	GtkWidget	*counter_value;
+	GtkWidget	*index;
 };
 
 struct match_trackmeta {

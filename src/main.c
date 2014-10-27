@@ -156,14 +156,14 @@ static void select_page(GtkNotebook *notebook, GtkWidget *page, guint page_num, 
 		if (top_window->page_current == NOTEBOOK_SET_LIST) {
 			top_window->data->chain = NULL;
 			top_window->data->set = NULL;
-			top_window->data->type = NULL;
+			top_window->data->type = (char *)"all";
 			gnftables_set_list();
 		}
 		if (top_window->page_current == NOTEBOOK_CHAIN_LIST ||
-			top_window->page_current == NOTEBOOK_RULE) {
+			top_window->page_current & NOTEBOOK_RULE) {
 			top_window->data->chain = NULL;
 			top_window->data->set = NULL;
-			top_window->data->type = NULL;
+			top_window->data->type = (char *)"all";
 			gnftables_chain_list();
 		}
 		break;
@@ -1521,6 +1521,7 @@ void gnftables_rule_delete(GtkCellRendererToggle *cell,
                                  GTK_BUTTONS_OK_CANCEL,
                                  "The rule will be deleted. Are you sure?"
                                  );
+	gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_OK);
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 	if (res == GTK_RESPONSE_OK) {
 		model = gtk_tree_view_get_model(GTK_TREE_VIEW(data));
@@ -2129,6 +2130,7 @@ void gnftables_set_delete(GtkCellRendererToggle *cell,
 		GTK_BUTTONS_OK_CANCEL,
 		"The set will be deleted. Are you sure?"
 		);
+	gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_OK);
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 	if (res == GTK_RESPONSE_OK) {
 		model = gtk_tree_view_get_model(GTK_TREE_VIEW(data));
@@ -2593,19 +2595,6 @@ void gnftables_chain_add(GtkButton *button, gpointer data)
 	gtk_fixed_put(GTK_FIXED(fixed_chain), priority, 30, 230);
 	priority_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(priority_value), 30);
-	gtk_widget_set_tooltip_text(priority_value, "The priority can be used to order the chains or to put them before or after some Netfilter internal operations.\n\
-For reference, here's the list of different priority used in iptables:\n\
--400: priority of defragmentation\n\
--300: traditional priority of the raw table placed before connection tracking operation\n\
--225: SELinux operations\n\
--200: Connection tracking operations\n\
--150: mangle operation\n\
--100: destination NAT\n\
-   0: filtering operation, the filter table\n\
-  50: Place of security table where secmark can be set for example\n\
- 100: source NAT\n\
- 225: SELInux at packet exit\n\
- 300: connection tracking at exit");
 	gtk_fixed_put(GTK_FIXED(fixed_chain), priority_value, 100, 230);
 	basechain->priority = priority;
 	basechain->priority_value = priority_value;
@@ -2703,6 +2692,7 @@ void gnftables_chain_delete(GtkCellRendererToggle *cell,
 		"The chain and all rules in the chain will be deleted."
 		" Are you sure?"
 		);
+	gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_OK);
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 	if (res == GTK_RESPONSE_OK) {
 		model = gtk_tree_view_get_model(GTK_TREE_VIEW(data));
@@ -3219,6 +3209,7 @@ void gnftables_table_delete(GtkCellRendererToggle *cell,
 		"The table and all rules in the table will be deleted."
 		" Are you sure?"
 		);
+	gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_OK);
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 	if (res == GTK_RESPONSE_OK) {
 		model = gtk_tree_view_get_model(GTK_TREE_VIEW(data));
@@ -3470,10 +3461,8 @@ void gnftables_addpage_about(void)
 
 	const gchar *text = "gnftables 0.1\n\n"
 		"gnftables is a gui tool aimed to simplify the configuration "
-		"of nftables from command line. It's in heavy develpment now.\n"
-		"If you need more help, please visit the project's home site "
-		"(http://ycnian.org/projects/gnftables.php).\n\n"
-		"Copyright (c) 2014  Yanchuan Nian (ycnian at gmail dot com)\n\n"
+		"of nftables from command line. This is the first release.\n"
+		"If you need more help, please visit <a href=\"http://ycnian.org/projects/gnftables.php\">gnftables home site</a>.\n\n"
 		"This program is free software; you can redistribute it and/or "
 		"modify it under the terms of the GNU General Public License\n"
 		"version 2 as published by the Free Software Foundation.\n\n"
@@ -3481,7 +3470,8 @@ void gnftables_addpage_about(void)
 		" but WITHOUT ANY WARRANTY; without even the implied\n"
 		"warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
 		" See the <a href=\"http://www.gnu.org/licenses/gpl-2.0.html\">"
-		"GNU General Public License version 2</a> \nfor more details.\n";
+		"GNU General Public License version 2</a> \nfor more details.\n\n"
+		"Copyright (c) 2014  Yanchuan Nian (ycnian at gmail dot com)";
 
 	content = gtk_label_new(NULL);
 	gtk_label_set_width_chars(GTK_LABEL(content), 100);

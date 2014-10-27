@@ -274,6 +274,8 @@ int gui_get_rule(int family, const char *table, const char *chain,
 	int	res = RULE_SUCCESS;
 	struct rule	*rule, *next;
 	struct rule_create_data  *data;
+	struct table		*tmp = NULL;
+	struct set		*set, *s;
 
 	LIST_HEAD(msgs);
 	ctx.msgs = &msgs;
@@ -283,9 +285,33 @@ int gui_get_rule(int family, const char *table, const char *chain,
 	handle.family = family;
 	handle.table = table;
 	handle.chain = chain;
+	handle.set = NULL;
 	handle.handle = handle_no;
 	handle.position = 0;
 	handle.comment = NULL;
+
+	tmp = table_lookup(&handle);
+	if (tmp == NULL) {
+		tmp = table_alloc();
+		handle_merge(&tmp->handle, &handle);
+		table_add_hash(tmp);
+	}
+
+	if (netlink_list_sets(&ctx, &handle, &internal_location) < 0) {
+		struct  error_record *erec, *next;
+		list_for_each_entry_safe(erec, next, ctx.msgs, list) {
+			list_del(&erec->list);
+			erec_destroy(erec);
+		}
+		return RULE_KERNEL_ERROR;
+	}
+	list_for_each_entry_safe(set, s, &ctx.list, list) {
+		list_del(&set->list);
+		if (netlink_get_setelems(&ctx, &set->handle,
+				&internal_location, set) < 0)
+			return RULE_KERNEL_ERROR;
+		set_add_hash(set, tmp);
+	}
 
 	// get rule.
 	if (netlink_get_rule(&ctx, &handle, &internal_location) < 0) {
@@ -314,6 +340,11 @@ int gui_get_rule(int family, const char *table, const char *chain,
 	list_for_each_entry_safe(rule, next, &ctx.list, list) {
 		list_del(&rule->list);
 		rule_free(rule);
+	}
+
+	list_for_each_entry_safe(set, s, &tmp->sets, list) {
+		list_del(&set->list);
+		set_free(set);
 	}
 
 	return res;
@@ -727,7 +758,7 @@ int gui_add_chain(struct chain_create_data *gui_chain)
 	init_list_head(&chain.list);
 	init_list_head(&chain.rules);
 
-	if (netlink_add_chain(&ctx, &handle, &loc, &chain, false) < 0) {
+	if (netlink_add_chain(&ctx, &handle, &loc, &chain, true) < 0) {
 		if (errno == EEXIST)
 			return CHAIN_EXIST;
 		else

@@ -62,7 +62,7 @@ nft_mnl_talk(struct mnl_socket *nf_sock, const void *data, unsigned int len,
 	uint32_t portid = mnl_socket_get_portid(nf_sock);
 #ifdef DEBUG
 	if (debug_level & DEBUG_MNL)
-		mnl_nlmsg_fprintf(stdout, data, len, sizeof(struct nfgenmsg));
+      	mnl_nlmsg_fprintf(stdout, data, len, sizeof(struct nfgenmsg));
 #endif
 
 	if (mnl_socket_sendto(nf_sock, data, len) < 0)
@@ -227,10 +227,10 @@ static ssize_t mnl_nft_socket_sendmsg(const struct mnl_socket *nl)
 		i++;
 #ifdef DEBUG
 		if (debug_level & DEBUG_MNL) {
-			mnl_nlmsg_fprintf(stdout,
-					  mnl_nlmsg_batch_head(batch_page->batch),
-					  mnl_nlmsg_batch_size(batch_page->batch),
-					  sizeof(struct nfgenmsg));
+      		mnl_nlmsg_fprintf(stdout,
+      				  mnl_nlmsg_batch_head(batch_page->batch),
+      				  mnl_nlmsg_batch_size(batch_page->batch),
+      				  sizeof(struct nfgenmsg));
 		}
 #endif
 		list_del(&batch_page->head);

@@ -93,8 +93,7 @@ int name_check(char *name)
 
 
 /*
- * Check integer, only +, -, 0-9 allowed.
- * Skipe spaces at the start and end of integer.
+ * Check integer, only -, 0-9 allowed.
  * @integer:  a string to be checked
  * Return Value:
  * 	0:  integer is valid
@@ -102,26 +101,17 @@ int name_check(char *name)
  */
 int integer_check(char *integer)
 {
-	int	i = 0;
-	int	j;
+	int	j = 0;
+	int	neg = 0;
 	int	len = strlen(integer);
-	if (len == 0)
-		return 0;
 
-	while (isblank(integer[i]))
-		i++;
-	if (i == len)
-		return 0;
-	if ((integer[i] != '+') && (integer[i] != '-') && !isdigit(integer[i]))
+	if (integer[0] == '-')
+		neg = 1;
+	if (neg && (len == 1))
 		return -1;
-	for (j = i + 1; j < len; j++) {
-		if (isblank(integer[j]))
-			break;
+
+	for (j = (neg == 1 ? 1: 0); j < len; j++) {
 		if (!isdigit(integer[j]))
-			return -1;
-	}
-	for (i = j + 1; i < len; i++) {
-		if (!isblank(integer[i]))
 			return -1;
 	}
 	return 0;

@@ -1044,6 +1044,11 @@ int rule_jump_gen_exprs(struct rule_create_data *data, struct action *action)
 {
 	struct expr	*expr;
 	struct stmt	*stmt;
+	int	res;
+
+	res = gui_check_chain_exist(data->family, data->table, action->chain);
+	if (res != CHAIN_SUCCESS)
+		return RULE_USER_CHAIN_NOT_EXIST;
 	expr = verdict_expr_alloc(data->loc, NFT_JUMP, action->chain);
 	stmt = verdict_stmt_alloc(data->loc, expr);
 	list_add_tail(&stmt->list, &data->exprs);

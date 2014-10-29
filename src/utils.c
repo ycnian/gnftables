@@ -140,6 +140,7 @@ int strtoint(char *str, int *num)
 	long long int    res = 0;
 	int     len;
 	int     i;
+	int	neg = 0;
 
 	if (!str) {
 		*num = 0;
@@ -147,11 +148,15 @@ int strtoint(char *str, int *num)
 	}
 
 	len = strlen(str);
-	for (i = 0; i < len; i ++) {
+	if (str[0] == '-')
+		neg = 1;
+	for (i = (neg == 1 ? 1: 0); i < len; i ++) {
 		res = res * 10 + str[i] - '0';
 		if (res > INT_MAX || res < INT_MIN)
 			return -1;
 	}
+	if (neg == 1)
+		res = -res;
 	*num = res;
 	return 0;
 }

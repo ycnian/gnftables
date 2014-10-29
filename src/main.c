@@ -1108,6 +1108,7 @@ static void rule_add_content_actions(struct rule_create_widget *new_rule, struct
 	char  *to_chain = NULL;
 	int   iter = 0;
 	int   selected = 0;
+	int   usr_chain_num = 0;
 
 	actions = new_rule->actions;
 	actions->len = 40;
@@ -1186,6 +1187,7 @@ static void rule_add_content_actions(struct rule_create_widget *new_rule, struct
 		}
 		iter++;
 		gui_chain_free(chain);	
+		usr_chain_num++;
 	}
 	gtk_combo_box_set_active(GTK_COMBO_BOX(jump_to), selected);
 
@@ -1242,6 +1244,10 @@ static void rule_add_content_actions(struct rule_create_widget *new_rule, struct
 	}
 
 	gtk_widget_show_all(GTK_WIDGET(fixed_actions));
+	if (!usr_chain_num) {
+		gtk_widget_hide(jump);
+		gtk_widget_hide(jump_to);
+	}
 }
 
 
@@ -1760,6 +1766,7 @@ void gnftables_rule_list(void)
 	top_window->silent = 1;
 	gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), 2);
 	top_window->page_current = NOTEBOOK_RULE_LIST;
+	top_window->silent = 0;
 	gnftables_rule_update(top_window->data, store);
 }
 
@@ -1951,7 +1958,6 @@ void gnftables_set_add(GtkButton *button, gpointer data)
 	name = gtk_label_new("Name:");
 	gtk_fixed_put(GTK_FIXED(fixed_chain), name, 30, 30);
 	name_value = gtk_entry_new();
-	gtk_widget_set_tooltip_text(name_value, "No more than 15 characters.");
 	gtk_entry_set_width_chars(GTK_ENTRY(name_value), 30);
 	gtk_entry_set_max_length(GTK_ENTRY(name_value), 15);
 	if (set_data) {
@@ -1964,7 +1970,7 @@ void gnftables_set_add(GtkButton *button, gpointer data)
 	type = gtk_label_new("Type:");
 	gtk_fixed_put(GTK_FIXED(fixed_chain), type, 30, 80);
 	type_value = gtk_combo_box_text_new();
-	gtk_widget_set_size_request(type_value, 150, 10);
+	gtk_widget_set_size_request(type_value, 250, 10);
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(type_value),
 			"IPv4 address", "IPv4 address");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(type_value),
@@ -2534,7 +2540,6 @@ void gnftables_chain_add(GtkButton *button, gpointer data)
 	name = gtk_label_new("Name:");
 	gtk_fixed_put(GTK_FIXED(fixed_chain), name, 30, 30);
 	name_value = gtk_entry_new();
-	gtk_widget_set_tooltip_text(name_value, "No more than 30 characters.");
 	gtk_entry_set_width_chars(GTK_ENTRY(name_value), 30);
 	gtk_entry_set_max_length(GTK_ENTRY(name_value), 30);
 	gtk_fixed_put(GTK_FIXED(fixed_chain), name_value, 100, 30);
@@ -2771,7 +2776,7 @@ void gnftables_chain_update(struct page_info *args, GtkTreeStore *store)
 				CHAIN_ID, index,
 				CHAIN_NAME, xstrdup(chain->chain),
 				CHAIN_RULES, chain->nrules,
-				CHAIN_BASECHAIN, "Yes",
+				CHAIN_BASECHAIN, "yes",
 				CHAIN_TYPE, xstrdup(chain->type),
 				CHAIN_HOOK, hooknum2str(family, chain->hook),
 				CHAIN_PRIORITY, priority,
@@ -2782,7 +2787,7 @@ void gnftables_chain_update(struct page_info *args, GtkTreeStore *store)
 				CHAIN_ID, index,
 				CHAIN_NAME, xstrdup(chain->chain), 
 				CHAIN_RULES, chain->nrules, 
-				CHAIN_BASECHAIN, "No",
+				CHAIN_BASECHAIN, "no",
 				CHAIN_TYPE, "x",
 				CHAIN_HOOK, "x",
 				CHAIN_PRIORITY, "x",
@@ -3106,7 +3111,6 @@ void gnftables_table_add(GtkButton *button, gpointer data)
 	name = gtk_label_new("Name:");
 	gtk_fixed_put(GTK_FIXED(fixed_info), name, 30, 60);
 	name_value = gtk_entry_new();
-	gtk_widget_set_tooltip_text(name_value, "No more than 30 characters.");
 	gtk_entry_set_width_chars(GTK_ENTRY(name_value), 30);
 	gtk_entry_set_max_length(GTK_ENTRY(name_value), 30);
 	gtk_fixed_put(GTK_FIXED(fixed_info), name_value, 100, 60);
@@ -3461,8 +3465,8 @@ void gnftables_addpage_about(void)
 
 	const gchar *text = "gnftables 0.1\n\n"
 		"gnftables is a gui tool aimed to simplify the configuration "
-		"of nftables from command line. This is the first release.\n"
-		"If you need more help, please visit <a href=\"http://ycnian.org/projects/gnftables.php\">gnftables home site</a>.\n\n"
+		"of nftables from command line. This is the first release. If you\n"
+		"need help, please visit <a href=\"http://ycnian.org/projects/gnftables.php\">gnftables home site</a>.\n\n"
 		"This program is free software; you can redistribute it and/or "
 		"modify it under the terms of the GNU General Public License\n"
 		"version 2 as published by the Free Software Foundation.\n\n"

@@ -65,7 +65,7 @@ const char *rule_error[RULE_ERROR_NUM] = {
 	[RULE_HEADER_SET_NOT_EXIST]	= "Set doesn't exist",
 	[RULE_INDEX_INVALID]		= "Index error.",
 	[RULE_NOT_EXIST]		= "Rule doesn't exist.",
-	[RULE_TYPE_NOT_SUPPORT]		= "I'm sorry that I cannot parse this rule.",
+	[RULE_TYPE_NOT_SUPPORT]		= "I'm sorry, but I cannot parse this rule.",
 	[RULE_COUNTER_INVALID]		= "Counter is invalid.",
 	[RULE_USER_CHAIN_NOT_EXIST]	= "Target chain doesn't exist",
 };
@@ -80,7 +80,7 @@ const char *set_error[SET_ERROR_NUM]  = {
 	[SET_ELEMENT_INVALID]	= "Element invalid",
 	[SET_NAME_EMPTY]	= "Name is empty.",
 	[SET_NAME_INVALID]	= "Name is invalid, only letter, number, underscore allowed.",
-	[SET_TYPE_NOT_SUPPORT]	= "I'm sorry that I cannot parse this set."
+	[SET_TYPE_NOT_SUPPORT]	= "I'm sorry, but I cannot parse this set."
 };
 
 

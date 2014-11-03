@@ -1248,6 +1248,10 @@ static void rule_add_content_actions(struct rule_create_widget *new_rule, struct
 		gtk_widget_hide(jump);
 		gtk_widget_hide(jump_to);
 	}
+	if (rule_arg) {
+		gtk_widget_hide(index);
+		gtk_widget_hide(index_value);
+	}
 }
 
 

@@ -1662,6 +1662,10 @@ int rule_de_expressions(struct rule *rule, struct rule_create_data **data)
 		if (res != RULE_SUCCESS)
 			goto error;
 	}
+	if (list_empty(&p->actions->list)) {
+		res = RULE_TYPE_NOT_SUPPORT;
+		goto error;
+	}
 	*data = p;
 	return RULE_SUCCESS;
 error:

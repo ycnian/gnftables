@@ -1898,6 +1898,7 @@ void gnftables_set_add(GtkButton *button, gpointer data)
 	GtkWidget	*type;
 	GtkWidget	*type_value;
 	GtkWidget	*new;
+	GtkWidget	*elem_label;
 	GtkWidget	*new_value;
 	GtkWidget	*remove;
 	GtkWidget	*notebook;
@@ -1992,6 +1993,8 @@ void gnftables_set_add(GtkButton *button, gpointer data)
 
     	new = gtk_button_new_with_label("==>");
 	gtk_fixed_put(GTK_FIXED(fixed_chain), new, 370, 130);
+	elem_label = gtk_label_new("Element:");
+	gtk_fixed_put(GTK_FIXED(fixed_chain), elem_label, 30, 130);
 	new_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(new_value), 30);
 	gtk_fixed_put(GTK_FIXED(fixed_chain), new_value, 100, 130);

@@ -165,6 +165,18 @@ static const struct datatype tchandle_type = {
 	.parse		= tchandle_type_parse,
 };
 
+const struct datatype ifname_type = {
+	.type		= TYPE_IFNAME,
+	.name		= "ifname",
+	.desc		= "interface name",
+	.byteorder	= BYTEORDER_HOST_ENDIAN,
+	.size		= 16 * BITS_PER_BYTE,
+	.basetype	= &string_type,
+//	.print		= uid_type_print,
+//	.snprint	= uid_type_snprint,
+//	.parse		= uid_type_parse,
+};
+
 static void ifindex_type_print(const struct expr *expr)
 {
 	char name[IFNAMSIZ];
@@ -419,14 +431,14 @@ static const struct meta_template meta_templates[] = {
 						4 * 8, BYTEORDER_HOST_ENDIAN),
 	[NFT_META_IIF]		= META_TEMPLATE("iif",       &ifindex_type,
 						4 * 8, BYTEORDER_HOST_ENDIAN),
-	[NFT_META_IIFNAME]	= META_TEMPLATE("iifname",   &string_type,
+	[NFT_META_IIFNAME]	= META_TEMPLATE("iifname",   &ifname_type,
 						IFNAMSIZ * BITS_PER_BYTE,
 						BYTEORDER_HOST_ENDIAN),
 	[NFT_META_IIFTYPE]	= META_TEMPLATE("iiftype",   &arphrd_type,
 						2 * 8, BYTEORDER_HOST_ENDIAN),
 	[NFT_META_OIF]		= META_TEMPLATE("oif",	     &ifindex_type,
 						4 * 8, BYTEORDER_HOST_ENDIAN),
-	[NFT_META_OIFNAME]	= META_TEMPLATE("oifname",   &string_type,
+	[NFT_META_OIFNAME]	= META_TEMPLATE("oifname",   &ifname_type,
 						IFNAMSIZ * BITS_PER_BYTE,
 						BYTEORDER_HOST_ENDIAN),
 	[NFT_META_OIFTYPE]	= META_TEMPLATE("oiftype",   &arphrd_type,
@@ -629,4 +641,5 @@ static void __init meta_init(void)
 	datatype_register(&tchandle_type);
 	datatype_register(&uid_type);
 	datatype_register(&gid_type);
+	datatype_register(&ifname_type);
 }

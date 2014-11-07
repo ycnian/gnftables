@@ -810,39 +810,96 @@ int rule_header_gen_exprs(struct rule_create_data *data, struct pktheader *heade
 	return res;
 }
 
-/*
- * meta iftype doesn't support anonymous now.
- */
-int rule_ifname_gen_exprs(struct rule_create_data *data, struct list_head *head,
+int rule_ifname_gen_exprs(struct rule_create_data *data, union ifname *name,
 			int source)
 {
 	struct expr  *meta;
 	struct expr  *constant;
 	struct expr  *rela;
+	struct expr  *elem;
+	struct expr  *symbol = NULL;
+	struct expr  *se;
 	struct stmt  *stmt;
+	struct set   *set;
 	enum ops	op;
-	struct string_elem	*s_elem;
 	enum nft_meta_keys key;
+	int	keylen;
+	const struct datatype  *keytype;
+	struct netlink_ctx      ctx;
+	struct table		*table;
+	struct set		*clone;
+	char	*idlist;
+	char	*id_str;
+	struct error_record     *erec;
+	LIST_HEAD(msgs);
 
-	if (list_empty(head))
+	if (!name->name_str)
 		return RULE_SUCCESS;
 	if (source)
 		key = NFT_META_IIFNAME;
 	else
 		key = NFT_META_OIFNAME;
-	op = OP_EQ;
+	keylen = 16 * 8;
+	keytype = &ifname_type;
+	op = OP_LOOKUP;
 	meta = meta_expr_alloc(data->loc, key);
+	elem = set_expr_alloc(data->loc);
 
-	s_elem = list_first_entry(head, struct string_elem, list);
-	constant = constant_expr_alloc(data->loc, &string_type,
-			BYTEORDER_HOST_ENDIAN,
-			(strlen(s_elem->value) + 1) * 8, s_elem->value);
-	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, meta, constant);
+	idlist = xstrdup(name->name_str);
+	id_str = string_skip_space(strtok(idlist, ","));
+	while(id_str) {
+		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, id_str);
+		xfree(id_str);
+		expr_set_type(symbol, keytype, BYTEORDER_HOST_ENDIAN);
+		erec = symbol_parse(symbol, &constant);
+		if (erec) {
+			expr_free(meta);
+			expr_free(elem);
+			expr_free(symbol);
+			return source ? RULE_PKTMETA_IIFNAME_INVALID: RULE_PKTMETA_OIFNAME_INVALID;
+		}
+		expr_free(symbol);
+		compound_expr_add(elem, constant);
+		id_str = string_skip_space(strtok(NULL, ","));
+	}
+	xfree(idlist);
+
+	set = set_alloc(data->loc);
+        set->flags	= SET_F_CONSTANT | SET_F_ANONYMOUS;
+        set->handle.set = xstrdup("set%d");
+        set->keytype    = keytype;
+        set->keylen     = keylen;
+        set->init       = elem;
+	set->handle.family = data->family;
+	set->handle.table = xstrdup(data->table);
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.msgs = &msgs;
+//	ctx.seqnum  = mnl_seqnum_alloc();
+	netlink_add_set(&ctx, &set->handle, set);
+	netlink_add_setelems(&ctx, &set->handle, set->init);
+
+	table = table_lookup(&set->handle);
+	if (table == NULL) {
+		table = table_alloc();
+		init_list_head(&table->sets);
+		handle_merge(&table->handle, &set->handle);
+		table_add_hash(table);
+	}
+	if (!set_lookup(table, set->handle.set)) {
+		clone = set_clone(set);
+		set_add_hash(clone, table);
+	}
+	se = set_ref_expr_alloc(data->loc, set);
+
+	rela = relational_expr_alloc(data->loc, OP_IMPLICIT, meta, se);
 	rela->op = op;
 	stmt = expr_stmt_alloc(data->loc, rela);
 	list_add_tail(&stmt->list, &data->exprs);
 
 	return RULE_SUCCESS;
+
+
 }
 
 int rule_iftype_gen_exprs(struct rule_create_data *data, struct list_head *head,
@@ -1014,10 +1071,10 @@ int rule_pktmeta_gen_exprs(struct rule_create_data *data,
 {
 	int	res = RULE_SUCCESS;
 
-	res = rule_ifname_gen_exprs(data, &pktmeta->iifname->name, 1);
+	res = rule_ifname_gen_exprs(data, pktmeta->iifname, 1);
 	if (res != RULE_SUCCESS)
 		return res;
-	res = rule_ifname_gen_exprs(data, &pktmeta->oifname->name, 0);
+	res = rule_ifname_gen_exprs(data, pktmeta->oifname, 0);
 	if (res != RULE_SUCCESS)
 		return res;
 
@@ -1496,9 +1553,11 @@ static int rule_parse_ifname_expr(struct expr *expr, union ifname *ifname)
 	int	len = expr_snprint(NULL, 0, expr);
 	char	p[len + 1];
 
-	ifname->name_str = xzalloc(len - 1);
+	if (expr->ops->type != EXPR_SET_REF)
+		return RULE_TYPE_NOT_SUPPORT;
+	ifname->name_str = xzalloc(len - 2);
 	expr_snprint(p, len + 1, expr);
-	strncpy(ifname->name_str, p + 1, len - 2);
+	strncpy(ifname->name_str, p + 2, len - 3);
 	return RULE_SUCCESS;
 }
 
@@ -1507,6 +1566,8 @@ static int rule_parse_iftype_expr(struct expr *expr, union iftype *iftype)
 	int	len = expr_snprint(NULL, 0, expr);
 	char	p[len + 1];
 
+	if (expr->ops->type != EXPR_SET_REF)
+		return RULE_TYPE_NOT_SUPPORT;
 	iftype->type_str = xzalloc(len - 2);
 	expr_snprint(p, len + 1, expr);
 	strncpy(iftype->type_str, p + 2, len - 3);
@@ -1518,6 +1579,8 @@ static int rule_parse_skuid_expr(struct expr *expr, union skid *uid)
 	int	len = expr_snprint(NULL, 0, expr);
 	char	p[len + 1];
 
+	if (expr->ops->type != EXPR_SET_REF)
+		return RULE_TYPE_NOT_SUPPORT;
 	uid->id_str = xzalloc(len - 2);
 	expr_snprint(p, len + 1, expr);
 	strncpy(uid->id_str, p + 2, len - 3);
@@ -1530,6 +1593,8 @@ static int rule_parse_skgid_expr(struct expr *expr, union skid *gid)
 	int	len = expr_snprint(NULL, 0, expr);
 	char	p[len + 1];
 
+	if (expr->ops->type != EXPR_SET_REF)
+		return RULE_TYPE_NOT_SUPPORT;
 	gid->id_str = xzalloc(len - 2);
 	expr_snprint(p, len + 1, expr);
 	strncpy(gid->id_str, p + 2, len - 3);

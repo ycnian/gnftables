@@ -19,7 +19,7 @@ int rule_transudp_gen_exprs(struct rule_create_data *data, struct trans_udp_data
 int rule_trans_gen_exprs(struct rule_create_data *data, struct transport_data *trans);
 int rule_header_gen_exprs(struct rule_create_data *data, struct pktheader *header);
 
-int rule_ifname_gen_exprs(struct rule_create_data *data, struct list_head *head, int source);
+int rule_ifname_gen_exprs(struct rule_create_data *data, union ifname *name, int source);
 int rule_iftype_gen_exprs(struct rule_create_data *data, struct list_head *head, int source);
 int rule_skid_gen_exprs(struct rule_create_data *data, union skid *skid, int uid);
 int rule_pktmeta_gen_exprs(struct rule_create_data *data, struct pktmeta *pktmeta);

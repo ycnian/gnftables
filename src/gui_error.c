@@ -68,6 +68,9 @@ const char *rule_error[RULE_ERROR_NUM] = {
 	[RULE_TYPE_NOT_SUPPORT]		= "I'm sorry, but I cannot parse this rule.",
 	[RULE_COUNTER_INVALID]		= "Counter is invalid.",
 	[RULE_USER_CHAIN_NOT_EXIST]	= "Target chain doesn't exist",
+	[RULE_PKTMETA_IFNAME_INVALID]	= "Interface name invalid.",
+	[RULE_PKTMETA_IIFNAME_INVALID]	= "Input interface name invalid.",
+	[RULE_PKTMETA_OIFNAME_INVALID]	= "Output interface name invalid.",
 };
 
 

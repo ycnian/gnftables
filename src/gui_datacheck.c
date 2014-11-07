@@ -478,23 +478,9 @@ int get_header_data_from_page(struct match_header *widget,
 	return res;
 }
 
-int get_pktmeta_ifname_from_page(GtkWidget *ifname, struct  list_head *list)
+int get_pktmeta_ifname_from_page(GtkWidget *ifname, union ifname *name)
 {
-	char	*names;
-	char	*name;
-	struct  string_elem  *elem;
-
-	names = get_data_from_entry(GTK_ENTRY(ifname));
-	if (!names)
-		return RULE_SUCCESS;
-	name = string_skip_space(strtok(names, ","));
-	while (name) {
-		elem  = xzalloc(sizeof(struct string_elem));
-		elem->value = name;
-		list_add_tail(&elem->list, list);
-		name = string_skip_space(strtok(NULL, ","));
-	}
-	xfree(names);
+	name->name_str = get_data_from_entry(GTK_ENTRY(ifname));
 	return RULE_SUCCESS;
 }
 
@@ -566,7 +552,7 @@ int get_pktmeta_iifname_from_page(GtkWidget *iifname, struct pktmeta *data)
 
 	data->iifname = xzalloc(sizeof(union ifname));
 	init_list_head(&data->iifname->name);
-	res = get_pktmeta_ifname_from_page(iifname, &data->iifname->name);
+	res = get_pktmeta_ifname_from_page(iifname, data->iifname);
 	return res;
 }
 
@@ -576,7 +562,7 @@ int get_pktmeta_oifname_from_page(GtkWidget *oifname, struct pktmeta *data)
 
 	data->oifname = xzalloc(sizeof(union ifname));
 	init_list_head(&data->oifname->name);
-	res = get_pktmeta_ifname_from_page(oifname, &data->oifname->name);
+	res = get_pktmeta_ifname_from_page(oifname, data->oifname);
 	return res;
 }
 

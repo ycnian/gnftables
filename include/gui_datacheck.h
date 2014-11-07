@@ -230,7 +230,7 @@ int get_header_trans_from_page(struct transport_info * widget,
                 struct transport_data *data);
 int get_pktmeta_ifname_from_page(GtkWidget *ifname, struct  list_head *list);
 int get_pktmeta_iftype_from_page(GtkWidget *iftype, struct  list_head *list);
-int get_pktmeta_skid_from_page(GtkWidget *skid, struct  list_head *list);
+int get_pktmeta_skid_from_page(GtkWidget *widget, union skid *skid);
 int get_pktmeta_iifname_from_page(GtkWidget *iifname, struct pktmeta *data);
 int get_pktmeta_oifname_from_page(GtkWidget *oifname, struct pktmeta *data);
 int get_pktmeta_iiftype_from_page(GtkWidget *iiftype, struct pktmeta *data);

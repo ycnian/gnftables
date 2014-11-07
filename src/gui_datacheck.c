@@ -554,34 +554,10 @@ error:
 	return res;
 }
 
-int get_pktmeta_skid_from_page(GtkWidget *skid, struct  list_head *list)
+int get_pktmeta_skid_from_page(GtkWidget *widget, union skid *skid)
 {
-	int	res = RULE_SUCCESS;
-	char	*ids;
-	char	*id;
-	unsigned int id_value;
-	struct  unsigned_int_elem  *elem;
-
-	ids = get_data_from_entry(GTK_ENTRY(skid));
-	if (!ids)
-		return RULE_SUCCESS;
-	id = string_skip_space(strtok(ids, ","));
-	while (id) {
-		res = strtouint(id, &id_value);
-		if (res != RULE_SUCCESS) {
-			res = RULE_PKTMETA_SKID_INVALID;
-			xfree(id);
-			goto error;
-		}
-		xfree(id);
-		elem  = xzalloc(sizeof(struct unsigned_int_elem));
-		elem->value = id_value;
-		list_add_tail(&elem->list, list);
-		id = string_skip_space(strtok(NULL, ","));
-	}
-error:
-	xfree(ids);
-	return res;
+	skid->id_str = get_data_from_entry(GTK_ENTRY(widget));
+	return RULE_SUCCESS;
 }
 
 int get_pktmeta_iifname_from_page(GtkWidget *iifname, struct pktmeta *data)
@@ -634,7 +610,7 @@ int get_pktmeta_skuid_from_page(GtkWidget *skuid, struct pktmeta *data)
 
 	data->skuid = xzalloc(sizeof(union skid));
 	init_list_head(&data->skuid->id);
-	res = get_pktmeta_skid_from_page(skuid, &data->skuid->id);
+	res = get_pktmeta_skid_from_page(skuid, data->skuid);
 	if (res == RULE_PKTMETA_SKID_INVALID)
 		res = RULE_PKTMETA_SKUID_INVALID;
 	return res;
@@ -646,7 +622,7 @@ int get_pktmeta_skgid_from_page(GtkWidget *skgid, struct pktmeta *data)
 
 	data->skgid = xzalloc(sizeof(union skid));
 	init_list_head(&data->skgid->id);
-	res = get_pktmeta_skid_from_page(skgid, &data->skgid->id);
+	res = get_pktmeta_skid_from_page(skgid, data->skgid);
 	if (res == RULE_PKTMETA_SKID_INVALID)
 		res = RULE_PKTMETA_SKGID_INVALID;
 	return res;

@@ -916,28 +916,30 @@ int rule_iftype_gen_exprs(struct rule_create_data *data, struct list_head *head,
 	return RULE_SUCCESS;
 }
 
-int rule_skid_gen_exprs(struct rule_create_data *data, struct list_head *head,
+int rule_skid_gen_exprs(struct rule_create_data *data, union skid *skid,
 			int uid)
 {
 	struct expr  *meta;
 	struct expr  *constant;
 	struct expr  *rela;
 	struct expr  *elem;
+	struct expr  *symbol = NULL;
 	struct expr  *se;
 	struct stmt  *stmt;
 	struct set   *set;
 	enum ops	op;
-	struct unsigned_int_elem	*i_elem;
 	enum nft_meta_keys key;
-	unsigned int	id;
 	int	keylen;
 	const struct datatype  *keytype;
 	struct netlink_ctx      ctx;
 	struct table		*table;
 	struct set		*clone;
+	char	*idlist;
+	char	*id_str;
+	struct error_record     *erec;
 	LIST_HEAD(msgs);
 
-	if (list_empty(head))
+	if (!skid->id_str)
 		return RULE_SUCCESS;
 	if (uid) {
 		key = NFT_META_SKUID;
@@ -952,12 +954,24 @@ int rule_skid_gen_exprs(struct rule_create_data *data, struct list_head *head,
 	meta = meta_expr_alloc(data->loc, key);
 	elem = set_expr_alloc(data->loc);
 
-	list_for_each_entry(i_elem, head, list) {
-		id = i_elem->value;
-		constant = constant_expr_alloc(data->loc, keytype,
-			BYTEORDER_HOST_ENDIAN, keylen, &id);
+	idlist = xstrdup(skid->id_str);
+	id_str = string_skip_space(strtok(idlist, ","));
+	while(id_str) {
+		symbol = symbol_expr_alloc(data->loc, SYMBOL_VALUE, NULL, id_str);
+		xfree(id_str);
+		expr_set_type(symbol, keytype, BYTEORDER_HOST_ENDIAN);
+		erec = symbol_parse(symbol, &constant);
+		if (erec) {
+			expr_free(meta);
+			expr_free(elem);
+			expr_free(symbol);
+			return uid ? RULE_PKTMETA_SKUID_INVALID: RULE_PKTMETA_SKGID_INVALID;
+		}
+		expr_free(symbol);
 		compound_expr_add(elem, constant);
+		id_str = string_skip_space(strtok(NULL, ","));
 	}
+	xfree(idlist);
 
 	set = set_alloc(data->loc);
         set->flags	= SET_F_CONSTANT | SET_F_ANONYMOUS;
@@ -1013,10 +1027,10 @@ int rule_pktmeta_gen_exprs(struct rule_create_data *data,
 	res = rule_iftype_gen_exprs(data, &pktmeta->oiftype->type, 0);
 	if (res != RULE_SUCCESS)
 		return res;
-	res = rule_skid_gen_exprs(data, &pktmeta->skuid->id, 1);
+	res = rule_skid_gen_exprs(data, pktmeta->skuid, 1);
 	if (res != RULE_SUCCESS)
 		return res;
-	res = rule_skid_gen_exprs(data, &pktmeta->skgid->id, 0);
+	res = rule_skid_gen_exprs(data, pktmeta->skgid, 0);
 	return res;
 }
 

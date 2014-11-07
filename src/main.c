@@ -1039,6 +1039,7 @@ static void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct
 	iiftype_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(iiftype_value), 35);
 	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), iiftype_value, 150, 80);
+	gtk_widget_set_tooltip_text(iiftype_value, "ether, ppp, ipip, ipip6, lookback, sit, ipgre");
 	new_rule->meta->iiftype = iiftype_value;
 	if (pktmeta && pktmeta->iiftype) {
 		gtk_entry_set_text(GTK_ENTRY(iiftype_value), pktmeta->iiftype->type_str);
@@ -1050,6 +1051,7 @@ static void rule_add_content_pktmeta(struct rule_create_widget *new_rule, struct
 	oiftype_value = gtk_entry_new();
 	gtk_entry_set_width_chars(GTK_ENTRY(oiftype_value), 35);
 	gtk_fixed_put(GTK_FIXED(fixed_pktmeta), oiftype_value, 150, 120);
+	gtk_widget_set_tooltip_text(oiftype_value, "ether, ppp, ipip, ipip6, lookback, sit, ipgre");
 	new_rule->meta->oiftype = oiftype_value;
 	if (pktmeta && pktmeta->oiftype) {
 		gtk_entry_set_text(GTK_ENTRY(oiftype_value), pktmeta->oiftype->type_str);

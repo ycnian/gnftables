@@ -392,7 +392,7 @@ static void string_type_print(const struct expr *expr)
 
 	mpz_export_data(data, expr->value, BYTEORDER_HOST_ENDIAN, len);
 	data[len] = '\0';
-	printf("\"%s\"", data);
+	printf("%s", data);
 }
 
 static int string_type_snprint(char *str, size_t size, const struct expr *expr)
@@ -403,7 +403,7 @@ static int string_type_snprint(char *str, size_t size, const struct expr *expr)
 
 	mpz_export_data(data, expr->value, BYTEORDER_HOST_ENDIAN, len);
 	data[len] = '\0';
-	res = snprintf(str, size, "\"%s\"", data);
+	res = snprintf(str, size, "%s", data);
 	if (str && (size_t)res >= size)
 		return -1;
 	else

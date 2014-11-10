@@ -165,16 +165,24 @@ static const struct datatype tchandle_type = {
 	.parse		= tchandle_type_parse,
 };
 
+static struct error_record *ifname_type_parse(const struct expr *sym,
+                                              struct expr **res)
+{
+	*res = constant_expr_alloc(&sym->location, &ifname_type,
+					BYTEORDER_HOST_ENDIAN,
+					IFNAMSIZ * BITS_PER_BYTE,
+					sym->identifier);
+	return NULL;
+}
+
 const struct datatype ifname_type = {
 	.type		= TYPE_IFNAME,
 	.name		= "ifname",
 	.desc		= "interface name",
 	.byteorder	= BYTEORDER_HOST_ENDIAN,
-	.size		= 16 * BITS_PER_BYTE,
+	.size		= IFNAMSIZ * BITS_PER_BYTE,
 	.basetype	= &string_type,
-//	.print		= uid_type_print,
-//	.snprint	= uid_type_snprint,
-//	.parse		= uid_type_parse,
+	.parse		= ifname_type_parse,
 };
 
 static void ifindex_type_print(const struct expr *expr)

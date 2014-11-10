@@ -839,7 +839,7 @@ int rule_ifname_gen_exprs(struct rule_create_data *data, union ifname *name,
 		key = NFT_META_IIFNAME;
 	else
 		key = NFT_META_OIFNAME;
-	keylen = 16 * 8;
+	keylen = IFNAMSIZ * BITS_PER_BYTE;
 	keytype = &ifname_type;
 	op = OP_LOOKUP;
 	meta = meta_expr_alloc(data->loc, key);
